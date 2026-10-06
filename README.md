@@ -10,7 +10,7 @@
 
 | STT | Họ và Tên | MSSV |
 | :---: | :--- | :---: |
-| 2 | Đào Mạnh Quốc Bảo |  | 
+| 2 | Đào Mạnh Quốc Bảo | 079206019047 | 
 | 1 | Trần Huỳnh Gia An | 079206020226 |
 | 2 | Võ Anh Duy |  | 
 | 3 | Nguyễn Thành Duy |  |
