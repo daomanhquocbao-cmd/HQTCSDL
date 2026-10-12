@@ -14,4 +14,4 @@
 | 1 | Trần Huỳnh Gia An | 079206020226 |
 | 2 | Võ Anh Duy | 083206001605 | 
 | 3 | Nguyễn Hoàng Duy | 070206000430 |
-| 4 | Nguyễn Ngọc Đoan Tiên |  |
+| 4 | Nguyễn Ngọc Đoan Tiên | 079306000200 |
