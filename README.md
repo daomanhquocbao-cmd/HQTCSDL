@@ -13,5 +13,5 @@
 | 2 | Đào Mạnh Quốc Bảo | 079206019047 | 
 | 1 | Trần Huỳnh Gia An | 079206020226 |
 | 2 | Võ Anh Duy | 083206001605 | 
-| 3 | Nguyễn Thành Duy |  |
+| 3 | Nguyễn Hoàng Duy | 070206000430 |
 | 4 | Nguyễn Ngọc Đoan Tiên |  |
