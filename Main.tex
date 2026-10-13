@@ -1,0 +1,118 @@
+\documentclass[letterpaper,12pt,leqno]{report}
+
+% Căn lề chuẩn
+\usepackage[letterpaper, top=2.5cm, bottom=2.5cm, left=3cm, right=2cm]{geometry}
+
+% Cấu hình Tiếng Việt và Font chữ
+\usepackage[T5]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[vietnamese]{babel}
+\usepackage{mathptmx}
+
+% Các gói bảng, toán học và giao diện
+\usepackage{array, booktabs, longtable}
+\usepackage{amsmath, amsfonts, amssymb}
+\usepackage{xcolor}
+\usepackage{tabularx}
+\usepackage{listings}
+\usepackage[most]{tcolorbox}
+\usepackage{enumitem}
+\usepackage{indentfirst}
+\usepackage{hyperref}
+\usepackage{titlesec}
+\usepackage{tocloft}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{float}
+\usepackage{graphicx}
+
+% CẤU HÌNH ĐỊNH DẠNG DỰA TRÊN CẤU TRÚC PART & CHAPTER
+\titleformat{\part}[block]
+  {\normalfont\bfseries\raggedright}
+  {}
+  {0pt}
+  {\Large\MakeUppercase}
+
+\titlespacing*{\part}{0pt}{20pt}{20pt}
+\titleformat{\chapter}[block]
+  {\normalfont\bfseries\raggedright}
+  {\fontsize{16pt}{20pt}\selectfont\chaptertitlename\ \thechapter:\ }
+  {0pt}
+  {\fontsize{16pt}{20pt}\selectfont}
+\titleformat{name=\chapter,numberless}[block]
+  {\normalfont\bfseries\raggedright}
+  {}
+  {0pt}
+  {\fontsize{16pt}{20pt}\selectfont}
+
+\titlespacing*{\chapter}{0pt}{20pt}{30pt}
+
+% Mục lục
+\renewcommand{\cftchappresnum}{Chương }
+\setlength{\cftchapnumwidth}{5.5em}
+
+\addto\captionsvietnamese{
+  \renewcommand{\chaptername}{Chương}
+  \renewcommand{\contentsname}{MỤC LỤC}
+}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    filecolor=magenta,      
+    urlcolor=cyan,
+    pdftitle={Bao cao Bai tap lon CSDL - Nen tang ket noi cong dong nhiep anh phim}
+}
+
+% Nội dung
+\begin{document}
+
+% Trang bìa
+\begin{titlepage}
+    \centering
+    \Large\textbf{TRƯỜNG ĐẠI HỌC GIAO THÔNG VẬN TẢI}\\[0.3cm]
+    \Large\textbf{TP. HỒ CHÍ MINH}\\[1.5cm]
+
+    \Huge\textbf{BÁO CÁO BÀI TẬP LỚN}\\[0.5cm]
+    \Large\textbf{MÔN: HỆ QUẢN TRỊ CƠ SỞ DỮ LIỆU}\\[1.5cm]
+
+    \Large\textbf{Đề tài: Xây dựng Nền tảng kết nối cộng đồng nhiếp ảnh phim}\\[0.3cm]
+    \Large\textbf{với các dịch vụ không gian và thiết bị chuyên dụng}\\[0.3cm]
+
+    \vfill
+    \Large\textbf{TP. Hồ Chí Minh, Năm 2026}
+\end{titlepage}
+
+\cleardoublepage
+\pagenumbering{arabic}
+
+% Mục lục
+\tableofcontents
+\cleardoublepage
+
+% PHẦN MỞ ĐẦU
+\addtocontents{toc}{\protect\vspace{1.5em}\protect\noindent{\bfseries\Large PHẦN MỞ ĐẦU}\par\protect\vspace{0.5em}}
+
+\input{preface}
+
+\cleardoublepage
+
+% PHẦN NỘI DUNG CHÍNH
+\addtocontents{toc}{\protect\vspace{1.5em}\protect\noindent{\bfseries\Large PHẦN NỘI DUNG CHÍNH}\par\protect\vspace{0.5em}}
+
+\input{chuong1}
+\input{chuong2}
+\input{chuong3}
+\input{chuong4}
+
+\cleardoublepage
+
+% PHẦN TỔNG KẾT & PHỤ LỤC
+\addtocontents{toc}{\protect\vspace{1.5em}\protect\noindent{\bfseries\Large PHẦN TỔNG KẾT}\par\protect\vspace{0.5em}}
+
+\chapter*{Kết luận}
+\addcontentsline{toc}{chapter}{Kết luận}
+\input{acknowledgements}
+\cleardoublepage
+
+\end{document}
