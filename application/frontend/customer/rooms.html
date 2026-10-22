@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Danh Sách Phòng - FilmPhotography Hub</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background: #e2e8f0;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .phone-frame {
+            width: 390px;
+            height: 800px;
+            background: #1e293b;
+            border-radius: 46px;
+            border: 10px solid #283548;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .app-screen {
+            flex: 1;
+            background: #eaf1f8;
+            color: #1e293b;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .app-screen::-webkit-scrollbar {
+            display: none;
+        }
+
+        /* Top Bar */
+        .top-bar {
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #ffffff;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .back-btn {
+            font-size: 1.2rem;
+            color: #0f172a;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .page-title {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: #0f172a;
+        }
+
+        /* Thanh tìm kiếm & Bộ lọc */
+        .filter-section {
+            padding: 15px 20px 10px 20px;
+            background: #ffffff;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 10px 14px;
+            background: #f1f5f9;
+            border: 1px solid #cbd5e1;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            color: #0f172a;
+            outline: none;
+            margin-bottom: 10px;
+        }
+
+        .filter-chips {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            white-space: nowrap;
+            padding-bottom: 4px;
+        }
+
+        .filter-chips::-webkit-scrollbar {
+            display: none;
+        }
+
+        .chip {
+            background: #f1f5f9;
+            border: 1px solid #cbd5e1;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.72rem;
+            color: #475569;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .chip.active {
+            background: #0f172a;
+            color: white;
+            border-color: #0f172a;
+        }
+
+        /* Danh sách phòng dạng Lưới / Thẻ dọc */
+        .room-list-container {
+            padding: 15px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .room-card-full {
+            background: #ffffff;
+            border-radius: 16px;
+            overflow: hidden;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+            display: flex;
+            flex-direction: column;
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .room-card-img {
+            height: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+        }
+
+        .room-card-body {
+            padding: 12px;
+        }
+
+        .room-card-title {
+            font-size: 0.88rem;
+            font-weight: 800;
+            color: #0f172a;
+        }
+
+        .room-card-sub {
+            font-size: 0.72rem;
+            color: #64748b;
+            margin-top: 4px;
+        }
+
+        .room-card-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 10px;
+            padding-top: 8px;
+            border-top: 1px dashed #e2e8f0;
+        }
+
+        .price-text {
+            font-size: 0.85rem;
+            font-weight: 800;
+            color: #0284c7;
+        }
+
+        .rating-text {
+            font-size: 0.72rem;
+            font-weight: 700;
+            color: #0f172a;
+        }
+
+        /* Bottom Navigation Bar */
+        .bottom-nav {
+            height: 60px;
+            background: #ffffff;
+            border-top: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            margin-top: auto;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-size: 0.65rem;
+            color: #64748b;
+            gap: 2px;
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        .nav-item.active {
+            color: #0284c7;
+            font-weight: 700;
+        }
+
+        .nav-icon {
+            font-size: 1rem;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="phone-frame">
+        <div class="app-screen">
+            
+            <!-- Top Bar -->
+            <div class="top-bar">
+                <a href="index.html" class="back-btn">←</a>
+                <span class="page-title">Danh sách phòng tối & Studio</span>
+                <span style="opacity: 0;">←</span>
+            </div>
+
+            <!-- Tìm kiếm & Lọc -->
+            <div class="filter-section">
+                <input type="text" class="search-input" placeholder="🔍 Tìm theo tên phòng, thiết bị, quận...">
+                <div class="filter-chips">
+                    <span class="chip active">Tất cả</span>
+                    <span class="chip">Phòng Tối (Darkroom)</span>
+                    <span class="chip">Studio Chụp</span>
+                    <span class="chip">Giá dưới 200k</span>
+                    <span class="chip">Quận 1 / Thủ Đức</span>
+                </div>
+            </div>
+
+            <!-- Danh sách phòng dạng Card -->
+            <div class="room-list-container">
+                
+                <!-- Phòng 1 -->
+                <a href="room-detail.html" class="room-card-full">
+                    <div class="room-card-img" style="background: linear-gradient(135deg, #fecdd3, #fda4af);">
+                        🔴🎞️
+                    </div>
+                    <div class="room-card-body">
+                        <div class="room-card-title">SAIGON DARKROOM Q1</div>
+                        <div class="room-card-sub">📍 Quận 1 • Chuyên tráng/rọi phim đen trắng & màu</div>
+                        <div class="room-card-footer">
+                            <span class="price-text">150.000 VNĐ/h</span>
+                            <span class="rating-text">⭐ 4.8 (32 đánh giá)</span>
+                        </div>
+                    </div>
+                </a>
+
+                <!-- Phòng 2 -->
+                <a href="room-detail.html" class="room-card-full">
+                    <div class="room-card-img" style="background: linear-gradient(135deg, #fed7aa, #ffedd5);">
+                        📸✨
+                    </div>
+                    <div class="room-card-body">
+                        <div class="room-card-title">VINTAGE STUDIO THẢO ĐIỀN</div>
+                        <div class="room-card-sub">📍 TP. Thủ Đức • Đèn Studio, phông nền vintage</div>
+                        <div class="room-card-footer">
+                            <span class="price-text">250.000 VNĐ/h</span>
+                            <span class="rating-text">⭐ 4.9 (45 đánh giá)</span>
+                        </div>
+                    </div>
+                </a>
+
+                <!-- Phòng 3 -->
+                <a href="room-detail.html" class="room-card-full">
+                    <div class="room-card-img" style="background: linear-gradient(135deg, #bae6fd, #e0f2fe);">
+                        🧪🎞️
+                    </div>
+                    <div class="room-card-body">
+                        <div class="room-card-title">AN PHÚ LAB & DARKROOM</div>
+                        <div class="room-card-sub">📍 Quận 2 • Đầy đủ hóa chất C41, D76 & Máy rọi</div>
+                        <div class="room-card-footer">
+                            <span class="price-text">180.000 VNĐ/h</span>
+                            <span class="rating-text">⭐ 4.7 (19 đánh giá)</span>
+                        </div>
+                    </div>
+                </a>
+
+            </div>
+
+            <!-- Bottom Navigation Bar -->
+            <div class="bottom-nav">
+                <a href="index.html" class="nav-item">
+                    <span class="nav-icon">🧭</span>
+                    <span>Khám phá</span>
+                </a>
+                <a href="rooms.html" class="nav-item active">
+                    <span class="nav-icon">🚪</span>
+                    <span>Phòng</span>
+                </a>
+                <a href="booking.html" class="nav-item">
+                    <span class="nav-icon">📅</span>
+                    <span>Lịch hẹn</span>
+                </a>
+                <a href="#" class="nav-item">
+                    <span class="nav-icon">👤</span>
+                    <span>Hồ sơ</span>
+                </a>
+            </div>
+
+        </div>
+    </div>
+
+</body>
+</html>
