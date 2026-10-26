@@ -1,3 +1,5 @@
+CREATE DATABASE FilmPhotographyPlatform;
+GO
 USE FilmPhotographyPlatform;
 GO
 
