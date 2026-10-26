@@ -1,0 +1,35 @@
+.gitignore# Environment & Secret files
+.env
+.env.local
+*.pem
+*.key
+
+# Dependencies
+node_modules/
+venv/
+.venv/
+vendor/
+
+# Build & Output
+dist/
+build/
+target/
+bin/
+obj/
+*.exe
+*.jar
+
+# Logs & Database local
+*.log
+logs/
+*.sqlite
+*.db
+
+# User Uploaded files (tránh commit file rác sinh ra trong lúc test)
+uploads/*
+!uploads/.gitkeep
+
+# Operating System & IDEs
+.DS_Store
+.vscode/
+.idea/
