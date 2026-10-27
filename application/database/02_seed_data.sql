@@ -51,3 +51,58 @@ BEGIN
     SET @pay = @pay + 1;
 END
 GO
+
+-- 3. BƠM REVIEWS (Đánh giá Studio từ khách hàng)
+PRINT N'3. Đang bơm Reviews...';
+DECLARE @min_std INT = (SELECT MIN(studio_id) FROM Studios);
+DECLARE @max_std INT = (SELECT MAX(studio_id) FROM Studios);
+DECLARE @min_u INT = (SELECT MIN(user_id) FROM Users);
+DECLARE @max_u INT = (SELECT MAX(user_id) FROM Users);
+
+DECLARE @rev INT = 1;
+WHILE @rev <= 500
+BEGIN
+    INSERT INTO Reviews (studio_id, customer_id, rating, comment)
+    VALUES (
+        @min_std + (ABS(CHECKSUM(NEWID())) % (@max_std - @min_std + 1)),
+        @min_u + (ABS(CHECKSUM(NEWID())) % (@max_u - @min_u + 1)),
+        3 + (ABS(CHECKSUM(NEWID())) % 3), -- Rating từ 3 đến 5 sao
+        N'Không gian phòng tối chuyên nghiệp, thiết bị hiện đại, rất đáng trải nghiệm!'
+    );
+    SET @rev = @rev + 1;
+END
+GO
+
+-- 4. BƠM COMMUNITY POSTS & COMMENTS (Bài viết & Bình luận cộng đồng)
+PRINT N'4. Đang bơm CommunityPosts & PostComments...';
+DECLARE @min_u INT = (SELECT MIN(user_id) FROM Users);
+DECLARE @max_u INT = (SELECT MAX(user_id) FROM Users);
+
+DECLARE @pst INT = 1;
+WHILE @pst <= 100
+BEGIN
+    INSERT INTO CommunityPosts (author_id, title, content, image_url)
+    VALUES (
+        @min_u + (ABS(CHECKSUM(NEWID())) % (@max_u - @min_u + 1)),
+        N'Chia sẻ công thức pha thuốc tráng phim B&W số #' + CAST(@pst AS VARCHAR(5)),
+        N'Bài viết hướng dẫn chi tiết tỉ lệ pha và nhiệt độ chuẩn để kiểm soát hạt phim tốt nhất.',
+        N'https://images.filmplatform.com/posts/post_' + CAST(@pst AS VARCHAR(5)) + N'.jpg'
+    );
+    SET @pst = @pst + 1;
+END
+
+DECLARE @cmt INT = 1;
+DECLARE @min_p INT = (SELECT MIN(post_id) FROM CommunityPosts);
+DECLARE @max_p INT = (SELECT MAX(post_id) FROM CommunityPosts);
+
+WHILE @cmt <= 300
+BEGIN
+    INSERT INTO PostComments (post_id, user_id, content)
+    VALUES (
+        @min_p + (ABS(CHECKSUM(NEWID())) % (@max_p - @min_p + 1)),
+        @min_u + (ABS(CHECKSUM(NEWID())) % (@max_u - @min_u + 1)),
+        N'Bài viết rất hữu ích, cảm ơn tác giả đã chia sẻ kinh nghiệm thực tế!'
+    );
+    SET @cmt = @cmt + 1;
+END
+GO
