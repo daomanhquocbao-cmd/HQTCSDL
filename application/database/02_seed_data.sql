@@ -106,3 +106,43 @@ BEGIN
     SET @cmt = @cmt + 1;
 END
 GO
+
+-- 5. BƠM EQUIPMENT MAINTENANCE (Lịch sử bảo trì thiết bị)
+PRINT N'5. Đang bơm EquipmentMaintenance...';
+DECLARE @min_eq INT = (SELECT MIN(equipment_id) FROM Equipment);
+DECLARE @max_eq INT = (SELECT MAX(equipment_id) FROM Equipment);
+
+DECLARE @maint INT = 1;
+WHILE @maint <= 200
+BEGIN
+    INSERT INTO EquipmentMaintenance (equipment_id, cost, description)
+    VALUES (
+        @min_eq + (ABS(CHECKSUM(NEWID())) % (@max_eq - @min_eq + 1)),
+        150000.00,
+        N'Bảo trì định kỳ hệ thống quang học và thay thế linh kiện hao mòn.'
+    );
+    SET @maint = @maint + 1;
+END
+GO
+
+-- 6. BƠM PACKAGE EQUIPMENT (Bảng trung gian gói dịch vụ và thiết bị)
+PRINT N'6. Đang bơm bảng trung gian PackageEquipment...';
+DECLARE @min_pkg INT = (SELECT MIN(package_id) FROM ServicePackages);
+DECLARE @max_pkg INT = (SELECT MAX(package_id) FROM ServicePackages);
+DECLARE @min_eq INT = (SELECT MIN(equipment_id) FROM Equipment);
+DECLARE @max_eq INT = (SELECT MAX(equipment_id) FROM Equipment);
+
+DECLARE @pk_eq INT = 1;
+WHILE @pk_eq <= 150
+BEGIN
+    DECLARE @rand_pkg INT = @min_pkg + (ABS(CHECKSUM(NEWID())) % (@max_pkg - @min_pkg + 1));
+    DECLARE @rand_eq INT = @min_eq + (ABS(CHECKSUM(NEWID())) % (@max_eq - @min_eq + 1));
+
+    IF NOT EXISTS (SELECT 1 FROM PackageEquipment WHERE package_id = @rand_pkg AND equipment_id = @rand_eq)
+    BEGIN
+        INSERT INTO PackageEquipment (package_id, equipment_id, quantity_included)
+        VALUES (@rand_pkg, @rand_eq, 1);
+        SET @pk_eq = @pk_eq + 1;
+    END
+END
+GO
