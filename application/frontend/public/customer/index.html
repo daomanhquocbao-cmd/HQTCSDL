@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FilmPhotography Hub - Mobile UI</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+ 
+        body {
+            background: #e2e8f0;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        /* Khung điện thoại mô phỏng */
+        .phone-frame {
+            width: 390px;
+            height: 800px;
+            background: #1e293b;
+            border-radius: 46px;
+            border: 10px solid #283548;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Màn hình hiển thị bên trong app */
+        .app-screen {
+            flex: 1;
+            background: #eaf1f8;
+            color: #1e293b;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        /* Ẩn thanh cuộn nhưng vẫn scroll được */
+        .app-screen::-webkit-scrollbar {
+            display: none;
+        }
+
+        /* Header */
+        .app-header {
+            padding: 15px 20px 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .user-profile {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: #38bdf8;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            color: white;
+            font-weight: bold;
+        }
+
+        .username {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #0f172a;
+        }
+
+        .camera-icon {
+            font-size: 1.2rem;
+        }
+
+        /* Tiêu đề ứng dụng */
+        .app-title-area {
+            padding: 0 20px 10px 20px;
+        }
+
+        .app-title-area h1 {
+            font-size: 1.4rem;
+            font-weight: 800;
+            color: #0f172a;
+            line-height: 1.2;
+        }
+
+        /* Thanh tìm kiếm */
+        .search-container {
+            padding: 0 20px 12px 20px;
+        }
+
+        .search-box {
+            background: #ffffff;
+            border: 1px solid #cbd5e1;
+            padding: 10px 14px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            color: #64748b;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        }
+
+        /* Menu ngang phụ */
+        .sub-nav {
+            display: flex;
+            gap: 16px;
+            padding: 0 20px 15px 20px;
+            overflow-x: auto;
+            font-size: 0.85rem;
+            white-space: nowrap;
+        }
+
+        .sub-nav::-webkit-scrollbar {
+            display: none;
+        }
+
+        .sub-item {
+            color: #475569;
+            font-weight: 500;
+            cursor: pointer;
+        }
+
+        .sub-item.active {
+            color: #0f172a;
+            font-weight: 700;
+            border-bottom: 2px solid #0f172a;
+            padding-bottom: 2px;
+        }
+
+        /* Lưới 2 cột chứa các thẻ Thống kê / Quản lý */
+        .dashboard-grid {
+            padding: 0 20px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+
+        .card {
+            background: #ffffff;
+            padding: 12px;
+            border-radius: 16px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+        }
+
+        .card-title {
+            font-size: 0.8rem;
+            font-weight: 800;
+            color: #0f172a;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+            font-size: 0.75rem;
+            color: #475569;
+        }
+
+        .stat-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .stat-icon {
+            font-size: 0.9rem;
+        }
+
+        .stat-value {
+            font-weight: 700;
+            color: #0f172a;
+        }
+
+        /* Tiêu đề mục Darkroom List */
+        .section-header {
+            padding: 5px 20px 10px 20px;
+            font-size: 0.95rem;
+            font-weight: 800;
+            color: #0f172a;
+        }
+
+        /* Danh sách phòng tối / Studio ngang */
+        .horizontal-list {
+            display: flex;
+            gap: 12px;
+            padding: 0 20px;
+            overflow-x: auto;
+            margin-bottom: 15px;
+        }
+
+        .horizontal-list::-webkit-scrollbar {
+            display: none;
+        }
+
+        .room-card-mini {
+            min-width: 190px;
+            background: #ffffff;
+            border-radius: 14px;
+            overflow: hidden;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+        }
+
+        .room-img {
+            height: 100px;
+            background: #cbd5e1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+
+        .room-details {
+            padding: 10px;
+        }
+
+        .room-name {
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: #0f172a;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .room-sub {
+            font-size: 0.7rem;
+            color: #64748b;
+            margin-top: 2px;
+        }
+
+        /* Quick Actions & Quản lý lịch hẹn dưới */
+        .action-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-top: 5px;
+        }
+
+        .action-btn {
+            background: #1e293b;
+            color: white;
+            border: none;
+            padding: 6px 10px;
+            border-radius: 8px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-align: center;
+            cursor: pointer;
+        }
+
+        .action-btn.secondary {
+            background: #334155;
+        }
+
+        .schedule-info {
+            font-size: 0.72rem;
+            color: #475569;
+            margin-bottom: 6px;
+        }
+
+        .schedule-info.highlight {
+            font-weight: 700;
+            color: #0f172a;
+        }
+
+        /* Thanh điều hướng dưới đáy (Bottom Navigation) */
+        .bottom-nav {
+            height: 60px;
+            background: #ffffff;
+            border-top: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            margin-top: auto;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-size: 0.65rem;
+            color: #64748b;
+            gap: 2px;
+            cursor: pointer;
+        }
+
+        .nav-item.active {
+            color: #0284c7;
+            font-weight: 700;
+        }
+
+        .nav-icon {
+            font-size: 1rem;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="phone-frame">
+        <div class="app-screen">
+            
+            <!-- Header -->
+            <div class="app-header">
+                <div class="user-profile">
+                    <div class="avatar">ĐD</div>
+                    <span class="username">Bạch Dương</span>
+                </div>
+                <div class="camera-icon">📷</div>
+            </div>
+
+            <!-- Title -->
+            <div class="app-title-area">
+                <h1>FilmPhotography Hub</h1>
+            </div>
+
+            <!-- Search Bar -->
+            <div class="search-container">
+                <div class="search-box">
+                    <span>🔍</span> Tìm kiếm: Phòng tối Quận 1, Studio vintage, Scan phim C41...
+                </div>
+            </div>
+
+            <!-- Sub Nav -->
+           <!-- Sub Nav -->
+            <div class="sub-nav">
+                <span class="sub-item active">Khám phá</span>
+                <a href="rooms.html" style="text-decoration: none; color: inherit;"><span class="sub-item">Phòng Tối/Studio</span></a>
+                <span class="sub-item">Cộng Đồng</span>
+                <span class="sub-item">Quản Lý</span>
+            </div>
+
+            <!-- Dashboard Grid (Quản lý dịch vụ & Quản lý của bạn) -->
+            <div class="dashboard-grid">
+                <!-- Card 1: Quản lý dịch vụ -->
+                <div class="card">
+                    <div class="card-title">Quản lý dịch vụ</div>
+                    <div class="stat-item">
+                        <span class="stat-icon">📦</span>
+                        <div>Gói dịch vụ: <span class="stat-value">3</span></div>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-icon">📅</span>
+                        <div>Lịch chờ duyệt: <span class="stat-value">5</span></div>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-icon">🧪</span>
+                        <div>Phiên sử dụng: <span class="stat-value">2</span></div>
+                    </div>
+                </div>
+
+                <!-- Card 2: Quản lý của bạn -->
+                <div class="card">
+                    <div class="card-title">Quản lý của bạn</div>
+                    <div class="stat-item">
+                        <span class="stat-icon">⚙️</span>
+                        <div>Thiết bị đang bật: <span class="stat-value">5</span></div>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-icon">📷</span>
+                        <div>Thiết bị sẵn sàng: <span class="stat-value">12</span></div>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-icon">🧪</span>
+                        <div>Hóa chất C41: <span class="stat-value">2</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section Header -->
+            <div class="section-header">Darkroom List</div>
+
+            
+           <!-- Horizontal Room List -->
+            <div class="horizontal-list">
+                <!-- Bọc thẻ a ở đây để bấm vào chuyển trang -->
+                <a href="room-detail.html" style="text-decoration: none; color: inherit;">
+                    <div class="room-card-mini">
+                        <div class="room-img" style="background: linear-gradient(135deg, #fecdd3, #fda4af);">
+                            🔴🎞️
+                        </div>
+                        <div class="room-details">
+                            <div class="room-name">SAIGON DARKROOM Q1</div>
+                            <div class="room-sub">tráng/rọi • 150k/h • ⭐ 4.8</div>
+                        </div>
+                    </div>
+                </a>
+
+                <!-- Phòng thứ 2 -->
+                <a href="room-detail.html" style="text-decoration: none; color: inherit;">
+                    <div class="room-card-mini">
+                        <div class="room-img" style="background: linear-gradient(135deg, #fed7aa, #ffedd5);">
+                            📸✨
+                        </div>
+                        <div class="room-details">
+                            <div class="room-name">VINTAGE STUDIO THẢO ĐIỀN</div>
+                            <div class="room-sub">hasselblad • 250k/h • ⭐ 4.9</div>
+                        </div>
+                    </div>
+                </a>
+            </div>
+
+            <!-- Grid dưới: Quick Actions & Quản lý lịch hẹn -->
+            <div class="dashboard-grid" style="margin-bottom: 20px;">
+                <!-- Quick Actions -->
+                <div class="card">
+                    <div class="card-title">Quick Actions</div>
+                    <div class="action-buttons">
+                        <button class="action-btn">QUẢN LÝ TB</button>
+                        <button class="action-btn secondary">TẠO GÓI DV</button>
+                    </div>
+                </div>
+
+                <!-- Quản lý lịch hẹn cá nhân -->
+                <div class="card">
+                    <div class="card-title">Quản lý của bạn</div>
+                    <div class="schedule-info highlight">📅 Lịch hẹn tới:</div>
+                    <div class="schedule-info">Oct 15 - 10:00</div>
+                    <div class="schedule-info highlight" style="margin-top: 4px;">Doanh thu T10:</div>
+                    <div class="schedule-info">GETDATE()</div>
+                </div>
+            </div>
+
+            <!-- Bottom Navigation Bar -->
+            <div class="bottom-nav">
+                <div class="nav-item active">
+                    <span class="nav-icon">🧭</span>
+                    <span>Khám phá</span>
+                </div>
+                <div class="nav-item">
+                    <span class="nav-icon">📅</span>
+                    <span>Lịch hẹn</span>
+                </div>
+                <div class="nav-item">
+                    <span class="nav-icon">🧪</span>
+                    <span>Lab</span>
+                </div>
+                <div class="nav-item">
+                    <span class="nav-icon">👤</span>
+                    <span>Hồ sơ</span>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+</body>
+</html>
+
+</body>
+</html>

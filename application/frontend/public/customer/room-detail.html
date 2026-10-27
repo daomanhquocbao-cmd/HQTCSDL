@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chi Tiết Phòng - FilmPhotography Hub</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background: #e2e8f0;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .phone-frame {
+            width: 390px;
+            height: 800px;
+            background: #1e293b;
+            border-radius: 46px;
+            border: 10px solid #283548;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .app-screen {
+            flex: 1;
+            background: #eaf1f8;
+            color: #1e293b;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .app-screen::-webkit-scrollbar {
+            display: none;
+        }
+
+        /* Top Bar với nút Back */
+        .top-bar {
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #ffffff;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .back-btn {
+            font-size: 1.2rem;
+            color: #0f172a;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .page-title {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: #0f172a;
+        }
+
+        /* Banner hình ảnh phòng */
+        .room-hero-img {
+            height: 180px;
+            background: linear-gradient(135deg, #fecdd3, #fda4af);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            position: relative;
+        }
+
+        .badge-status {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: #22c55e;
+            color: white;
+            font-size: 0.65rem;
+            font-weight: 700;
+            padding: 4px 8px;
+            border-radius: 20px;
+        }
+
+        /* Content Container */
+        .content-padding {
+            padding: 15px 20px;
+        }
+
+        .room-header {
+            margin-bottom: 15px;
+        }
+
+        .room-title {
+            font-size: 1.2rem;
+            font-weight: 800;
+            color: #0f172a;
+        }
+
+        .room-location {
+            font-size: 0.75rem;
+            color: #64748b;
+            margin-top: 4px;
+        }
+
+        .price-tag {
+            font-size: 1.1rem;
+            font-weight: 800;
+            color: #0284c7;
+            margin-top: 8px;
+        }
+
+        /* Card Section */
+        .detail-card {
+            background: #ffffff;
+            padding: 14px;
+            border-radius: 16px;
+            border: 1px solid #e2e8f0;
+            margin-bottom: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        }
+
+        .card-heading {
+            font-size: 0.8rem;
+            font-weight: 800;
+            color: #0f172a;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+
+        .desc-text {
+            font-size: 0.78rem;
+            color: #475569;
+            line-height: 1.4;
+        }
+
+        /* Lưới thiết bị đi kèm */
+        .equipment-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 6px;
+        }
+
+        .equip-chip {
+            background: #f1f5f9;
+            border: 1px solid #cbd5e1;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            color: #334155;
+            font-weight: 600;
+        }
+
+        /* Nút Đặt Lịch cố định ở đáy */
+        .bottom-action-bar {
+            padding: 12px 20px;
+            background: #ffffff;
+            border-top: 1px solid #e2e8f0;
+            margin-top: auto;
+        }
+
+        .book-now-btn {
+            display: block;
+            width: 100%;
+            background: #0f172a;
+            color: white;
+            text-align: center;
+            padding: 12px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            text-decoration: none;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="phone-frame">
+        <div class="app-screen">
+            
+            <!-- Top Bar với nút Back về Trang chủ -->
+            <div class="top-bar">
+                <a href="index.html" class="back-btn">←</a>
+                <span class="page-title">Chi tiết phòng</span>
+                <span style="opacity: 0;">←</span>
+            </div>
+
+            <!-- Ảnh phòng & Trạng thái -->
+            <div class="room-hero-img">
+                🔴🎞️
+                <span class="badge-status">Sẵn sàng đặt</span>
+            </div>
+
+            <div class="content-padding">
+                <!-- Thông tin chính -->
+                <div class="room-header">
+                    <h2 class="room-title">SAIGON DARKROOM Q1</h2>
+                    <div class="room-location">📍 12 Nguyễn Thị Minh Khai, Phường Đa Kao, Quận 1</div>
+                    <div class="price-tag">150.000 VNĐ <span style="font-size: 0.75rem; color: #64748b; font-weight: normal;">/ giờ</span></div>
+                </div>
+
+                <!-- Mô tả phòng -->
+                <div class="detail-card">
+                    <div class="card-heading">Mô tả phòng tối</div>
+                    <p class="desc-text">
+                        Phòng tối tiêu chuẩn chuyên nghiệp phục vụ tráng và rọi ảnh đen trắng (B&W) & phim màu C-41. Đầy đủ không gian khép kín, ánh sáng đỏ an toàn và hệ thống thông gió đạt chuẩn.
+                    </p>
+                </div>
+
+                <!-- Bảng thiết bị có sẵn -->
+                <div class="detail-card">
+                    <div class="card-heading">Thiết bị & Hóa chất có sẵn</div>
+                    <div class="equipment-list">
+                        <span class="equip-chip">📷 Máy rọi Kaiser</span>
+                        <span class="equip-chip">🧪 Hóa chất C41 / D76</span>
+                        <span class="equip-chip">🎞️ Tank tráng Paterson</span>
+                        <span class="equip-chip">💡 Đèn đỏ an toàn</span>
+                        <span class="equip-chip">Khay rọi 30x40</span>
+                        <span class="equip-chip">Máy sấy phim</span>
+                    </div>
+                </div>
+
+                <!-- Quy định phòng -->
+                <div class="detail-card">
+                    <div class="card-heading">Lưu ý khi sử dụng</div>
+                    <p class="desc-text">
+                        • Vui lòng có mặt đúng giờ đã hẹn.<br>
+                        • Vệ sinh khay rọi và thiết bị sau khi hoàn thành phiên làm việc.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Nút bấm Đặt Lịch Chuyển sang booking.html -->
+            <div class="bottom-action-bar">
+                <a href="booking.html" class="book-now-btn">ĐẶT PHÒNG NGAY</a>
+            </div>
+
+        </div>
+    </div>
+
+</body>
+</html>

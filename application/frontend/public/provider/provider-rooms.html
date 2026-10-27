@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản Lý Studio - Provider Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background: #e2e8f0;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .phone-frame {
+            width: 390px;
+            height: 800px;
+            background: #1e293b;
+            border-radius: 46px;
+            border: 10px solid #283548;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .app-screen {
+            flex: 1;
+            background: #eaf1f8;
+            color: #1e293b;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .app-screen::-webkit-scrollbar {
+            display: none;
+        }
+
+        .top-bar {
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #ffffff;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .back-btn {
+            font-size: 1.2rem;
+            color: #0f172a;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .page-title {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: #0f172a;
+        }
+
+        .action-header {
+            padding: 15px 20px 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .section-heading {
+            font-size: 0.95rem;
+            font-weight: 800;
+            color: #0f172a;
+        }
+
+        .add-btn {
+            background: #0284c7;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        /* ----- THANH BỘ LỌC ----- */
+        .filter-toolbar {
+            padding: 0 20px 12px 20px;
+            display: flex;
+            gap: 8px;
+        }
+
+        .filter-trigger-btn {
+            flex: 1;
+            background: #ffffff;
+            border: 1px solid #cbd5e1;
+            padding: 8px 12px;
+            border-radius: 10px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            color: #334155;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+        }
+
+        .filter-trigger-btn:hover {
+            background: #f8fafc;
+            border-color: #0284c7;
+            color: #0284c7;
+        }
+
+        /* ----- DANH SÁCH STUDIO ----- */
+        .rooms-list {
+            padding: 0 20px 20px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .room-card {
+            background: #ffffff;
+            padding: 14px;
+            border-radius: 16px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            transition: all 0.25s ease;
+        }
+
+        .card-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .card-title {
+            font-size: 0.85rem;
+            font-weight: 800;
+            color: #0f172a;
+        }
+
+        .room-status {
+            font-size: 0.68rem;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 10px;
+            background: #f0fdf4;
+            color: #16a34a;
+        }
+
+        .room-status.is-hidden {
+            background: #fef2f2;
+            color: #dc2626;
+        }
+
+        .room-info {
+            font-size: 0.72rem;
+            color: #475569;
+            display: flex;
+            gap: 12px;
+        }
+
+        .room-info strong {
+            color: #0284c7;
+        }
+
+        .card-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 4px;
+            border-top: 1px solid #f1f5f9;
+            padding-top: 8px;
+        }
+
+        .btn-edit {
+            flex: 1;
+            background: #f1f5f9;
+            border: 1px solid #cbd5e1;
+            color: #334155;
+            padding: 7px;
+            border-radius: 8px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            cursor: pointer;
+            text-align: center;
+        }
+
+        .btn-hide {
+            flex: 1;
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #dc2626;
+            padding: 7px;
+            border-radius: 8px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            cursor: pointer;
+            text-align: center;
+        }
+
+        .btn-restore {
+            flex: 1;
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            color: #16a34a;
+            padding: 7px;
+            border-radius: 8px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            cursor: pointer;
+            text-align: center;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 30px 20px;
+            font-size: 0.8rem;
+            color: #64748b;
+            display: none;
+        }
+
+        /* ----- POPUP BỘ LỌC NÂNG CAO ----- */
+        .filter-modal-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(2px);
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.25s ease-in-out;
+        }
+
+        .filter-modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .filter-modal-box {
+            background: #ffffff;
+            border-top-left-radius: 24px;
+            border-top-right-radius: 24px;
+            width: 100%;
+            max-height: 85%;
+            padding: 20px;
+            box-shadow: 0 -10px 25px rgba(0, 0, 0, 0.2);
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            overflow-y: auto;
+            transform: translateY(100%);
+            transition: all 0.25s ease-in-out;
+        }
+
+        .filter-modal-overlay.active .filter-modal-box {
+            transform: translateY(0);
+        }
+
+        .filter-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #f1f5f9;
+            padding-bottom: 10px;
+        }
+
+        .filter-modal-title {
+            font-size: 0.95rem;
+            font-weight: 800;
+            color: #0f172a;
+        }
+
+        .close-filter-btn {
+            font-size: 1.2rem;
+            color: #64748b;
+            cursor: pointer;
+            border: none;
+            background: none;
+            font-weight: bold;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .filter-group-title {
+            font-size: 0.75rem;
+            font-weight: 800;
+            color: #0284c7;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .filter-options-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .filter-checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.72rem;
+            color: #334155;
+            background: #f8fafc;
+            padding: 8px 10px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            cursor: pointer;
+        }
+
+        .filter-checkbox-label input {
+            accent-color: #0284c7;
+        }
+
+        .apply-filter-btn {
+            background: #0284c7;
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            cursor: pointer;
+            margin-top: 10px;
+            text-align: center;
+        }
+
+        .bottom-nav {
+            height: 60px;
+            background: #ffffff;
+            border-top: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            margin-top: auto;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-size: 0.65rem;
+            color: #64748b;
+            gap: 2px;
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        .nav-item.active {
+            color: #0284c7;
+            font-weight: 700;
+        }
+
+        .nav-icon {
+            font-size: 1rem;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="phone-frame">
+        <div class="app-screen">
+            
+            <div class="top-bar">
+                <a href="provider-index.html" class="back-btn">←</a>
+                <span class="page-title">Quản lý Studio</span>
+                <span style="opacity: 0;">←</span>
+            </div>
+
+            <div class="action-header">
+                <span class="section-heading">Cơ sở của bạn</span>
+                <a href="provider-room-form.html" class="add-btn">+ Thêm studio</a>
+            </div>
+
+            <!-- Thanh điều hướng bộ lọc -->
+            <div class="filter-toolbar">
+                <button class="filter-trigger-btn" onclick="openFilterModal()">
+                    <span id="filterLabel">⚙️ Bộ lọc nâng cao</span>
+                    <span>∨</span>
+                </button>
+                <button class="filter-trigger-btn" style="flex: 0.7;" onclick="toggleSort()">
+                    <span id="sortLabel">⇅ Sắp xếp</span>
+                    <span>∨</span>
+                </button>
+            </div>
+
+            <!-- Danh sách Studio dạng dọc -->
+            <div class="rooms-list" id="roomsList">
+                
+                <!-- Studio 1 -->
+                <div class="room-card" id="room-1" data-status="active" data-district="Q1" data-type="darkroom" data-price="150000">
+                    <div class="card-top">
+                        <span class="card-title">DARKROOM Q1</span>
+                        <span class="room-status status-text">Hoạt động</span>
+                    </div>
+                    <div class="room-info">
+                        <span>Giá thuê: <strong>150.000 đ/h</strong></span>
+                        <span>Khu vực: Quận 1</span>
+                    </div>
+                    <div class="card-actions">
+                        <button class="btn-edit" onclick="window.location.href='provider-room-form.html'">Sửa thông tin</button>
+                        <button class="btn-hide action-btn-toggle" onclick="toggleHideRoom('room-1')">Ẩn Studio</button>
+                    </div>
+                </div>
+
+                <!-- Studio 2 -->
+                <div class="room-card" id="room-2" data-status="active" data-district="Q2" data-type="studio" data-price="250000">
+                    <div class="card-top">
+                        <span class="card-title">VINTAGE STUDIO THẢO ĐIỀN</span>
+                        <span class="room-status status-text">Hoạt động</span>
+                    </div>
+                    <div class="room-info">
+                        <span>Giá thuê: <strong>250.000 đ/h</strong></span>
+                        <span>Khu vực: Quận 2</span>
+                    </div>
+                    <div class="card-actions">
+                        <button class="btn-edit" onclick="window.location.href='provider-room-form.html'">Sửa thông tin</button>
+                        <button class="btn-hide action-btn-toggle" onclick="toggleHideRoom('room-2')">Ẩn Studio</button>
+                    </div>
+                </div>
+
+                <!-- Studio 3 -->
+                <div class="room-card" id="room-3" data-status="active" data-district="Q2" data-type="scan" data-price="180000">
+                    <div class="card-top">
+                        <span class="card-title">AN PHÚ LAB Q2</span>
+                        <span class="room-status status-text">Hoạt động</span>
+                    </div>
+                    <div class="room-info">
+                        <span>Giá thuê: <strong>180.000 đ/h</strong></span>
+                        <span>Khu vực: Quận 2</span>
+                    </div>
+                    <div class="card-actions">
+                        <button class="btn-edit" onclick="window.location.href='provider-room-form.html'">Sửa thông tin</button>
+                        <button class="btn-hide action-btn-toggle" onclick="toggleHideRoom('room-3')">Ẩn Studio</button>
+                    </div>
+                </div>
+
+                <div class="empty-state" id="emptyState">
+                    🚫 Không tìm thấy studio nào phù hợp với bộ lọc.
+                </div>
+
+            </div>
+
+            <!-- POPUP BẢNG BỘ LỌC NÂNG CAO -->
+            <div class="filter-modal-overlay" id="filterModal">
+                <div class="filter-modal-box">
+                    <div class="filter-modal-header">
+                        <span class="filter-modal-title">Bộ lọc nâng cao</span>
+                        <button class="close-filter-btn" onclick="closeFilterModal()">✕</button>
+                    </div>
+
+                    <!-- 1. Trạng thái -->
+                    <div class="filter-group">
+                        <div class="filter-group-title">Trạng thái Studio</div>
+                        <div class="filter-options-grid">
+                            <label class="filter-checkbox-label"><input type="checkbox" id="filterActive" checked> Đang hoạt động</label>
+                            <label class="filter-checkbox-label"><input type="checkbox" id="filterHidden"> Đã ẩn</label>
+                        </div>
+                    </div>
+
+                    <!-- 2. Quận/Huyện -->
+                    <div class="filter-group">
+                        <div class="filter-group-title">Khu vực (Quận / Huyện)</div>
+                        <div class="filter-options-grid">
+                            <label class="filter-checkbox-label"><input type="checkbox" value="Q1" class="chk-district" checked> Quận 1</label>
+                            <label class="filter-checkbox-label"><input type="checkbox" value="Q2" class="chk-district" checked> Quận 2 (Thủ Đức)</label>
+                            <label class="filter-checkbox-label"><input type="checkbox" value="Q3" class="chk-district" checked> Quận 3</label>
+                            <label class="filter-checkbox-label"><input type="checkbox" value="BinhThanh" class="chk-district" checked> Quận Bình Thạnh</label>
+                        </div>
+                    </div>
+
+                    <!-- 3. Loại hình -->
+                    <div class="filter-group">
+                        <div class="filter-group-title">Loại hình cơ sở</div>
+                        <div class="filter-options-grid">
+                            <label class="filter-checkbox-label"><input type="checkbox" value="darkroom" class="chk-type" checked> Phòng Tối (Darkroom)</label>
+                            <label class="filter-checkbox-label"><input type="checkbox" value="studio" class="chk-type" checked> Studio Chụp Ảnh</label>
+                            <label class="filter-checkbox-label"><input type="checkbox" value="scan" class="chk-type" checked> Trạm Scan Phim</label>
+                        </div>
+                    </div>
+
+                    <!-- 4. Giá thuê -->
+                    <div class="filter-group">
+                        <div class="filter-group-title">Mức giá thuê / giờ</div>
+                        <div class="filter-options-grid">
+                            <label class="filter-checkbox-label"><input type="radio" name="priceRange" value="all" checked> Tất cả mức giá</label>
+                            <label class="filter-checkbox-label"><input type="radio" name="priceRange" value="under150"> &lt; 150.000 đ</label>
+                            <label class="filter-checkbox-label"><input type="radio" name="priceRange" value="150to250"> 150k - 250k đ</label>
+                            <label class="filter-checkbox-label"><input type="radio" name="priceRange" value="above250"> &gt; 250.000 đ</label>
+                        </div>
+                    </div>
+
+                    <button class="apply-filter-btn" onclick="applyFilter()">ÁP DỤNG BỘ LỌC</button>
+                </div>
+            </div>
+
+            <!-- Bottom Navigation Bar -->
+            <div class="bottom-nav">
+                <a href="provider-index.html" class="nav-item">
+                    <span class="nav-icon">🧭</span>
+                    <span>Khám phá</span>
+                </a>
+                <a href="provider-bookings.html" class="nav-item">
+                    <span class="nav-icon">📅</span>
+                    <span>Lịch hẹn</span>
+                </a>
+                <a href="provider-rooms.html" class="nav-item active">
+                    <span class="nav-icon">🧪</span>
+                    <span>Lab</span>
+                </a>
+                <a href="provider-dashboard.html" class="nav-item">
+                    <span class="nav-icon">👤</span>
+                    <span>Hồ sơ</span>
+                </a>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- LOGIC BỘ LỌC THỰC TẾ (JAVASCRIPT) -->
+    <script>
+        function openFilterModal() {
+            document.getElementById('filterModal').classList.add('active');
+        }
+
+        function closeFilterModal() {
+            document.getElementById('filterModal').classList.remove('active');
+        }
+
+        // 1. Chức năng Ẩn / Hiện Studio
+        function toggleHideRoom(roomId) {
+            const card = document.getElementById(roomId);
+            if (!card) return;
+
+            const currentStatus = card.getAttribute('data-status');
+            const statusBadge = card.querySelector('.status-text');
+            const toggleBtn = card.querySelector('.action-btn-toggle');
+
+            if (currentStatus === 'active') {
+                card.setAttribute('data-status', 'hidden');
+                statusBadge.innerText = 'Đã ẩn';
+                statusBadge.classList.add('is-hidden');
+                toggleBtn.innerText = 'Hiện Studio';
+                toggleBtn.className = 'btn-restore action-btn-toggle';
+            } else {
+                card.setAttribute('data-status', 'active');
+                statusBadge.innerText = 'Hoạt động';
+                statusBadge.classList.remove('is-hidden');
+                toggleBtn.innerText = 'Ẩn Studio';
+                toggleBtn.className = 'btn-hide action-btn-toggle';
+            }
+
+            // Chạy lại bộ lọc hiện tại để ẩn/hiện card ngay trên màn hình
+            applyFilter();
+        }
+
+        // 2. Chức năng Áp Dụng Bộ Lọc Động
+        function applyFilter() {
+            closeFilterModal();
+
+            const showActive = document.getElementById('filterActive').checked;
+            const showHidden = document.getElementById('filterHidden').checked;
+
+            const selectedDistricts = Array.from(document.querySelectorAll('.chk-district:checked')).map(el => el.value);
+            const selectedTypes = Array.from(document.querySelectorAll('.chk-type:checked')).map(el => el.value);
+            const priceRange = document.querySelector('input[name="priceRange"]:checked').value;
+
+            const cards = document.querySelectorAll('.room-card');
+            let visibleCount = 0;
+
+            cards.forEach(card => {
+                const cardStatus = card.getAttribute('data-status');
+                const cardDistrict = card.getAttribute('data-district');
+                const cardType = card.getAttribute('data-type');
+                const cardPrice = parseInt(card.getAttribute('data-price'));
+
+                // Kiểm tra điều kiện 1: Trạng thái (Hoạt động / Ẩn)
+                let matchStatus = (cardStatus === 'active' && showActive) || (cardStatus === 'hidden' && showHidden);
+
+                // Kiểm tra điều kiện 2: Quận
+                let matchDistrict = selectedDistricts.includes(cardDistrict);
+
+                // Kiểm tra điều kiện 3: Loại hình
+                let matchType = selectedTypes.includes(cardType);
+
+                // Kiểm tra điều kiện 4: Giá tiền
+                let matchPrice = false;
+                if (priceRange === 'all') matchPrice = true;
+                else if (priceRange === 'under150' && cardPrice < 150000) matchPrice = true;
+                else if (priceRange === '150to250' && cardPrice >= 150000 && cardPrice <= 250000) matchPrice = true;
+                else if (priceRange === 'above250' && cardPrice > 250000) matchPrice = true;
+
+                // Nếu thỏa mãn TẤT CẢ tiêu chí -> Hiển thị
+                if (matchStatus && matchDistrict && matchType && matchPrice) {
+                    card.style.display = 'flex';
+                    visibleCount++;
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+
+            // Hiện thông báo nếu không có studio nào thỏa mãn
+            const emptyState = document.getElementById('emptyState');
+            if (visibleCount === 0) {
+                emptyState.style.display = 'block';
+            } else {
+                emptyState.style.display = 'none';
+            }
+        }
+
+        // 3. Đảo chiều sắp xếp theo giá
+        let isAscending = true;
+        function toggleSort() {
+            const list = document.getElementById('roomsList');
+            const cards = Array.from(document.querySelectorAll('.room-card'));
+
+            cards.sort((a, b) => {
+                const priceA = parseInt(a.getAttribute('data-price'));
+                const priceB = parseInt(b.getAttribute('data-price'));
+                return isAscending ? priceB - priceA : priceA - priceB;
+            });
+
+            cards.forEach(card => list.appendChild(card));
+            isAscending = !isAscending;
+            document.getElementById('sortLabel').innerText = isAscending ? '⇅ Giá: Thấp -> Cao' : '⇅ Giá: Cao -> Thấp';
+        }
+
+        // Chạy lọc ban đầu khi vừa tải trang
+        applyFilter();
+    </script>
+
+</body>
+</html>
