@@ -1,0 +1,30 @@
+\section{Hướng mở rộng trong tương lai}
+
+Mặc dù hệ thống đã đáp ứng toàn diện các mục tiêu đặt ra cho một hệ quản trị cơ sở dữ liệu chuyên biệt, nhóm nghiên cứu nhận thấy tiềm năng phát triển của đề tài còn rất lớn và dự kiến sẽ tiếp tục mở rộng với các định hướng đột phá sau:
+
+\begin{enumerate}[leftmargin=2em]
+    \item \textbf{Tích hợp AI nhận diện loại phim tự động qua camera điện thoại:}
+    \begin{itemize}
+        \item Ứng dụng mô hình thị giác máy tính chạy trực tiếp trên thiết bị di động: Người dùng chỉ cần giơ camera điện thoại quét vỏ cuộn phim hoặc dải mã vạch quang học (DX Code) in trên thân vỏ phim kim loại.
+        \item Hệ thống sẽ tự động trích xuất thông tin: Dòng phim, độ nhạy ISO danh định ($25 - 5000$ ISO), số lượng kiểu ảnh khả dụng (24 hoặc 36 exp), và dung sai phơi sáng.
+        \item Từ thông tin quét được, ứng dụng tự động đồng bộ sang Module Trợ lý AI để gợi ý ngay lập tức công thức pha hóa chất và thời gian tráng tương ứng mà người dùng không cần phải gõ tay bất kỳ thông số nào.
+    \end{itemize}
+
+    \item \textbf{Tích hợp hệ thống IoT giám sát và điều khiển phòng tối thông minh:}
+    \begin{itemize}
+        \item Kết nối các thiết bị vi điều khiển (ESP32 / Raspberry Pi Pico) với các cảm biến nhiệt độ chuẩn công nghiệp đặt trực tiếp trong các bồn ủ nhiệt dung dịch hóa chất.
+        \item Cảm biến truyền dữ liệu nhiệt độ thời gian thực về máy chủ thông qua giao thức MQTT theo kiến trúc IoT giám sát buồng tối công nghiệp độ chính xác cao~\cite{kumar2024iot}. Khi nhiệt độ nước đạt chuẩn chính xác $20.0^\circ\text{C}$ hoặc $38.0^\circ\text{C}$ (đối với quy trình tráng phim màu C-41), hệ thống sẽ tự động phát chuông thông báo và đồng bộ bộ đếm thời gian đảo tank trên màn hình ứng dụng di động của người dùng.
+    \end{itemize}
+
+    \item \textbf{Xây dựng sàn giao dịch thiết bị và phim hiếm tích hợp ký quỹ:}
+    \begin{itemize}
+        \item Mở rộng mô hình cơ sở dữ liệu để hỗ trợ thêm tính năng mua bán, trao đổi máy ảnh cơ cổ và các dòng phim hiếm hoặc phim hết hạn.
+        \item Áp dụng cơ chế thanh toán ký quỹ: Tiền của người mua được hệ thống tạm giữ an toàn; sau khi người mua nhận máy, kiểm tra cơ tốc, đo sáng và xác nhận đúng tình trạng mô tả thì tiền mới được giải ngân về ví của người bán.
+    \end{itemize}
+
+    \item \textbf{Nâng cấp kiến trúc điện toán đám mây và phân tán:}
+    \begin{itemize}
+        \item Chuyển đổi hệ thống sang kiến trúc vi dịch vụ (\textit{Microservices Architecture}) đóng gói trong các Docker Container và điều phối bằng Kubernetes (K8s).
+        \item Triển khai giải pháp cơ sở dữ liệu phân tán Azure SQL Database với tính năng \textit{Read-Scale Out} và \textit{Always On Availability Groups}~\cite{liu2023microservices}, cho phép phục vụ hàng triệu người yêu nhiếp ảnh trên phạm vi toàn khu vực Đông Nam Á.
+    \end{itemize}
+\end{enumerate}

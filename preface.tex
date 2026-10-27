@@ -1,0 +1,19 @@
+\chapter*{Lời Mở Đầu}
+\addcontentsline{toc}{chapter}{Lời Mở Đầu}
+
+Trong dòng chảy mạnh mẽ của cuộc cách mạng công nghiệp 4.0 và làn sóng chuyển đổi số toàn diện, ngành nhiếp ảnh kỹ thuật số và thiết bị di động thông minh đã đạt được những bước tiến vượt bậc về độ phân giải cũng như tốc độ xử lý hình ảnh. Tuy nhiên, nghịch lý là trong những năm gần đây, cộng đồng người trẻ và giới nghệ sĩ thị giác lại chứng kiến sự hồi sinh mạnh mẽ của \textbf{Nhiếp ảnh phim truyền thống (Analog Photography)}~\cite{edwards2023tactility}. Sự hoài niệm về chất màu hữu cơ, hạt nhiễu (film grain) đặc trưng, cùng trải nghiệm chậm rãi, đòi hỏi sự kiên nhẫn và kỷ luật thị giác cao độ đã biến ảnh phim từ một thú chơi hoài cổ trở thành một xu hướng nghệ thuật đương đại đầy sức hút.
+
+Mặc dù nhu cầu sáng tạo với chất liệu phim tăng trưởng nhanh chóng, hệ sinh thái hỗ trợ tại Việt Nam hiện nay vẫn còn tồn tại rất nhiều điểm nghẽn và sự phân mảnh sâu sắc. Các không gian phòng tối (darkroom) chuyên dụng, máy tráng phim tự động, máy phóng ảnh (enlarger) và hệ thống máy quét phim chuyên dụng (film scanner) có giá thành đầu tư đắt đỏ, đòi hỏi quy trình bảo quản hóa chất độc hại khắt khe~\cite{rogers2023sustainable}. Do đó, phần lớn các không gian này do các cá nhân hoặc xưởng in nhỏ lẻ tự vận hành. Khâu kết nối giữa người có nhu cầu thuê không gian, mượn thiết bị và đơn vị cung cấp dịch vụ vẫn diễn ra thông qua các kênh liên lạc thủ công như tin nhắn mạng xã hội hay sổ ghi chép truyền thống. Điều này dẫn đến hàng loạt hệ lụy: trùng lặp lịch đặt phòng, tranh chấp tài nguyên thiết bị đắt tiền, thiếu tính minh bạch về chi phí và không có cơ chế bảo đảm chất lượng phiên làm việc.
+
+Xuất phát từ thực tiễn trên, đề tài \textbf{"Nền tảng kết nối cộng đồng nhiếp ảnh phim với các dịch vụ phòng tối và phòng chụp"} được nhóm nghiên cứu lựa chọn thực hiện trong khuôn khổ đồ án môn học \textbf{Hệ Quản trị Cơ sở Dữ liệu}. Đề tài tập trung giải quyết bài toán cốt lõi về mặt kỹ thuật: thiết kế một cơ sở dữ liệu quan hệ chuẩn hóa cao (18 bảng chuẩn 3NF)~\cite{silberschatz2020database}, xây dựng cơ chế kiểm soát xử lý đồng thời (\textit{Concurrency Control}) mạnh mẽ~\cite{habibi2024towards, zhao2023efficiently} nhằm loại bỏ triệt để hiện tượng tranh chấp dữ liệu (\textit{Race Condition}), kết hợp cùng kiến trúc backend bảo mật và giao diện hướng người dùng di động.
+
+Báo cáo này được cấu trúc thành 5 chương chính:
+\begin{itemize}[leftmargin=2em]
+    \item \textbf{Chương 1: Tổng quan và xác định bài toán} -- Phân tích bối cảnh, tính cấp thiết, mục tiêu và phạm vi hệ thống bao gồm 5 vai trò, 6 luồng nghiệp vụ cốt lõi, các hướng nghiên cứu ứng dụng và phân công nhiệm vụ.
+    \item \textbf{Chương 2: Phân tích và thiết kế hệ thống} -- Trình bày sơ đồ Use Case, sơ đồ luồng dữ liệu (DFD), thiết kế 18 bảng CSDL chuẩn hóa và phân tích sâu cơ chế khóa dòng (\texttt{UPDLOCK, HOLDLOCK}) trong Stored Procedure.
+    \item \textbf{Chương 3: Hiện thực hóa hệ thống} -- Trình bày kiến trúc kỹ thuật (SQL Server, RESTful API phân quyền JWT, giao diện di động Flutter), module Trợ lý AI, thanh toán trực tuyến và bảng điều khiển quản lý của Chủ cơ sở.
+    \item \textbf{Chương 4: Kiểm thử và đánh giá} -- Thiết kế kịch bản kiểm thử tải đồng thời chống trùng lịch, kiểm thử phân quyền và đánh giá toàn diện các chỉ số.
+    \item \textbf{Chương 5: Kết luận và hướng phát triển} -- Đánh giá kết quả đạt được và đề xuất các hướng mở rộng tiềm năng trong tương lai.
+\end{itemize}
+
+Nhóm hy vọng nghiên cứu này sẽ đóng góp một giải pháp công nghệ thiết thực, tạo tiền đề thúc đẩy phong trào nghệ thuật phim ảnh tại Việt Nam phát triển chuyên nghiệp, bền vững.

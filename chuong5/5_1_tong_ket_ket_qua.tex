@@ -1,0 +1,30 @@
+\section{Tổng kết kết quả đạt được}
+
+Qua quá trình nghiên cứu lý thuyết, phân tích nghiệp vụ thực tế và hiện thực hóa đề tài \textbf{"Nền tảng kết nối cộng đồng nhiếp ảnh phim với các dịch vụ phòng tối và phòng chụp"}, nhóm nghiên cứu đã đạt được những kết quả quan trọng sau:
+
+\begin{enumerate}[leftmargin=2em]
+    \item \textbf{Về mặt Thiết kế và Quản trị Cơ sở Dữ liệu:}
+    \begin{itemize}
+        \item Xây dựng thành công mô hình cơ sở dữ liệu quan hệ gồm 18 bảng thực thể chuẩn hóa đạt dạng chuẩn 3 (3NF)~\cite{silberschatz2020database}, phản ánh trọn vẹn toàn bộ chu trình hoạt động của hệ sinh thái phòng tối và phòng chụp nhiếp ảnh phim.
+        \item Thiết lập hệ thống khóa chính, khóa ngoại, các ràng buộc miền giá trị (\texttt{CHECK}) và chỉ mục phi phân cụm (\texttt{Non-Clustered Indexes}) tối ưu, bảo đảm tính toàn vẹn dữ liệu ở cấp độ phần cứng và hệ quản trị.
+        \item \textbf{Điểm nhấn kỹ thuật xuất sắc:} Làm chủ và ứng dụng thành công kỹ thuật xử lý đồng thời nâng cao (\textit{Concurrency Control}) bằng cơ chế kết hợp khóa dòng \texttt{WITH (UPDLOCK, HOLDLOCK)} trong thủ tục lưu trữ \texttt{sp\_CreateReservationFull}~\cite{microsoft2024locking}. Giải pháp này đã giải quyết triệt để vấn đề tranh chấp đặt trùng phòng (\textit{Race Condition}) và loại bỏ hoàn toàn nguy cơ bế tắc (\textit{Deadlock})~\cite{habibi2024towards, zhang2023adaptive}, điều mà các cơ chế cô lập giao dịch thông thường không thể xử lý hoàn hảo.
+    \end{itemize}
+
+    \item \textbf{Về mặt Kiến trúc Hệ thống và Dịch vụ Backend:}
+    \begin{itemize}
+        \item Xây dựng hệ thống RESTful API phân tầng rõ ràng, áp dụng cơ chế xác thực dựa trên chuẩn mã hóa JSON Web Token (JWT)~\cite{nugraha2023performance}.
+        \item Phân định và kiểm soát truy cập nghiêm ngặt đối với 5 nhóm tác nhân thông qua mô hình phân quyền theo vai trò (RBAC)~\cite{sandhu2023role}.
+        \item Tích hợp tự động hóa luồng thanh toán đặt cọc qua VietQR và MobiFonePay~\cite{wicaksono2023utilizing, sbv2021vietqr} với cơ chế Webhook phản hồi tức thời.
+    \end{itemize}
+
+    \item \textbf{Về mặt Giao diện Người dùng và Trải nghiệm:}
+    \begin{itemize}
+        \item Hiện thực hóa giao diện ứng dụng theo triết lý ưu tiên thiết bị di động (Mobile-First) trên nền tảng Flutter~\cite{alzewairi2024critical}, mô phỏng trải nghiệm thực tế trên điện thoại với đầy đủ 2 phân hệ người dùng (Khách hàng và Đối tác quản lý).
+        \item Cung cấp bảng điều khiển quản trị trực quan cho chủ cơ sở với khả năng giám sát doanh thu tháng, tỷ lệ thiết bị sẵn sàng và quản lý phiên sử dụng thực tế (nhận phòng và trả phòng).
+    \end{itemize}
+
+    \item \textbf{Về mặt Tính năng Nâng cao và Trí tuệ Nhân tạo:}
+    \begin{itemize}
+        \item Tích hợp thử nghiệm module Trợ lý AI giải đáp thắc mắc về công thức tráng và thuật toán xử lý khuyết tật ảnh phim scan~\cite{wan2023old, su2024deep}.
+    \end{itemize}
+\end{enumerate}

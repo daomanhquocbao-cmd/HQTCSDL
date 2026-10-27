@@ -1,0 +1,38 @@
+\chapter*{Kết Luận}
+\addcontentsline{toc}{chapter}{Kết Luận}
+
+\section*{Tóm tắt kết quả nghiên cứu}
+
+Báo cáo đề tài \textbf{"Nền tảng kết nối cộng đồng nhiếp ảnh phim với các dịch vụ phòng tối và phòng chụp"} đã hoàn thành toàn bộ mục tiêu nghiên cứu đặt ra từ đầu, thể hiện qua các thành tựu nổi bật sau:
+
+\begin{itemize}[leftmargin=2em]
+    \item \textbf{Thiết kế cơ sở dữ liệu chuẩn hóa:} Xây dựng thành công mô hình dữ liệu quan hệ gồm \textbf{18 bảng thực thể} đạt chuẩn 3NF~\cite{silberschatz2020database}, phản ánh đầy đủ toàn bộ vòng đời nghiệp vụ của hệ sinh thái phòng tối và phòng chụp nhiếp ảnh phim — từ đăng ký tài khoản, đặt lịch phòng, quản lý thiết bị, ghi nhận phiên làm việc cho đến thanh toán và đánh giá dịch vụ.
+
+    \item \textbf{Kiểm soát đồng thời nâng cao:} Làm chủ và ứng dụng thành công kỹ thuật \textit{Concurrency Control} bằng cơ chế kết hợp khóa dòng \texttt{WITH (UPDLOCK, HOLDLOCK)} trong thủ tục lưu trữ \texttt{sp\_CreateReservationFull}~\cite{microsoft2024locking}. Giải pháp đã loại bỏ hoàn toàn hiện tượng đặt trùng phòng (\textit{Race Condition}) và nguy cơ bế tắc (\textit{Deadlock})~\cite{habibi2024towards, zhang2023adaptive} — được kiểm chứng qua thử nghiệm với 50 luồng đồng thời, kết quả 0 Deadlock và đúng 1 đơn hàng thành công.
+
+    \item \textbf{Hệ thống phân quyền theo vai trò (RBAC):} Phân định rõ ràng 5 nhóm tác nhân (\texttt{Photographer}, \texttt{ServiceProvider}, \texttt{Expert}, \texttt{Admin}, \texttt{AIAssistant}) với cơ chế xác thực JWT Token mã hóa HMAC-SHA256 theo chuẩn RBAC~\cite{nugraha2023performance, sandhu2023role}, đảm bảo mỗi tác nhân chỉ truy cập đúng tài nguyên thuộc quyền hạn của mình.
+
+    \item \textbf{Giao diện người dùng hiện đại:} Hiện thực hóa giao diện ứng dụng theo triết lý Mobile-First trên nền tảng Flutter~\cite{alzewairi2024critical} với đầy đủ 2 phân hệ người dùng (Khách hàng và Đối tác quản lý), hỗ trợ Dark Mode phù hợp với môi trường làm việc phòng tối đặc thù.
+
+    \item \textbf{Tích hợp tính năng nâng cao:} Triển khai thử nghiệm module Trợ lý AI hỗ trợ tính toán công thức tráng rọi và phục chế ảnh xước~\cite{wan2023old, su2024deep}, đồng thời tích hợp cổng thanh toán VietQR/MobiFonePay~\cite{wicaksono2023utilizing, sbv2021vietqr} với cơ chế Webhook tự động.
+\end{itemize}
+
+\section*{Bài học kinh nghiệm}
+
+Quá trình thực hiện đề tài giúp nhóm tích lũy được những bài học thực tiễn quý giá:
+
+\begin{itemize}[leftmargin=2em]
+    \item Việc thiết kế cơ sở dữ liệu từ đầu theo nguyên tắc chuẩn hóa 3NF giúp tiết kiệm đáng kể công sức khi mở rộng tính năng và giảm thiểu lỗi dữ liệu dư thừa.
+    \item Xử lý bài toán \textit{Multiple Cascade Paths} trong SQL Server đòi hỏi tư duy thiết kế tỉ mỉ — giải pháp lược bỏ \texttt{ON DELETE CASCADE} tại \texttt{PostComments.user\_id} kết hợp xử lý nghiệp vụ ứng dụng là một bài học quan trọng về sự đánh đổi giữa tự động hóa và kiểm soát chặt chẽ.
+    \item Kiểm thử tải đồng thời nên được tích hợp ngay từ giai đoạn thiết kế thay vì để cuối quy trình phát triển nhằm phát hiện sớm các điểm nghẽn hiệu năng.
+\end{itemize}
+
+\section*{Lời kết}
+
+Đề tài không chỉ là bài tập lớn hoàn thành yêu cầu học phần Hệ Quản Trị Cơ Sở Dữ Liệu, mà còn là một sản phẩm có giá trị ứng dụng thực tiễn cao trong bối cảnh cộng đồng nhiếp ảnh phim tại Việt Nam đang phát triển mạnh mẽ. Nhóm hy vọng những kết quả đạt được sẽ là nền tảng vững chắc để tiếp tục phát triển thành một sản phẩm thực tế phục vụ cộng đồng trong tương lai.
+
+\vspace{1cm}
+\begin{flushright}
+    \textit{TP. Hồ Chí Minh, ngày 27 tháng 10 năm 2026}\\[0.4cm]
+    \textbf{Tập thể Nhóm tác giả thực hiện đề tài}
+\end{flushright}
