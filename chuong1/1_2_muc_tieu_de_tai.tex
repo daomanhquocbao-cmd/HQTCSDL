@@ -1,0 +1,40 @@
+\section{Mục tiêu đề tài}
+
+\subsection{Mục tiêu tổng quát}
+Mục tiêu cốt lõi của đề tài là xây dựng một nền tảng công nghệ số khép kín, hoạt động đa nền tảng mang tên \textbf{FilmPhotography Hub}. Nền tảng này tích hợp đa vai trò, đóng vai trò là cầu nối trực tuyến đáng tin cậy giữa cộng đồng người yêu nhiếp ảnh phim (thợ ảnh, sinh viên mỹ thuật, người chụp tự do) với các đơn vị sở hữu không gian sáng tạo chuyên nghiệp (phòng tối, xưởng in rọi ảnh) và các chuyên gia đầu ngành trong lĩnh vực nghệ thuật analog.
+
+\subsection{Mục tiêu kỹ thuật cụ thể}
+Để hiện thực hóa nền tảng trên, đề tài đặt ra các mục tiêu kỹ thuật cụ thể tương ứng với từng tầng kiến trúc hệ thống:
+
+\begin{enumerate}[leftmargin=2em]
+    \item \textbf{Về mặt Cơ sở dữ liệu:}
+    \begin{itemize}
+        \item Thiết kế và chuẩn hóa mô hình dữ liệu quan hệ đạt chuẩn 3NF, đảm bảo tính toàn vẹn tham chiếu, tối thiểu hóa dư thừa dữ liệu và loại bỏ các dị thường thêm, xóa, sửa~\cite{silberschatz2020database}.
+        \item Xây dựng cơ chế toàn vẹn nghiệp vụ thông qua việc tận dụng tối đa các ràng buộc toàn vẹn (\texttt{PRIMARY KEY}, \texttt{FOREIGN KEY}, \texttt{CHECK}, \texttt{UNIQUE}, \texttt{DEFAULT}).
+        \item Hiện thực hóa giải pháp kiểm soát xử lý đồng thời (\textit{Concurrency Control}) ở mức độ cơ sở dữ liệu bằng việc xây dựng Stored Procedure chuyên biệt sử dụng các chỉ dẫn khóa dòng (\texttt{UPDLOCK, HOLDLOCK})~\cite{habibi2024towards, microsoft2024locking}. Mục tiêu là ngăn chặn hoàn toàn hiện tượng tranh chấp đặt trùng phòng (\textit{Race Condition}) khi nhiều người dùng đồng thời gửi yêu cầu trong mili-giây.
+        \item Thiết kế chiến lược chỉ mục (Clustered và Non-Clustered Indexes) tối ưu hóa tốc độ tìm kiếm lịch khả dụng và thống kê doanh thu.
+    \end{itemize}
+
+    \item \textbf{Về mặt Backend và Dịch vụ:}
+    \begin{itemize}
+        \item Xây dựng hệ thống Web API chuẩn RESTful kiến trúc phân tầng rõ ràng (Controller - Service - Repository), giao tiếp an toàn qua giao thức HTTPS.
+        \item Triển khai cơ chế xác thực và phân quyền truy cập đa tầng dựa trên \textbf{JSON Web Token (JWT)}~\cite{nugraha2023performance}, áp dụng mô hình phân quyền theo vai trò (RBAC)~\cite{sandhu2023role} để quản lý chặt chẽ 5 nhóm tác nhân trong hệ thống.
+        \item Tích hợp cổng thanh toán trực tuyến và sinh mã phản hồi nhanh (VietQR/MobiFonePay)~\cite{wicaksono2023utilizing, sbv2021vietqr} để tự động hóa việc xác nhận đặt phòng và cập nhật trạng thái đơn hàng.
+    \end{itemize}
+
+    \item \textbf{Về mặt Giao diện người dùng:}
+    \begin{itemize}
+        \item Xây dựng giao diện ứng dụng theo triết lý ưu tiên thiết bị di động (Mobile-First) trên nền tảng Flutter đa nền tảng~\cite{alzewairi2024critical}, tối ưu hóa không gian hiển thị trên màn hình điện thoại.
+        \item Cung cấp trải nghiệm người dùng trực quan, mượt mà với 2 phân hệ chuyên biệt:
+        \begin{itemize}
+            \item Phân hệ khách hàng: Tìm kiếm studio, chọn gói dịch vụ, thuê kèm máy móc, đặt lịch và thanh toán tiện lợi.
+            \item Phân hệ đối tác quản lý: Giám sát vận hành phòng tối, quản lý kho vật tư thiết bị, thống kê doanh thu theo thời gian thực và quản lý phiên làm việc thực tế.
+        \end{itemize}
+    \end{itemize}
+
+    \item \textbf{Về mặt Nghiệp vụ và Mở rộng:}
+    \begin{itemize}
+        \item Tạo lập môi trường chia sẻ tri thức cộng đồng, nơi người dùng có thể đăng tải tác phẩm, chia sẻ thông số phơi sáng, loại máy và loại phim đã chụp.
+        \item Tích hợp trợ lý trí tuệ nhân tạo (AI Assistant) hỗ trợ gợi ý thông số tráng phim, tỷ lệ pha dung dịch hóa chất và thuật toán đánh giá lỗi phim âm bản dựa trên các kỹ thuật thị giác máy tính hiện đại~\cite{wan2023old, rombach2022high}.
+    \end{itemize}
+\end{enumerate}

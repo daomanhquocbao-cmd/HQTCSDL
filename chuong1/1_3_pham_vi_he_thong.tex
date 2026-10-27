@@ -1,0 +1,273 @@
+\section{Phạm vi hệ thống}
+
+\subsection{Phân định 5 vai trò người dùng}
+Hệ thống \textbf{FilmPhotography Hub} được thiết kế theo mô hình nền tảng đa diện, trong đó trách nhiệm và phạm vi nghiệp vụ được phân định tường minh giữa 5 nhóm tác nhân theo mô hình kiểm soát truy cập dựa trên vai trò (RBAC)~\cite{sandhu2023role}:
+
+\begin{enumerate}[leftmargin=2em]
+    \item \textbf{Người chụp ảnh (Khách hàng):}
+    Là người dùng có nhu cầu tìm kiếm, sử dụng không gian và các trang thiết bị phục vụ cho hoạt động nhiếp ảnh phim. Trách nhiệm và quyền hạn chính:
+    \begin{itemize}
+        \item Quản lý hồ sơ cá nhân, lịch sử hoạt động và thông tin liên hệ.
+        \item Tìm kiếm và so sánh các phòng tối, phòng chụp theo vị trí, loại phòng, phong cách nghệ thuật, trang thiết bị sẵn có và mức giá.
+        \item Xem chi tiết thông số kỹ thuật không gian sáng tạo, điều kiện ánh sáng, hệ thống thông gió và đánh giá từ cộng đồng.
+        \item Thực hiện đặt chỗ phòng chức năng và thuê máy móc, thiết bị chuyên dụng đi kèm theo khung giờ.
+        \item Lựa chọn hoặc tùy biến các gói dịch vụ combo trọn gói do chủ cơ sở cung cấp.
+        \item Thực hiện thanh toán trực tuyến bảo mật qua cổng thanh toán (VietQR, MobiFonePay, VNPay).
+        \item Tra cứu lịch sử đặt lịch, trạng thái đơn hàng và tiến trình xử lý.
+        \item Quản lý bộ sưu tập ảnh số cá nhân sau khi scan hoặc tráng rọi.
+        \item Gửi đánh giá, nhận xét và chấm điểm chất lượng dịch vụ của phòng tối, phòng chụp.
+        \item Tham gia các hoạt động cộng đồng, trao đổi kinh nghiệm và đăng ký tham dự các khóa workshop đào tạo.
+    \end{itemize}
+
+    \item \textbf{Chủ cơ sở dịch vụ (Chủ phòng tối và phòng chụp):}
+    Là các cá nhân hoặc tổ chức sở hữu, vận hành một hoặc nhiều phòng tối, phòng chụp, kho thiết bị và vật tư chuyên dụng. Trách nhiệm và quyền hạn chính:
+    \begin{itemize}
+        \item Quản lý hồ sơ doanh nghiệp, thông tin pháp lý và thương hiệu cơ sở.
+        \item Khởi tạo, cập nhật danh mục phòng tối và phòng chụp ảnh nghệ thuật.
+        \item Cấu hình thông số kỹ thuật phòng (kích thước, sức chứa, ánh sáng, thông gió, nội quy sử dụng) và thời gian khả dụng.
+        \item Quản lý toàn diện kho thiết bị (máy phóng ảnh, máy quét phim, máy ảnh cơ) và vật tư tiêu hao (hóa chất tráng, thuốc hãm, giấy in ảnh).
+        \item Thiết lập các gói dịch vụ tích hợp kết hợp phòng, thiết bị và hóa chất.
+        \item Cấu hình chính sách giá thuê theo giờ, giá gói và các chiến dịch khuyến mãi.
+        \item Tiếp nhận, xét duyệt và xử lý các yêu cầu đặt chỗ từ khách hàng.
+        \item Phân bổ và khóa tài nguyên thiết bị cho các đơn đặt lịch đã được xác nhận.
+        \item Giám sát tỷ lệ lấp đầy phòng và mức độ sử dụng thiết bị theo thời gian thực.
+        \item Lập lịch và theo dõi lịch sử bảo trì, bảo dưỡng định kỳ trang thiết bị.
+        \item Phân tích doanh thu, hiệu suất hoạt động kinh doanh thông qua hệ thống biểu đồ trực quan.
+    \end{itemize}
+
+    \item \textbf{Chuyên gia nhiếp ảnh:}
+    Đóng góp tri thức chuyên môn sâu rộng và xây dựng kho tàng kiến thức cho cộng đồng nhiếp ảnh phim. Trách nhiệm chính:
+    \begin{itemize}
+        \item Biên soạn và công bố các bài viết hướng dẫn chuyên sâu về kỹ thuật tráng rọi thủ công, phơi sáng vùng tối.
+        \item Tổ chức các buổi hội thảo thực hành và các khóa đào tạo kỹ thuật nhiếp ảnh truyền thống.
+        \item Đánh giá, nhận xét các dòng máy ảnh phim cổ điển, ống kính và vật tư chuyên dụng.
+        \item Chia sẻ các công thức pha chế hóa chất tối ưu và phương pháp xử lý sự cố phòng tối.
+        \item Xây dựng và kiểm định cơ sở dữ liệu tri thức của cộng đồng.
+    \end{itemize}
+
+    \item \textbf{Quản trị viên hệ thống:}
+    Chịu trách nhiệm giám sát toàn bộ hoạt động của nền tảng, đảm bảo tính sẵn sàng, an toàn dữ liệu và tuân thủ quy chuẩn. Trách nhiệm chính:
+    \begin{itemize}
+        \item Quản lý danh mục tài khoản người dùng và đối tác cung cấp dịch vụ trên toàn hệ thống.
+        \item Thẩm định và phê duyệt hồ sơ đăng ký kinh doanh của các cơ sở dịch vụ mới.
+        \item Quản lý danh mục hệ thống, phân loại phòng và kiểm duyệt nội dung cộng đồng.
+        \item Giám sát các luồng giao dịch thanh toán, đảm bảo an toàn tài chính và đối soát dòng tiền.
+        \item Tiếp nhận và xử lý các tranh chấp, khiếu nại phát sinh giữa khách hàng và nhà cung cấp.
+        \item Quản lý cấu hình dịch vụ AI, thiết lập tham số hệ thống và phân quyền bảo mật.
+        \item Xuất các báo cáo tổng quan về tình hình vận hành và tăng trưởng toàn sàn.
+    \end{itemize}
+
+    \item \textbf{Trợ lý thông minh (AI Assistant):}
+    Cung cấp các năng lực hỗ trợ thông minh tự động hóa cho cả khách hàng và chủ cơ sở:
+    \begin{itemize}
+        \item Gợi ý các không gian phòng tối và phòng chụp phù hợp nhất dựa trên sở thích, phong cách và vị trí địa lý của người dùng.
+        \item Đề xuất trang thiết bị và các gói dịch vụ tối ưu tương thích với nhu cầu sáng tác.
+        \item Phục hồi và nâng cao chất lượng ảnh phim scan (khử trầy xước, bù đốm bụi, phục hồi màu phim hết hạn) dựa trên các mô hình dịch chuyển không gian tiềm ẩn sâu~\cite{wan2023old, rombach2022high}.
+        \item Giải đáp tự động các thắc mắc chuyên sâu về thông số tráng phim, nhiệt độ và tỷ lệ pha hóa chất.
+        \item Hỗ trợ tìm kiếm ngữ nghĩa thông minh trong kho lưu trữ bài viết và kinh nghiệm cộng đồng.
+    \end{itemize}
+\end{enumerate}
+
+\subsection{Các luồng nghiệp vụ cốt lõi}
+Hệ thống chuẩn hóa toàn bộ quy trình vận hành xoay quanh 6 luồng nghiệp vụ cốt lõi:
+
+\begin{enumerate}[leftmargin=2em]
+    \item \textbf{Luồng 1: Quản lý Không gian sáng tạo:}
+    Chủ cơ sở thiết lập và cập nhật hồ sơ chi tiết cho từng không gian sáng tạo (buồng tối tráng phim, buồng tối rọi ảnh phóng lớn, studio chụp ảnh nghệ thuật). Dữ liệu quản lý bao gồm diện tích, sức chứa tối đa, phong cách nghệ thuật, điều kiện ánh sáng tự nhiên/nhân tạo, hệ thống thông gió, cách âm, tiện ích hỗ trợ, giờ mở cửa, nội quy sử dụng, bảng giá thuê và thư viện hình ảnh thực tế. Hệ thống giám sát trạng thái phòng liên tục để phục vụ việc lập kế hoạch đặt chỗ chính xác.
+
+    \item \textbf{Luồng 2: Quản lý Tài nguyên và Thiết bị:}
+    Quản lý toàn diện tài nguyên tái sử dụng (máy ảnh, ống kính, máy phóng ảnh Enlarger, máy scan phim chuyên dụng Noritsu/Frontier, hệ thống đèn chiếu, chân máy) và vật tư tiêu hao (hóa chất D-76/Rodinal/Fixer, giấy rọi ảnh, dung dịch tráng màu C-41). Mỗi tài nguyên đều được theo dõi trạng thái vòng đời: khả năng sẵn sàng, lịch bảo trì, tình trạng hao mòn, đơn giá thuê và lịch sử khai thác.
+
+    \item \textbf{Luồng 3: Đặt chỗ và Phân bổ tài nguyên đồng thời:}
+    Khách hàng lựa chọn phòng tối/studio, khung thời gian làm việc, thiết bị mượn kèm và dịch vụ bổ trợ. Trước khi xác nhận đơn đặt, hệ thống kích hoạt giao dịch với chỉ dẫn khóa dòng đặc biệt (\texttt{UPDLOCK, HOLDLOCK}) để kiểm tra tính khả dụng của tất cả tài nguyên liên quan và ngăn chặn tuyệt đối hiện tượng trùng lịch (\textit{Race Condition}). Khi giao dịch thành công, toàn bộ tài nguyên được khóa tự động trong khoảng thời gian tương ứng.
+
+    \item \textbf{Luồng 4: Quản lý Phiên sử dụng thực tế:}
+    Tại thời điểm nhận phòng, khách hàng thực hiện nhận phòng thông qua mã đặt chỗ hoặc quét mã QR trên ứng dụng di động. Hệ thống ghi nhận thời gian bắt đầu thực tế, các thiết bị đã bàn giao, vật tư hóa chất tiêu thụ thêm và tình trạng trả phòng. Bản ghi phiên làm việc (\texttt{ServiceSessions}) là cơ sở pháp lý để tự động tính toán phụ phí vượt giờ, bồi thường thiết bị (nếu có) và xuất hóa đơn đối soát minh bạch.
+
+    \item \textbf{Luồng 5: Quản lý Gói dịch vụ tích hợp:}
+    Cho phép nhà cung cấp kết hợp phòng chức năng, thiết bị chuyên dụng, lượng hóa chất chuẩn và hướng dẫn viên thành các gói combo trọn gói (ví dụ: \textit{"Gói Tráng phim Đen Trắng Căn bản 2 giờ", "Gói Scan Phim Độ Phân Giải Cao 120/135"}). Nền tảng tự động kiểm tra tính sẵn sàng của tất cả thành phần cấu thành trước khi cho phép khách hàng đặt gói.
+
+    \item \textbf{Luồng 6: Chia sẻ Tri thức và Cộng đồng:}
+    Tạo môi trường tương tác chuyên sâu cho giới nhiếp ảnh: đăng tải tác phẩm, gắn thẻ thông số kỹ thuật (dòng máy, khẩu độ, tốc độ, dòng phim), viết bài hướng dẫn kỹ thuật, đăng ký tham gia các khóa workshop thực hành và thảo luận. Nội dung được tổ chức vào kho tri thức hỗ trợ tra cứu ngữ nghĩa.
+\end{enumerate}
+
+\subsection{Định hướng nghiên cứu và Ứng dụng Trí tuệ Nhân tạo}
+
+\subsubsection{Các hướng nghiên cứu ứng dụng trọng điểm}
+Nhóm nghiên cứu tích hợp phương pháp tiếp cận học tập dựa trên nghiên cứu vào đề tài thông qua 7 định hướng học thuật trọng điểm:
+\begin{enumerate}[leftmargin=2em]
+    \item \textbf{Thuật toán lập lịch và phân bổ tài nguyên:} Nghiên cứu giải pháp phân bổ tối ưu đa tài nguyên phụ thuộc (phòng, thiết bị, hóa chất) trong môi trường xử lý đồng thời thời gian thực, đảm bảo không xảy ra xung đột và giảm thiểu thời gian chờ rỗi của thiết bị đắt tiền.
+    \item \textbf{Hệ thống gợi ý:} Ứng dụng kỹ thuật lọc cộng tác và lọc dựa trên nội dung để cá nhân hóa đề xuất phòng tối và thiết bị phù hợp với phong cách nhiếp ảnh của từng người dùng.
+    \item \textbf{Trí tuệ nhân tạo phục vụ dịch vụ sáng tạo:} Khám phá cách tích hợp các mô hình ngôn ngữ lớn (LLM) để chuyển đổi quy trình hỗ trợ kỹ thuật tương tác người-máy trong lĩnh vực nghệ thuật truyền thống.
+    \item \textbf{Thị giác máy tính trong phục chế ảnh:} Nghiên cứu các kiến trúc mạng nơ-ron tích chập (CNN) và mô hình khuếch tán tiềm ẩn để tự động phát hiện và loại bỏ vết xước, đốm bụi trên phim âm bản scan mà vẫn bảo toàn cấu trúc hạt phim tự nhiên.
+    \item \textbf{Dự báo nhu cầu đặt chỗ:} Ứng dụng mô hình phân tích chuỗi thời gian để dự báo lưu lượng khách hàng theo từng khung giờ và ngày trong tuần, hỗ trợ chủ phòng tối chủ động chuẩn bị vật tư hóa chất.
+    \item \textbf{Tìm kiếm ngữ nghĩa và truy xuất tri thức:} Sử dụng kỹ thuật nhúng văn bản (Vector Embeddings) để hỗ trợ tìm kiếm bài viết kỹ thuật, thông số tráng phim theo ngữ cảnh ý nghĩa thay vì chỉ so khớp từ khóa cơ bản.
+    \item \textbf{Thiết kế nền tảng đa diện:} Mô hình hóa cơ chế điều phối giá trị và dữ liệu giữa các bên tham gia (Khách hàng, Chủ cơ sở, Chuyên gia và Quản trị viên).
+\end{enumerate}
+
+\subsubsection{Các module ứng dụng Trí tuệ nhân tạo trong hệ thống}
+\begin{itemize}[leftmargin=2em]
+    \item \textbf{Hệ thống gợi ý cá nhân hóa:} Tự động gợi ý phòng tối, thiết bị và gói combo dựa trên lịch sử đặt chỗ, vị trí địa lý và thể loại phim ưa thích.
+    \item \textbf{Tối ưu hóa phân bổ tài nguyên thông minh:} Thuật toán hỗ trợ xếp lịch tự động nhằm đạt tỷ lệ khai thác thiết bị cao nhất mà không bị trùng lắp.
+    \item \textbf{Dự báo nhu cầu đặt chỗ và gợi ý giá linh hoạt:} Gợi ý mức giá ưu đãi trong giờ thấp điểm và biểu phí tối ưu vào cuối tuần dựa trên dữ liệu lịch sử.
+    \item \textbf{Phục chế và nâng cao chất lượng ảnh scan:} Công cụ xử lý ảnh tự động loại bỏ vết trầy xước nhũ tương và bù đốm bụi quang học.
+    \item \textbf{Trợ lý AI chuyên ngành nhiếp ảnh:} Chatbot thông minh tra cứu cơ sở dữ liệu chuyên ngành, tính toán tỷ lệ pha chế hóa chất theo dung tích tank và nhiệt độ nước thực tế.
+    \item \textbf{Tìm kiếm ngữ nghĩa trong kho tri thức:} Cho phép thành viên tìm kiếm các giải pháp kỹ thuật phòng tối qua câu hỏi tự nhiên.
+\end{itemize}
+
+\subsection{Yêu cầu phi chức năng và Hệ sinh thái công nghệ}
+
+\subsubsection{Yêu cầu phi chức năng}
+\begin{itemize}[leftmargin=2em]
+    \item \textbf{Hiệu năng phản hồi:} Thời gian phản hồi trung bình của hệ thống duy trì dưới 3 giây trong điều kiện tải vận hành tiêu chuẩn.
+    \item \textbf{An toàn giao dịch đồng thời:} Nền tảng bảo đảm xử lý hàng trăm yêu cầu đặt phòng đồng thời mà không xảy ra xung đột lịch, bảo toàn tính nhất quán ACID tuyệt đối.
+    \item \textbf{Bảo mật và phân quyền:} Triển khai xác thực qua chuẩn JWT và OAuth 2.0, kiểm soát truy cập nghiêm ngặt dựa trên mô hình phân quyền vai trò (RBAC).
+    \item \textbf{Kiến trúc phân tách module:} Phân tách độc lập giữa ứng dụng di động, cổng thông tin web, backend API và các module dịch vụ AI nhằm tăng cường khả năng bảo trì và nâng cấp.
+    \item \textbf{Hạ tầng đám mây an toàn:} Lưu trữ ảnh và tài nguyên trên nền tảng đám mây an toàn (Azure Blob Storage / Firebase), cung cấp cơ chế tự động sao lưu dự phòng và phục hồi sau sự cố.
+    \item \textbf{Khả năng mở rộng:} Thiết kế mở sẵn sàng đón nhận thêm các cơ sở phòng tối, mở rộng danh mục thiết bị và các phân hệ dịch vụ mới mà không làm thay đổi cấu trúc cốt lõi.
+\end{itemize}
+
+\subsubsection{Hệ sinh thái công nghệ áp dụng}
+\begin{itemize}[leftmargin=2em]
+    \item \textbf{Ứng dụng di động:} Flutter (hỗ trợ đồng thời Android và iOS, thiết kế tối ưu trên điện thoại).
+    \item \textbf{Cổng thông tin Web:} ReactJS / Next.js dành cho Chủ cơ sở và Quản trị viên.
+    \item \textbf{Tầng Backend API:} ASP.NET Core Web API / Node.js (kiến trúc RESTful).
+    \item \textbf{Hệ quản trị cơ sở dữ liệu:} Microsoft SQL Server / PostgreSQL (18 bảng chuẩn 3NF, Stored Procedures, Lock Hints).
+    \item \textbf{Lưu trữ đám mây:} Microsoft Azure Blob Storage / Firebase Storage.
+    \item \textbf{Tích hợp AI:} OpenAI API, PyTorch Computer Vision, Recommendation Engines.
+    \item \textbf{Dịch vụ bản đồ và định vị:} Google Maps API.
+    \item \textbf{Thanh toán trực tuyến:} VietQR, MobiFonePay, VNPay.
+\end{itemize}
+
+\subsection{Sản phẩm bàn giao và Phân công nhiệm vụ}
+
+\subsubsection{Sản phẩm dự kiến bàn giao}
+\begin{enumerate}[leftmargin=2em]
+    \item \textbf{Cơ sở dữ liệu tập trung:} Script khởi tạo mô hình 18 bảng chuẩn 3NF trên Microsoft SQL Server, Stored Procedure kiểm soát đồng thời \texttt{UPDLOCK, HOLDLOCK}, dữ liệu mẫu và các truy vấn nghiệp vụ.
+    \item \textbf{Hệ thống Backend RESTful API:} Xây dựng bằng Node.js / Express gồm phân hệ xác thực phân quyền JWT/RBAC và phân hệ nghiệp vụ đặt lịch, tính giá, kiểm soát giao dịch an toàn.
+    \item \textbf{Giao diện người dùng Khách hàng (Frontend Customer):} Trang tìm kiếm, xem chi tiết không gian/thiết bị, đặt phòng tối/phòng chụp theo khung giờ và theo dõi trạng thái đơn hàng.
+    \item \textbf{Giao diện quản lý Nhà cung cấp (Frontend Provider):} Trung tâm điều hành dành cho Chủ cơ sở quản lý danh mục phòng, thiết bị, xét duyệt đơn đặt chỗ và báo cáo vận hành.
+    \item \textbf{Bộ tài liệu kiểm thử toàn diện:} Kịch bản kiểm thử (Test Cases), dữ liệu kiểm thử tải đồng thời, biên bản ghi nhận lỗi và bằng chứng kiểm thử tích hợp.
+\end{enumerate}
+
+\subsubsection{Bảng phân công nhiệm vụ 5 thành viên trong nhóm nghiên cứu}
+
+\begin{table}[H]
+\centering
+\small
+\caption{Bảng phân công nhiệm vụ thực hiện đề tài theo 5 mảng trọng tâm}
+\label{tab:member_tasks}
+\begin{tabularx}{\textwidth}{c l c X}
+\toprule
+\textbf{STT} & \textbf{Họ và Tên} & \textbf{MSSV} & \textbf{Nhiệm vụ phụ trách chính} \\
+\midrule
+1 & Đào Mạnh Quốc Bảo & 079206019047 & \textbf{Database Lead:} Thiết kế, triển khai và kiểm thử CSDL SQL Server 18 bảng 3NF; Stored Procedure đặt phòng với \texttt{UPDLOCK, HOLDLOCK}; logic quản lý thiết bị/vật tư; dữ liệu mẫu và truy vấn thống kê. \\
+\addlinespace
+2 & Nguyễn Hoàng Duy & 070206000430 & \textbf{Backend Booking:} Xây dựng API và nghiệp vụ đặt lịch (Node.js/Express); kiểm tra thời gian/trùng lịch phía server; tính tổng tiền tại backend; xử lý trạng thái đặt lịch và tài liệu API. \\
+\addlinespace
+3 & Võ Anh Duy & 083206001605 & \textbf{Backend Auth \& RBAC:} Xây dựng API xác thực tài khoản; băm mật khẩu an toàn; triển khai JWT và middleware phân quyền 4 vai trò (\texttt{CUSTOMER}, \texttt{PROVIDER}, \texttt{EXPERT}, \texttt{ADMIN}); giao diện đăng nhập cơ bản. \\
+\addlinespace
+4 & Nguyễn Ngọc Đoan Tiên & 079306000200 & \textbf{Frontend Customer:} Xây dựng giao diện Khách hàng tìm kiếm, xem chi tiết phòng và thiết bị; form đặt lịch theo khung giờ; hiển thị trạng thái và xử lý lỗi phản hồi từ API đặt lịch. \\
+\addlinespace
+5 & Trần Huỳnh Gia An & 079206020226 & \textbf{Frontend Provider \& QA:} Xây dựng giao diện Chủ cơ sở quản lý phòng, thiết bị, duyệt/hủy lịch; tổ chức viết kịch bản và chạy test case kiểm thử chức năng/tích hợp toàn hệ thống. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsubsection{Chi tiết kế hoạch thực hiện và phân công cụ thể của từng thành viên}
+
+Nhằm đảm bảo tính minh bạch, đúng tiến độ và phân định rõ trách nhiệm kỹ thuật giữa các vị trí trong nhóm, kế hoạch chi tiết của 5 thành viên được xác định cụ thể như sau:
+
+\begin{enumerate}[leftmargin=1.5em]
+    \item \textbf{Bạn 1 -- Database / Database Lead: Đào Mạnh Quốc Bảo}
+    \begin{itemize}[leftmargin=1.2em]
+        \item \textit{Vai trò chính:} Thiết kế, triển khai và kiểm thử cơ sở dữ liệu SQL Server.
+        \item \textit{Công việc cần làm:}
+        \begin{itemize}[label={--}]
+            \item Rà soát ERD, khóa chính (PK), khóa ngoại (FK) và các mối quan hệ của hệ thống bảng hiện có; giữ cấu trúc đã chạy ổn định, chỉ sửa đổi khi có lý do nghiệp vụ rõ ràng.
+            \item Bổ sung và hoàn thiện bảng \texttt{WorkshopRegistrations} để quản lý người tham gia workshop; kiểm tra sức chứa tối đa và ngăn chặn một người đăng ký trùng cùng workshop.
+            \item Hoàn thiện logic \texttt{Equipment} và \texttt{ReservationEquipments} để quản lý song song thiết bị tái sử dụng (\texttt{REUSABLE}) và vật tư tiêu hao (\texttt{CONSUMABLE}), kiểm tra số lượng tồn kho khả dụng, đơn giá và studio liên quan.
+            \item Viết Stored Procedure đặt phòng theo \texttt{room\_id}, kiểm tra khoảng thời gian giao nhau và phòng bị đặt trùng; sử dụng giao dịch (\textit{Transaction}) kết hợp chỉ dẫn khóa dòng \texttt{UPDLOCK, HOLDLOCK} đúng phạm vi để xử lý triệt để yêu cầu đồng thời.
+            \item Tạo dữ liệu mẫu (\textit{Seed Data}) có liên kết toàn vẹn hợp lệ; viết các câu truy vấn tìm phòng trống, xem lịch đặt, danh sách workshop, đăng ký workshop và thống kê doanh thu cơ bản cho nhà cung cấp.
+            \item Kiểm thử ràng buộc dữ liệu, các trường hợp biên hợp lệ/không hợp lệ, giả lập đặt trùng và kiểm tra cơ chế \texttt{ROLLBACK} khi xảy ra lỗi.
+            \item Trao đổi và thống nhất với Bạn 2 về quy ước đặt tên bảng/cột, danh sách tham số Stored Procedure, mã trạng thái đơn đặt và định dạng dữ liệu trả về cho API.
+        \end{itemize}
+        \item \textit{Phần đẩy lên GitHub:} Thư mục \texttt{/database/} chứa script tạo CSDL/bảng, script cập nhật schema, dữ liệu mẫu, Stored Procedure, các truy vấn nghiệp vụ, sơ đồ ERD và tài liệu từ điển dữ liệu (Data Dictionary). Tách riêng script theo từng mục đích để tránh chạy nhầm toàn bộ.
+        \item \textit{Phần đóng góp báo cáo:} Phân tích mô hình dữ liệu; sơ đồ ERD; mô tả chi tiết bảng, khóa và quan hệ; lý do chuẩn hóa 3NF; thiết kế giải pháp xử lý đặt phòng đồng thời và kịch bản kiểm thử CSDL.
+        \item \textit{Nội dung cần nắm vững để vấn đáp:} Khóa chính/khóa ngoại; các loại quan hệ 1-1, 1-n, n-n; lý thuyết chuẩn hóa 1NF-2NF-3NF; lý do đặt lịch theo \texttt{room\_id} thay vì cấp Studio; điều kiện toán học giao nhau của hai khoảng thời gian; cơ chế Transaction, Rollback, \texttt{UPDLOCK, HOLDLOCK}; phương pháp quản lý tồn kho vật tư.
+        \item \textit{Bàn giao và phối hợp:} Bàn giao cho Bạn 2 schema CSDL ổn định, dữ liệu test, tên Stored Procedure và ví dụ gọi thủ tục; bàn giao cho Bạn 5 các kịch bản SQL đã kiểm thử để đưa vào kiểm thử tích hợp.
+    \end{itemize}
+
+    \item \textbf{Bạn 2 -- Backend / Chức năng Đặt lịch: Nguyễn Hoàng Duy}
+    \begin{itemize}[leftmargin=1.2em]
+        \item \textit{Vai trò chính:} Xây dựng API và xử lý toàn bộ nghiệp vụ đặt lịch bằng Node.js / Express theo công nghệ nhóm thống nhất.
+        \item \textit{Công việc cần làm:}
+        \begin{itemize}[label={--}]
+            \item Kết nối CSDL SQL Server và xây dựng chuỗi API: xem danh sách đặt lịch, tạo yêu cầu đặt lịch mới, xem chi tiết đơn đặt, xác nhận và hủy lịch.
+            \item Kiểm tra tính hợp lệ của dữ liệu đầu vào (\textit{Input Validation}): kiểm tra thời gian bắt đầu/kết thúc, trạng thái khả dụng của phòng và kiểm tra quyền thực hiện thao tác.
+            \item Gọi Stored Procedure hoặc thực thi truy vấn nghiệp vụ đã thống nhất với Bạn 1 để kiểm tra trùng lịch; tuyệt đối không chỉ dựa vào việc kiểm tra ở tầng giao diện.
+            \item Tính toán tổng tiền chính xác ở backend từ giá phòng, gói dịch vụ và danh sách thiết bị/vật tư hợp lệ; không tin tưởng số tiền do phía frontend tự gửi lên.
+            \item Quản lý vòng đời trạng thái đặt lịch, chuẩn hóa mã phản hồi lỗi rõ ràng và xử lý an toàn trường hợp hai yêu cầu gửi cùng một phòng gần như đồng thời.
+            \item Viết tài liệu đặc tả API và tiến hành kiểm thử các trường hợp: thành công, dữ liệu sai định dạng, trùng lịch, phòng không khả dụng và lỗi kết nối database.
+        \end{itemize}
+        \item \textit{Phần đẩy lên GitHub:} Thư mục \texttt{/backend/booking/} hoặc module booking trong cấu trúc backend chung; bao gồm mã nguồn API, lớp truy cập dữ liệu (Data Access Layer), bài kiểm thử đơn vị và tài liệu mô tả endpoint.
+        \item \textit{Phần đóng góp báo cáo:} Quy trình nghiệp vụ đặt lịch; thuật toán kiểm tra trùng lịch; công thức và luồng tính tiền; máy trạng thái đơn hàng và cơ chế backend phối hợp với SQL Server.
+        \item \textit{Nội dung cần nắm vững để vấn đáp:} Bản chất kiến trúc API; vai trò của tầng Backend; điều kiện hai khoảng thời gian bị trùng lặp; lý do bắt buộc phải xác thực dữ liệu phía server; cơ chế quản lý Transaction và kỹ thuật bắt lỗi ngoại lệ.
+        \item \textit{Bàn giao và phối hợp:} Phối hợp chặt chẽ với Bạn 1 để chốt cấu trúc schema và tham số Stored Procedure; phối hợp với Bạn 3 để trích xuất \texttt{user\_id} đã xác thực; cung cấp danh sách endpoint và ví dụ request/response cho Bạn 4 và Bạn 5.
+    \end{itemize}
+
+    \item \textbf{Bạn 3 -- Backend / Đăng nhập và Phân quyền: Võ Anh Duy}
+    \begin{itemize}[leftmargin=1.2em]
+        \item \textit{Vai trò chính:} Xây dựng hệ thống đăng ký, đăng nhập, xác thực và phân quyền; phụ trách giao diện tài khoản ở mức độ cần thiết theo yêu cầu.
+        \item \textit{Công việc cần làm:}
+        \begin{itemize}[label={--}]
+            \item Xây dựng hoàn chỉnh các API đăng ký tài khoản mới, đăng nhập hệ thống và truy xuất thông tin tài khoản đang hoạt động.
+            \item Áp dụng kỹ thuật băm mật khẩu bằng thư viện an toàn (như bcrypt/Argon2); tuyệt đối không lưu trữ hoặc ghi log mật khẩu dưới dạng văn bản thuần (\textit{Plaintext}).
+            \item Triển khai cơ chế cấp phát và kiểm tra JSON Web Token (JWT); xây dựng Middleware xác thực để kiểm tra tính hợp lệ và quyền hạn trước khi cho phép gọi API.
+            \item Hiện thực hóa ma trận phân quyền theo 4 vai trò chính tương ứng với CSDL: \texttt{CUSTOMER}, \texttt{PROVIDER}, \texttt{EXPERT}, \texttt{ADMIN}; thống nhất chuẩn tên vai trò hiển thị trên toàn hệ thống.
+            \item Xây dựng giao diện đăng ký / đăng nhập cơ bản và tích hợp trực tiếp với API xác thực.
+            \item Kiểm thử các kịch bản: đăng nhập đúng/sai thông tin, token hết hạn, token không hợp lệ và người dùng cố tình truy cập API vượt quá quyền hạn cho phép.
+        \end{itemize}
+        \item \textit{Phần đẩy lên GitHub:} Các tệp backend thuộc module \texttt{auth}, logic ký và giải mã JWT, Middleware phân quyền; mã nguồn giao diện tài khoản; các kịch bản kiểm thử xác thực và phân quyền.
+        \item \textit{Phần đóng góp báo cáo:} Quy trình xử lý đăng ký/đăng nhập; nguyên lý hoạt động của JWT (Header, Payload, Signature); phân biệt rõ ràng giữa Xác thực (\textit{Authentication}) và Phân quyền (\textit{Authorization}).
+        \item \textit{Nội dung cần nắm vững để vấn đáp:} Cấu trúc và chu kỳ sống của JWT; kỹ thuật băm mật khẩu kết hợp chuỗi ngẫu nhiên (\textit{Salt}); cơ chế hoạt động của Middleware; lý do bảo mật không lưu mật khẩu thường; phương pháp ngăn chặn người dùng gọi trái quyền qua API.
+        \item \textit{Bàn giao và phối hợp:} Phối hợp với Bạn 2 để bảo đảm module booking trích xuất chính xác \texttt{user\_id} từ Token đã ký số, không tin cậy \texttt{user\_id} do client gửi; cung cấp tài liệu hướng dẫn tích hợp phiên đăng nhập cho Bạn 4 và Bạn 5.
+    \end{itemize}
+
+    \item \textbf{Bạn 4 -- Frontend / Giao diện Khách hàng: Nguyễn Ngọc Đoan Tiên}
+    \begin{itemize}[leftmargin=1.2em]
+        \item \textit{Vai trò chính:} Xây dựng toàn bộ giao diện phía người dùng để khách hàng tìm kiếm không gian, xem thông tin phòng và gửi yêu cầu đặt lịch.
+        \item \textit{Công việc cần làm:}
+        \begin{itemize}[label={--}]
+            \item Xây dựng trang chủ và trang danh sách phòng tối, phòng chụp trực quan, bố cục chuẩn hóa.
+            \item Xây dựng trang chi tiết phòng: hiển thị đầy đủ thông số kỹ thuật, bảng giá thuê theo giờ, bộ sưu tập hình ảnh và danh mục thiết bị/vật tư đi kèm.
+            \item Hiện thực hóa tính năng tìm kiếm và bộ lọc phòng tối/phòng chụp cơ bản (theo khu vực, khoảng giá, loại buồng tối).
+            \item Thiết kế và lập trình biểu mẫu đặt lịch: cho phép chọn phòng, chọn khung ngày giờ, chọn gói combo dịch vụ và chọn thuê kèm thiết bị/vật tư theo phạm vi API hỗ trợ.
+            \item Xử lý hiển thị kết quả đặt chỗ, trạng thái đơn hàng, thông báo lỗi xác thực form, thông báo khi bị trùng lịch và xử lý giao diện trạng thái rỗng khi chưa có dữ liệu.
+            \item Kết nối đồng bộ giao diện với API booking của Bạn 2 và API tài khoản của Bạn 3, tối ưu hóa trải nghiệm người dùng.
+        \end{itemize}
+        \item \textit{Phần đẩy lên GitHub:} Thư mục \texttt{/frontend/customer/} hoặc vị trí thống nhất chung; bao gồm toàn bộ mã nguồn giao diện khách hàng và các module gọi API.
+        \item \textit{Phần đóng góp báo cáo:} Thiết kế kiến trúc giao diện khách hàng; luồng trải nghiệm tìm kiếm và đặt chỗ; cơ chế gửi request và hiển thị phản hồi dữ liệu từ API.
+        \item \textit{Nội dung cần nắm vững để vấn đáp:} Sự khác biệt căn bản giữa Frontend và Backend; phương thức giao tiếp và gọi API (Fetch/Axios); kỹ thuật xử lý bất đồng bộ, hiển thị trạng thái chờ tải (\textit{Loading}) và bẫy lỗi người dùng.
+        \item \textit{Bàn giao và phối hợp:} Chốt sớm hợp đồng giao tiếp API (\textit{API Contract}) với Bạn 2 và Bạn 3; không tự ý giả định tên trường hoặc cấu trúc dữ liệu nếu backend chưa thống nhất.
+    \end{itemize}
+
+    \item \textbf{Bạn 5 -- Frontend / Quản lý Nhà cung cấp + Kiểm thử: Trần Huỳnh Gia An}
+    \begin{itemize}[leftmargin=1.2em]
+        \item \textit{Vai trò chính:} Xây dựng giao diện điều hành của nhà cung cấp dịch vụ và chủ trì tổ chức kiểm thử chức năng/tích hợp toàn hệ thống.
+        \item \textit{Công việc cần làm:}
+        \begin{itemize}[label={--}]
+            \item Xây dựng giao diện dành cho nhà cung cấp: xem danh sách phòng, thêm mới phòng, chỉnh sửa thông tin phòng, xem chi tiết và kích hoạt ẩn/hiện phòng.
+            \item Xây dựng giao diện quản lý danh mục thiết bị và vật tư tiêu hao trong phạm vi API cung cấp.
+            \item Xây dựng trang quản lý danh sách yêu cầu đặt lịch; cung cấp thao tác duyệt xác nhận hoặc từ chối hủy yêu cầu đặt chỗ.
+            \item Kết nối giao diện quản trị với API booking và API phân quyền; bảo đảm chỉ hiển thị và cho phép thực thi chức năng thuộc đúng thẩm quyền của chủ cơ sở.
+            \item Thiết kế ma trận kịch bản và trực tiếp chạy các bộ kiểm thử: đăng nhập đúng/sai, phân quyền truy cập, nhập liệu sai quy cách, kịch bản đặt trùng khung giờ, biến động trạng thái đơn đặt và các tác vụ CRUD phòng.
+            \item Ghi chép nhật ký lỗi chi tiết: các bước tái hiện, kết quả mong đợi, kết quả thực tế ghi nhận và bằng chứng kiểm thử (ảnh chụp/log); điều phối cả nhóm khắc phục lỗi.
+            \item Khi các luồng nghiệp vụ chính đã hoạt động ổn định và còn quỹ thời gian, hỗ trợ mở rộng thêm giao diện xem bài đăng cộng đồng.
+        \end{itemize}
+        \item \textit{Phần đẩy lên GitHub:} Thư mục \texttt{/frontend/provider/} chứa giao diện nhà cung cấp; thư mục \texttt{/tests/} chứa kịch bản kiểm thử, file dữ liệu test và tài liệu bằng chứng kiểm thử.
+        \item \textit{Phần đóng góp báo cáo:} Phân tích giao diện quản lý nhà cung cấp; quy trình điều hành và xử lý đơn đặt lịch; tổng hợp các kịch bản kiểm thử và bảng kết quả đánh giá chất lượng hệ thống.
+        \item \textit{Nội dung cần nắm vững để vấn đáp:} Cơ chế kiểm soát phía client và server nhằm ngăn chặn người không có thẩm quyền sửa đổi phòng; phương pháp kiểm thử chức năng và kiểm thử tích hợp; các trường hợp biên (\textit{Edge Cases}) của bài toán đặt lịch.
+        \item \textit{Bàn giao và phối hợp:} Tiếp nhận kịch bản kiểm thử SQL từ Bạn 1 và API từ Bạn 2/3; phối hợp cùng Bạn 4 kiểm thử liên thông toàn bộ luồng nghiệp vụ từ khách hàng tới nhà cung cấp; tuân thủ nguyên tắc không tự ý sửa đổi schema CSDL hoặc mã nguồn backend khi chưa trao đổi với thành viên phụ trách module.
+    \end{itemize}
+\end{enumerate}
