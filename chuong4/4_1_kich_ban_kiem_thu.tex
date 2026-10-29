@@ -1,0 +1,89 @@
+\section{Kịch bản kiểm thử}
+
+\subsection{Môi trường và Công cụ kiểm thử}
+Nhằm đánh giá một cách khách quan, khoa học và toàn diện độ tin cậy của hệ thống, toàn bộ các kịch bản kiểm thử chức năng và phi chức năng được tiến hành trên môi trường tiêu chuẩn:
+\begin{itemize}[leftmargin=2em]
+    \item \textbf{Cấu hình máy chủ kiểm thử:} CPU Intel Core i7 (8 Cores, 16 Threads), RAM 16GB, Ổ cứng SSD NVMe tốc độ đọc/ghi 3500MB/s, Hệ điều hành Windows Server / Windows 11 64-bit.
+    \item \textbf{Hệ quản trị cơ sở dữ liệu:} Microsoft SQL Server 2022 Developer Edition, cấu hình Max Degree of Parallelism (MAXDOP) = 4, cấp phát bộ nhớ đệm tối đa 8GB RAM.
+    \item \textbf{Công cụ kiểm thử:} 
+    \begin{itemize}
+        \item \textit{SQLQueryStress / Apache JMeter:} Công cụ mô phỏng tải đồng thời đa luồng bắn trực tiếp các lệnh T-SQL và HTTP requests song song.
+        \item \textit{Postman \& Newman CLI:} Kiểm thử tự động chuỗi tích hợp các API Endpoints và kiểm tra tính toàn vẹn của mã phản hồi HTTP.
+        \item \textit{SQL Server Profiler / Extended Events:} Giám sát các sự kiện khóa để phát hiện hiện tượng bế tắc nếu có.
+    \end{itemize}
+\end{itemize}
+
+\subsection{Kịch bản 1: Kiểm thử xử lý tranh chấp đặt lịch trùng giờ}
+
+\subsubsection{Mục tiêu và Thiết lập kịch bản}
+Mục tiêu là chứng minh trên thực nghiệm rằng cơ chế khóa dòng \texttt{WITH (UPDLOCK, HOLDLOCK)} trong Stored Procedure \texttt{sp\_CreateReservationFull} loại bỏ hoàn toàn hiện tượng đặt trùng phòng và không phát sinh bế tắc (\textit{Deadlock})~\cite{habibi2024towards} khi có nhiều người dùng gửi yêu cầu đồng thời trên cùng một \texttt{room\_id}.
+
+\begin{table}[H]
+\centering
+\caption{Kịch bản kiểm thử tải đồng thời chống đặt trùng phòng}
+\label{tab:tc_concurrency}
+\begin{tabularx}{\textwidth}{l X}
+\toprule
+\textbf{Tham số kiểm thử} & \textbf{Giá trị thiết lập} \\
+\midrule
+Mã phòng kiểm thử (\texttt{@room\_id}) & 1 (Buồng tối B\&W Darkroom 01) \\
+Khung giờ kiểm thử & 14:00:00 đến 16:00:00 ngày 15/11/2026 (Khung giờ trống) \\
+Số lượng luồng đồng thời & 50 luồng ảo gửi yêu cầu song song \\
+Độ trễ giữa các luồng & 0 giây (Tất cả 50 luồng cùng phát lệnh trong vòng 100ms) \\
+Lệnh thực thi & \texttt{EXEC dbo.sp\_CreateReservationFull @customer\_id, 1, ...} \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsubsection{Kết quả thực nghiệm và Nhật ký giám sát}
+\begin{itemize}[leftmargin=2em]
+    \item \textbf{Số lượng đơn đặt phòng thành công:} \textbf{Đúng 1 đơn hàng duy nhất} được tạo thành công với mã \texttt{reservation\_id = 1001}.
+    \item \textbf{Số lượng giao dịch bị từ chối nghiệp vụ:} \textbf{49 giao dịch} bị chặn lại và nhận được thông báo lỗi chính xác: \textit{"Xung dot lich: Phong da duoc dat trong khung gio nay. Vui long chon phong hoac gio khac."}
+    \item \textbf{Số lượng Deadlock phát sinh:} \textbf{0 sự kiện Deadlock} được ghi nhận trong Extended Events. Không có giao dịch nào bị hệ thống hủy ngang do xung đột khóa.
+    \item \textbf{Thời gian xử lý trung bình:} 14.2 mili-giây cho mỗi yêu cầu.
+\end{itemize}
+
+\begin{figure}[H]
+\centering
+\begin{tcolorbox}[colback=green!5!white,colframe=green!60!black,title=\textbf{KẾT LUẬN KIỂM THỬ XỬ LÝ ĐỒNG THỜI}]
+Thuật toán kiểm soát đồng thời với \texttt{UPDLOCK, HOLDLOCK} trên cấp độ phòng (\texttt{Rooms}) đã bảo vệ 100\% tính toàn vẹn của lịch phòng tối. Các yêu cầu đồng thời được tuần tự hóa một cách an toàn mà không gây Deadlock~\cite{habibi2024towards, zhang2023adaptive} và cho phép các phòng khác trong cùng Studio đón nhận khách song song.
+\end{tcolorbox}
+\caption{Đánh giá kết quả kiểm thử Concurrency}
+\end{figure}
+
+\subsection{Kịch bản 2: Kiểm thử phân quyền truy cập theo vai trò (RBAC)}
+
+\begin{table}[H]
+\centering
+\small
+\caption{Bảng kịch bản kiểm thử ma trận phân quyền JWT theo các vai trò~\cite{nugraha2023performance, sandhu2023role}}
+\label{tab:tc_rbac}
+\begin{tabularx}{\textwidth}{c p{3.2cm} p{3.8cm} p{3.2cm} c}
+\toprule
+\textbf{STT} & \textbf{Vai trò thực hiện} & \textbf{Hành động gọi API} & \textbf{Kết quả mong đợi} & \textbf{Đạt/Không} \\
+\midrule
+TC2.1 & CUSTOMER & Đặt lịch phòng qua \texttt{POST /api/reservations} & HTTP 201 Created & \textbf{ĐẠT} \\
+TC2.2 & CUSTOMER & Gọi API duyệt lịch của chủ phòng \texttt{PUT /api/reservations/1/confirm} & HTTP 403 Forbidden & \textbf{ĐẠT} \\
+TC2.3 & PROVIDER & Cập nhật giá gói dịch vụ thuộc studio của mình & HTTP 200 OK & \textbf{ĐẠT} \\
+TC2.4 & PROVIDER & Cập nhật giá phòng tối của studio thuộc đối tác khác & HTTP 403 Forbidden & \textbf{ĐẠT} \\
+TC2.5 & Khách vãng lai & Gọi API lấy thông tin cá nhân \texttt{GET /api/users/profile} & HTTP 401 Unauthorized & \textbf{ĐẠT} \\
+TC2.6 & Token hết hạn & Gửi yêu cầu với token cũ quá hạn 2 giờ & HTTP 401 Unauthorized & \textbf{ĐẠT} \\
+TC2.7 & ADMIN & Phê duyệt cơ sở Studio mới & HTTP 200 OK & \textbf{ĐẠT} \\
+TC2.8 & EXPERT & Tạo mới một lớp học \texttt{POST /api/workshops} & HTTP 201 Created & \textbf{ĐẠT} \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Kịch bản 3: Kiểm thử tính toàn vẹn tồn kho thiết bị}
+\begin{itemize}[leftmargin=2em]
+    \item \textbf{Thiết lập:} Thiết bị \textit{Máy phóng Enlarger Durst M605} (\texttt{equipment\_id = 5}) hiện có số lượng tồn \texttt{quantity = 2}.
+    \item \textbf{Hành động:} Người dùng gửi yêu cầu đặt phòng kèm thuê 3 chiếc máy phóng này trong cùng một phiên.
+    \item \textbf{Kết quả thực tế:} Stored Procedure kích hoạt khối ngoại lệ tại bước 7: \textit{"Loi: Thiet bi (ID: 5) khong du so luong san sang."} Giao dịch được Rollback an toàn, số lượng tồn bảo toàn nguyên vẹn.
+\end{itemize}
+
+\subsection{Kịch bản 4: Kiểm thử quy trình hoàn tất phiên làm việc và thanh toán}
+\begin{itemize}[leftmargin=2em]
+    \item \textbf{Thiết lập:} Đơn đặt chỗ \texttt{reservation\_id = 1001} có thời gian kết thúc dự kiến là 16:00, tiền phòng gốc là 300.000 VNĐ. Khách hàng thực tế rời phòng lúc 16:40 (sử dụng lấn giờ 40 phút) và sử dụng thêm 1 gói giấy rọi ảnh trị giá 120.000 VNĐ.
+    \item \textbf{Hành động:} Chủ phòng thực hiện thao tác Check-out, nhập thời gian trả phòng thực tế và phụ phí vật tư phát sinh vào \texttt{ServiceSessions}.
+    \item \textbf{Kết quả thực tế:} Hệ thống ghi nhận \texttt{additional\_fee = 270.000 VNĐ}, tổng quyết toán cuối cùng 570.000 VNĐ. Trạng thái trong \texttt{ReservationStatusHistory} chuyển sang \texttt{'COMPLETED'}.
+\end{itemize}
