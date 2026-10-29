@@ -1,0 +1,387 @@
+\section{Thiết kế Cơ sở dữ liệu}
+
+\subsection{Mô hình Thực thể Kết hợp (ERD) và Cấu trúc 18 Bảng Chuẩn hóa}
+Hệ quản trị cơ sở dữ liệu \textbf{FilmPhotographyPlatform} được thiết kế gồm \textbf{18 bảng thực thể} đạt chuẩn chuẩn hóa 3NF~\cite{silberschatz2020database}, phản ánh trọn vẹn và mạch lạc các phân hệ nghiệp vụ của nền tảng:
+
+\begin{figure}[H]
+\centering
+\begin{tcolorbox}[colback=gray!5!white,colframe=gray!75!black,title=\textbf{PHÂN HỆ 18 THỰC THỂ TRONG HỆ THỐNG FILMPHOTOGRAPHYPLATFORM},top=2pt,bottom=2pt]
+\begin{enumerate}[leftmargin=1.2em,itemsep=0pt,parsep=0pt,topsep=2pt]
+    \item \textbf{Phân hệ Không gian, Phòng chức năng \& Đặt lịch cốt lõi:}
+    \begin{itemize}[leftmargin=1em,itemsep=0pt,parsep=0pt]
+        \item \texttt{Studios (1) --- (n) Rooms:} Một Studio sở hữu nhiều phòng với phân loại \texttt{'STUDIO'} (chụp ảnh) hoặc \texttt{'DARKROOM'} (buồng tối).
+        \item \texttt{Rooms (1) --- (n) Reservations (n) --- (1) Users (Customer):} Khách hàng đặt trực tiếp theo từng phòng (\texttt{room\_id}) trong một khoảng thời gian xác định.
+        \item \texttt{Reservations (1) --- (n) ReservationEquipments (n) --- (1) Equipment:} Thuê thiết bị kèm theo đơn đặt phòng.
+        \item \texttt{Reservations (1) --- (n) ServiceSessions (n) --- (1) ServicePackages:} Ghi nhận gói dịch vụ và phiên thực hành thực tế.
+        \item \texttt{Reservations (1) --- (n) ReservationStatusHistory:} Lưu vết lịch sử chuyển đổi trạng thái (\texttt{PENDING $\rightarrow$ CONFIRMED $\rightarrow$ COMPLETED}).
+        \item \texttt{Reservations (1) --- (n) Payments:} Giao dịch thanh toán (tiền mặt, chuyển khoản, ví điện tử).
+    \end{itemize}
+    \item \textbf{Phân hệ Quản lý Tài sản, Vật tư \& Gói dịch vụ:}
+    \begin{itemize}[leftmargin=1em,itemsep=0pt,parsep=0pt]
+        \item \texttt{Studios (1) --- (n) Equipment:} Quản lý máy móc thiết bị (\texttt{REUSABLE}) và hóa chất tiêu hao (\texttt{CONSUMABLE}).
+        \item \texttt{Equipment (1) --- (n) EquipmentMaintenance:} Nhật ký lịch sử bảo trì, sửa chữa và chi phí.
+        \item \texttt{Studios (1) --- (n) ServicePackages:} Các gói dịch vụ định sẵn.
+        \item \texttt{ServicePackages (1) --- (n) PackageEquipment (n) --- (1) Equipment:} Thiết bị đi kèm trong gói dịch vụ (quan hệ nhiều-nhiều).
+        \item \texttt{Studios (1) --- (n) StudioImages:} Bộ sưu tập hình ảnh cơ sở vật chất của Studio.
+    \end{itemize}
+    \item \textbf{Phân hệ Hội thảo \& Đào tạo chuyên sâu (Dành cho Expert):}
+    \begin{itemize}[leftmargin=1em,itemsep=0pt,parsep=0pt]
+        \item \texttt{Users (Expert) (1) --- (n) Workshops:} Chuyên gia mở lớp đào tạo tráng rọi, kỹ thuật ánh sáng.
+        \item \texttt{Workshops (1) --- (n) WorkshopRegistrations (n) --- (1) Users (Customer):} Học viên đăng ký tham gia lớp học.
+    \end{itemize}
+    \item \textbf{Phân hệ Đánh giá \& Cộng đồng Tri thức:}
+    \begin{itemize}[leftmargin=1em,itemsep=0pt,parsep=0pt]
+        \item \texttt{Studios (1) --- (n) Reviews (n) --- (1) Users (Customer):} Đánh giá chất lượng Studio và phòng tối (1 đến 5 sao).
+        \item \texttt{Users (Author) (1) --- (n) CommunityPosts:} Bài viết chia sẻ tác phẩm và kỹ thuật chụp ảnh phim.
+        \item \texttt{CommunityPosts (1) --- (n) PostComments (n) --- (1) Users:} Tương tác bình luận của thành viên.
+    \end{itemize}
+\end{enumerate}
+\end{tcolorbox}
+\caption{Cấu trúc quan hệ logic giữa 18 bảng thực thể}
+\end{figure}
+
+\subsection{Từ điển dữ liệu chi tiết cho 18 bảng chuẩn hóa}
+
+% Cấu hình thu gọn kích thước bảng toàn cục cho mục này
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{0.95}
+
+\subsubsection{Bảng Users}
+\begin{table}[H]
+\centering
+\small
+\begin{tabularx}{\textwidth}{l l l c X}
+\toprule
+\textbf{Tên cột} & \textbf{Kiểu dữ liệu} & \textbf{Ràng buộc} & \textbf{Null?} & \textbf{Mô tả nghiệp vụ} \\
+\midrule
+\texttt{user\_id} & INT IDENTITY(1,1) & PK & No & Mã định danh duy nhất của người dùng. \\
+\texttt{username} & VARCHAR(50) & UNIQUE, NOT NULL & No & Tên tài khoản đăng nhập. \\
+\texttt{password\_hash} & VARCHAR(255) & NOT NULL & No & Mật khẩu mã hóa bảo mật. \\
+\texttt{email} & VARCHAR(100) & UNIQUE, NOT NULL & No & Email xác thực và nhận thông báo. \\
+\texttt{phone} & VARCHAR(20) & NULL & Yes & Số điện thoại liên hệ. \\
+\texttt{role} & VARCHAR(20) & CHECK, NOT NULL & No & Vai trò: 'ADMIN', 'EXPERT', 'PROVIDER', 'CUSTOMER'. \\
+\texttt{created\_at} & DATETIME & DEFAULT GETDATE() & No & Thời điểm khởi tạo tài khoản. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsubsection{Bảng Studios}
+\begin{table}[H]
+\centering
+\small
+\begin{tabularx}{\textwidth}{l l l c X}
+\toprule
+\textbf{Tên cột} & \textbf{Kiểu dữ liệu} & \textbf{Ràng buộc} & \textbf{Null?} & \textbf{Mô tả nghiệp vụ} \\
+\midrule
+\texttt{studio\_id} & INT IDENTITY(1,1) & PK & No & Mã định danh của Studio. \\
+\texttt{provider\_id} & INT & FK $\rightarrow$ Users(user\_id) & Yes & Chủ sở hữu studio (Role = PROVIDER). \\
+\texttt{name} & NVARCHAR(100) & NOT NULL & No & Tên thương mại của cơ sở studio. \\
+\texttt{address} & NVARCHAR(255) & NOT NULL & No & Địa chỉ thực tế của cơ sở. \\
+\texttt{description} & NVARCHAR(MAX) & NULL & Yes & Mô tả cơ sở vật chất và tiện ích. \\
+\texttt{phone} & VARCHAR(20) & NULL & Yes & Số điện thoại hotline hỗ trợ. \\
+\texttt{created\_at} & DATETIME & DEFAULT GETDATE() & No & Thời điểm tạo studio. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsubsection{Bảng Rooms}
+\begin{table}[H]
+\centering
+\small
+\begin{tabularx}{\textwidth}{l l l c X}
+\toprule
+\textbf{Tên cột} & \textbf{Kiểu dữ liệu} & \textbf{Ràng buộc} & \textbf{Null?} & \textbf{Mô tả nghiệp vụ} \\
+\midrule
+\texttt{room\_id} & INT IDENTITY(1,1) & PK & No & Mã định danh phòng. \\
+\texttt{studio\_id} & INT & FK $\rightarrow$ Studios ON DELETE CASCADE & Yes & Trực thuộc cơ sở Studio nào. \\
+\texttt{name} & NVARCHAR(100) & NOT NULL & No & Tên phòng (ví dụ: Phòng tối Đen Trắng 01). \\
+\texttt{room\_type} & VARCHAR(20) & CHECK, NOT NULL & No & Phân loại: 'STUDIO' (chụp) hoặc 'DARKROOM' (phòng tối). \\
+\texttt{capacity} & INT & CHECK (>0), NOT NULL & No & Sức chứa tối đa trong một ca làm việc. \\
+\texttt{price\_per\_hour} & DECIMAL(18,2) & CHECK ($\ge$ 0), NOT NULL & No & Đơn giá thuê cơ bản theo giờ (VNĐ). \\
+\texttt{description} & NVARCHAR(MAX) & NULL & Yes & Mô tả chi tiết trang thiết bị sẵn có trong phòng. \\
+\texttt{status} & VARCHAR(20) & CHECK, DEFAULT 'AVAILABLE' & No & Trạng thái: 'AVAILABLE', 'MAINTENANCE', 'INACTIVE'. \\
+\texttt{created\_at} & DATETIME & DEFAULT GETDATE() & No & Ngày tạo phòng. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsubsection{Bảng Equipment}
+\begin{table}[H]
+\centering
+\small
+\begin{tabularx}{\textwidth}{l l l c X}
+\toprule
+\textbf{Tên cột} & \textbf{Kiểu dữ liệu} & \textbf{Ràng buộc} & \textbf{Null?} & \textbf{Mô tả nghiệp vụ} \\
+\midrule
+\texttt{equipment\_id} & INT IDENTITY(1,1) & PK & No & Mã định danh thiết bị. \\
+\texttt{studio\_id} & INT & FK $\rightarrow$ Studios ON DELETE CASCADE & Yes & Thuộc cơ sở nào quản lý. \\
+\texttt{name} & NVARCHAR(100) & NOT NULL & No & Tên thiết bị (Máy phóng Enlarger, Máy quét,...). \\
+\texttt{equipment\_type}& VARCHAR(20) & CHECK, NOT NULL & No & Phân loại: 'REUSABLE' (dùng lại) hoặc 'CONSUMABLE' (tiêu hao). \\
+\texttt{quantity} & INT & CHECK ($\ge$ 0), NOT NULL & No & Tổng số lượng máy móc/vật tư tại cơ sở. \\
+\texttt{price} & DECIMAL(18,2) & CHECK ($\ge$ 0), NOT NULL & No & Giá thuê hoặc giá bán định lượng (VNĐ). \\
+\texttt{status} & VARCHAR(20) & DEFAULT 'GOOD' & Yes & Tình trạng thiết bị: 'GOOD', 'REPAIRING',... \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsubsection{Bảng ServicePackages}
+\begin{table}[H]
+\centering
+\small
+\begin{tabularx}{\textwidth}{l l l c X}
+\toprule
+\textbf{Tên cột} & \textbf{Kiểu dữ liệu} & \textbf{Ràng buộc} & \textbf{Null?} & \textbf{Mô tả nghiệp vụ} \\
+\midrule
+\texttt{package\_id} & INT IDENTITY(1,1) & PK & No & Mã gói dịch vụ. \\
+\texttt{studio\_id} & INT & FK $\rightarrow$ Studios ON DELETE CASCADE & Yes & Do Studio nào cung cấp. \\
+\texttt{name} & NVARCHAR(100) & NOT NULL & No & Tên gói (ví dụ: 'Tráng rọi B\&W Combo'). \\
+\texttt{price} & DECIMAL(18,2) & CHECK ($\ge$ 0), NOT NULL & No & Đơn giá trọn gói ưu đãi (VNĐ). \\
+\texttt{description} & NVARCHAR(MAX) & NULL & Yes & Quyền lợi chi tiết kèm theo gói. \\
+\texttt{created\_at} & DATETIME & DEFAULT GETDATE() & No & Thời điểm tạo gói dịch vụ. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsubsection{Bảng Reservations}
+\begin{table}[H]
+\centering
+\small
+\begin{tabularx}{\textwidth}{l l l c X}
+\toprule
+\textbf{Tên cột} & \textbf{Kiểu dữ liệu} & \textbf{Ràng buộc} & \textbf{Null?} & \textbf{Mô tả nghiệp vụ} \\
+\midrule
+\texttt{reservation\_id}& INT IDENTITY(1,1) & PK & No & Mã đơn đặt phòng. \\
+\texttt{room\_id} & INT & FK $\rightarrow$ Rooms & Yes & Phòng cụ thể được đặt. \\
+\texttt{customer\_id} & INT & FK $\rightarrow$ Users & Yes & Khách hàng tạo đơn đặt phòng. \\
+\texttt{start\_time} & DATETIME & NOT NULL & No & Thời gian bắt đầu sử dụng. \\
+\texttt{end\_time} & DATETIME & CHECK (end\_time > start\_time) & No & Thời gian kết thúc sử dụng. \\
+\texttt{total\_amount} & DECIMAL(18,2) & CHECK ($\ge$ 0), NOT NULL & No & Tổng chi phí ước tính của đơn hàng. \\
+\texttt{customer\_note}& NVARCHAR(MAX) & NULL & Yes & Ghi chú của khách (loại phim, yêu cầu hỗ trợ). \\
+\texttt{status} & VARCHAR(20) & CHECK, DEFAULT 'PENDING' & No & 'PENDING', 'CONFIRMED', 'CANCELLED', 'COMPLETED'. \\
+\texttt{created\_at} & DATETIME & DEFAULT GETDATE() & No & Thời điểm tạo đơn. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsubsection{Bảng Workshops}
+\begin{table}[H]
+\centering
+\small
+\begin{tabularx}{\textwidth}{l l l c X}
+\toprule
+\textbf{Tên cột} & \textbf{Kiểu dữ liệu} & \textbf{Ràng buộc} & \textbf{Null?} & \textbf{Mô tả nghiệp vụ} \\
+\midrule
+\texttt{workshop\_id} & INT IDENTITY(1,1) & PK & No & Mã hội thảo/lớp học. \\
+\texttt{expert\_id} & INT & FK $\rightarrow$ Users & Yes & Chuyên gia phụ trách (Role = EXPERT). \\
+\texttt{title} & NVARCHAR(200) & NOT NULL & No & Tiêu đề hội thảo. \\
+\texttt{description} & NVARCHAR(MAX) & NULL & Yes & Nội dung giáo trình và thực hành. \\
+\texttt{capacity} & INT & CHECK (>0), NOT NULL & No & Số lượng học viên tối đa. \\
+\texttt{start\_time} & DATETIME & NOT NULL & No & Giờ khai mạc workshop. \\
+\texttt{end\_time} & DATETIME & CHECK (end\_time > start\_time) & No & Giờ bế mạc workshop. \\
+\texttt{created\_at} & DATETIME & DEFAULT GETDATE() & No & Ngày khởi tạo workshop. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsubsection{Bảng WorkshopRegistrations}
+\begin{table}[H]
+\centering
+\small
+\begin{tabularx}{\textwidth}{l l l c X}
+\toprule
+\textbf{Tên cột} & \textbf{Kiểu dữ liệu} & \textbf{Ràng buộc} & \textbf{Null?} & \textbf{Mô tả nghiệp vụ} \\
+\midrule
+\texttt{registration\_id}& INT IDENTITY(1,1) & PK & No & Mã lượt đăng ký. \\
+\texttt{workshop\_id} & INT & FK $\rightarrow$ Workshops ON DELETE CASCADE & Yes & Tham gia workshop nào. \\
+\texttt{customer\_id} & INT & FK $\rightarrow$ Users ON DELETE CASCADE & Yes & Khách hàng/học viên đăng ký. \\
+\texttt{registered\_at} & DATETIME & DEFAULT GETDATE() & No & Thời điểm đăng ký. \\
+-- & -- & UNIQUE(workshop\_id, customer\_id) & -- & Mỗi khách chỉ đăng ký 1 lần/workshop. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsubsection{Bảng StudioImages}
+\begin{table}[H]
+\centering
+\small
+\begin{tabularx}{\textwidth}{l l l c X}
+\toprule
+\textbf{Tên cột} & \textbf{Kiểu dữ liệu} & \textbf{Ràng buộc} & \textbf{Null?} & \textbf{Mô tả nghiệp vụ} \\
+\midrule
+\texttt{image\_id} & INT IDENTITY(1,1) & PK & No & Mã ảnh. \\
+\texttt{studio\_id} & INT & FK $\rightarrow$ Studios ON DELETE CASCADE & Yes & Thuộc cơ sở Studio nào. \\
+\texttt{image\_url} & NVARCHAR(500) & NOT NULL & No & Đường dẫn ảnh trực tuyến. \\
+\texttt{is\_primary} & BIT & DEFAULT 0 & Yes & Đánh dấu ảnh đại diện chính của Studio. \\
+\texttt{created\_at} & DATETIME & DEFAULT GETDATE() & No & Thời điểm tải ảnh lên. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsubsection{Bảng EquipmentMaintenance}
+\begin{table}[H]
+\centering
+\small
+\begin{tabularx}{\textwidth}{l l l c X}
+\toprule
+\textbf{Tên cột} & \textbf{Kiểu dữ liệu} & \textbf{Ràng buộc} & \textbf{Null?} & \textbf{Mô tả nghiệp vụ} \\
+\midrule
+\texttt{maintenance\_id}& INT IDENTITY(1,1) & PK & No & Mã lượt bảo dưỡng. \\
+\texttt{equipment\_id} & INT & FK $\rightarrow$ Equipment ON DELETE CASCADE & Yes & Thiết bị được bảo trì. \\
+\texttt{maintenance\_date}& DATETIME & DEFAULT GETDATE() & No & Ngày tiến hành bảo dưỡng. \\
+\texttt{cost} & DECIMAL(18,2) & CHECK ($\ge$ 0), NOT NULL & No & Chi phí bảo dưỡng, sửa chữa (VNĐ). \\
+\texttt{description} & NVARCHAR(MAX) & NULL & Yes & Nội dung thay thế linh kiện, vệ sinh thấu kính. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsubsection{Bảng PackageEquipment}
+\begin{table}[H]
+\centering
+\small
+\begin{tabularx}{\textwidth}{l l l c X}
+\toprule
+\textbf{Tên cột} & \textbf{Kiểu dữ liệu} & \textbf{Ràng buộc} & \textbf{Null?} & \textbf{Mô tả nghiệp vụ} \\
+\midrule
+\texttt{package\_id} & INT & PK, FK $\rightarrow$ ServicePackages CASCADE & No & Mã gói dịch vụ. \\
+\texttt{equipment\_id} & INT & PK, FK $\rightarrow$ Equipment & No & Thiết bị được trang bị kèm. \\
+\texttt{quantity\_included}& INT & CHECK (>0), DEFAULT 1 & No & Định mức số lượng cấp trong gói. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsubsection{Bảng ReservationEquipments}
+\begin{table}[H]
+\centering
+\small
+\begin{tabularx}{\textwidth}{l l l c X}
+\toprule
+\textbf{Tên cột} & \textbf{Kiểu dữ liệu} & \textbf{Ràng buộc} & \textbf{Null?} & \textbf{Mô tả nghiệp vụ} \\
+\midrule
+\texttt{reservation\_id}& INT & PK, FK $\rightarrow$ Reservations CASCADE & No & Mã đơn đặt phòng tương ứng. \\
+\texttt{equipment\_id} & INT & PK, FK $\rightarrow$ Equipment & No & Thiết bị mượn thêm ngoài gói. \\
+\texttt{quantity} & INT & CHECK (>0), DEFAULT 1 & No & Số lượng thiết bị mượn thêm. \\
+\texttt{unit\_price} & DECIMAL(18,2) & CHECK ($\ge$ 0), NOT NULL & No & Đơn giá thuê tại thời điểm đặt. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsubsection{Bảng ServiceSessions}
+\begin{table}[H]
+\centering
+\small
+\begin{tabularx}{\textwidth}{l l l c X}
+\toprule
+\textbf{Tên cột} & \textbf{Kiểu dữ liệu} & \textbf{Ràng buộc} & \textbf{Null?} & \textbf{Mô tả nghiệp vụ} \\
+\midrule
+\texttt{session\_id} & INT IDENTITY(1,1) & PK & No & Mã phiên làm việc. \\
+\texttt{reservation\_id}& INT & FK $\rightarrow$ Reservations CASCADE & Yes & Đơn đặt phòng liên quan. \\
+\texttt{package\_id} & INT & FK $\rightarrow$ ServicePackages & Yes & Gói dịch vụ đã chọn sử dụng. \\
+\texttt{check\_in\_time}& DATETIME & NULL & Yes & Giờ khách vào phòng thực tế. \\
+\texttt{check\_out\_time}& DATETIME & NULL & Yes & Giờ khách bàn giao phòng thực tế. \\
+\texttt{additional\_fee}& DECIMAL(18,2) & CHECK ($\ge$ 0), DEFAULT 0 & No & Phụ phí quá giờ hoặc vật tư phát sinh. \\
+\texttt{notes} & NVARCHAR(MAX) & NULL & Yes & Ghi chú phiên làm việc. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsubsection{Bảng ReservationStatusHistory}
+\begin{table}[H]
+\centering
+\small
+\begin{tabularx}{\textwidth}{l l l c X}
+\toprule
+\textbf{Tên cột} & \textbf{Kiểu dữ liệu} & \textbf{Ràng buộc} & \textbf{Null?} & \textbf{Mô tả nghiệp vụ} \\
+\midrule
+\texttt{history\_id} & INT IDENTITY(1,1) & PK & No & Mã bản ghi lịch sử. \\
+\texttt{reservation\_id}& INT & FK $\rightarrow$ Reservations CASCADE & Yes & Đơn đặt phòng được cập nhật. \\
+\texttt{changed\_by} & INT & FK $\rightarrow$ Users & Yes & Người thực hiện đổi trạng thái (Admin/Provider/Customer). \\
+\texttt{old\_status} & VARCHAR(20) & NULL & Yes & Trạng thái trước khi đổi. \\
+\texttt{new\_status} & VARCHAR(20) & NULL & Yes & Trạng thái sau khi đổi. \\
+\texttt{changed\_at} & DATETIME & DEFAULT GETDATE() & No & Thời điểm ghi nhận thay đổi. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsubsection{Bảng Payments}
+\begin{table}[H]
+\centering
+\small
+\begin{tabularx}{\textwidth}{l l l c X}
+\toprule
+\textbf{Tên cột} & \textbf{Kiểu dữ liệu} & \textbf{Ràng buộc} & \textbf{Null?} & \textbf{Mô tả nghiệp vụ} \\
+\midrule
+\texttt{payment\_id} & INT IDENTITY(1,1) & PK & No & Mã giao dịch thanh toán. \\
+\texttt{reservation\_id}& INT & FK $\rightarrow$ Reservations & Yes & Thanh toán cho đơn đặt phòng nào. \\
+\texttt{amount} & DECIMAL(18,2) & CHECK (>0), NOT NULL & No & Số tiền giao dịch (VNĐ). \\
+\texttt{payment\_method}& VARCHAR(50) & NOT NULL & No & Phương thức: 'VNPay', 'Momo', 'MobiFonePay', 'VietQR', 'Cash'. \\
+\texttt{transaction\_code}& VARCHAR(100)& NULL & Yes & Mã đối soát từ cổng thanh toán đối tác. \\
+\texttt{status} & VARCHAR(20) & CHECK, DEFAULT 'PENDING' & No & Trạng thái: 'PENDING', 'SUCCESS', 'FAILED', 'REFUNDED'. \\
+\texttt{created\_at} & DATETIME & DEFAULT GETDATE() & No & Thời điểm tạo giao dịch. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsubsection{Bảng Reviews}
+\begin{table}[H]
+\centering
+\small
+\begin{tabularx}{\textwidth}{l l l c X}
+\toprule
+\textbf{Tên cột} & \textbf{Kiểu dữ liệu} & \textbf{Ràng buộc} & \textbf{Null?} & \textbf{Mô tả nghiệp vụ} \\
+\midrule
+\texttt{review\_id} & INT IDENTITY(1,1) & PK & No & Mã đánh giá. \\
+\texttt{studio\_id} & INT & FK $\rightarrow$ Studios CASCADE & Yes & Studio được đánh giá. \\
+\texttt{customer\_id} & INT & FK $\rightarrow$ Users & Yes & Khách hàng đánh giá. \\
+\texttt{rating} & INT & CHECK (rating BETWEEN 1 AND 5) & No & Điểm đánh giá (1 đến 5 sao). \\
+\texttt{comment} & NVARCHAR(MAX) & NULL & Yes & Nhận xét chi tiết về dịch vụ và thiết bị. \\
+\texttt{created\_at} & DATETIME & DEFAULT GETDATE() & No & Ngày gửi đánh giá. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsubsection{Bảng CommunityPosts}
+\begin{table}[H]
+\centering
+\small
+\begin{tabularx}{\textwidth}{l l l c X}
+\toprule
+\textbf{Tên cột} & \textbf{Kiểu dữ liệu} & \textbf{Ràng buộc} & \textbf{Null?} & \textbf{Mô tả nghiệp vụ} \\
+\midrule
+\texttt{post\_id} & INT IDENTITY(1,1) & PK & No & Mã bài đăng. \\
+\texttt{author\_id} & INT & FK $\rightarrow$ Users CASCADE & Yes & Tác giả bài viết. \\
+\texttt{title} & NVARCHAR(200) & NOT NULL & No & Tiêu đề bài chia sẻ. \\
+\texttt{content} & NVARCHAR(MAX) & NOT NULL & No & Nội dung bài viết và công thức tráng/rọi. \\
+\texttt{image\_url} & NVARCHAR(500) & NULL & Yes & Link hình ảnh scan tác phẩm. \\
+\texttt{created\_at} & DATETIME & DEFAULT GETDATE() & No & Ngày đăng bài. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsubsection{Bảng PostComments}
+\begin{table}[H]
+\centering
+\small
+\begin{tabularx}{\textwidth}{l l l c X}
+\toprule
+\textbf{Tên cột} & \textbf{Kiểu dữ liệu} & \textbf{Ràng buộc} & \textbf{Null?} & \textbf{Mô tả nghiệp vụ} \\
+\midrule
+\texttt{comment\_id} & INT IDENTITY(1,1) & PK & No & Mã bình luận. \\
+\texttt{post\_id} & INT & FK $\rightarrow$ CommunityPosts CASCADE & Yes & Bình luận thuộc bài viết nào. \\
+\texttt{user\_id} & INT & FK $\rightarrow$ Users (No Cascade) & Yes & Người viết bình luận. \\
+\texttt{content} & NVARCHAR(MAX) & NOT NULL & No & Nội dung trao đổi thảo luận. \\
+\texttt{created\_at} & DATETIME & DEFAULT GETDATE() & No & Thời điểm bình luận. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Xử lý bài toán Multiple Cascade Paths trong SQL Server}
+Một điểm kỹ thuật xuất sắc trong thiết kế cơ sở dữ liệu này là việc giải quyết vấn đề \textbf{Multiple Cascade Paths} (đa đường dẫn xóa lan truyền) của SQL Server:
+\begin{itemize}[leftmargin=1.5em,itemsep=2pt,topsep=2pt]
+    \item Nếu bảng \texttt{PostComments} đồng thời đặt \texttt{ON DELETE CASCADE} từ cả \texttt{CommunityPosts} và \texttt{Users}, khi một User bị xóa, SQL Server sẽ phát hiện 2 đường dẫn xóa tới \texttt{PostComments}:
+    \begin{itemize}[leftmargin=1em,label={--}]
+        \item Đơn: $\text{Users} \xrightarrow{\text{CASCADE}} \text{PostComments}$
+        \item Kép: $\text{Users} \xrightarrow{\text{CASCADE}} \text{CommunityPosts} \xrightarrow{\text{CASCADE}} \text{PostComments}$
+    \end{itemize}
+    Điều này gây ra lỗi biên dịch SQL Server \textit{"may cause cycles or multiple cascade paths"}.
+    \item \textbf{Giải pháp đã áp dụng:} Lược bỏ \texttt{ON DELETE CASCADE} tại khóa ngoại \texttt{user\_id} trong bảng \texttt{PostComments}. Khi User bị xóa hoặc vô hiệu hóa, bình luận vẫn được giữ lại hoặc xử lý an toàn bằng nghiệp vụ ứng dụng, bảo đảm tính toàn vẹn tham chiếu chặt chẽ và nhất quán dữ liệu theo chuẩn ACID~\cite{silberschatz2020database, microsoft2024locking}.
+\end{itemize}

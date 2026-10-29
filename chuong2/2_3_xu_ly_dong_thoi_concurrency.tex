@@ -1,0 +1,193 @@
+\section{Điểm nhấn kỹ thuật xử lý đồng thời}
+
+\subsection{Bài toán tranh chấp dữ liệu trong hệ thống đặt lịch}
+Trong hệ sinh thái \textbf{FilmPhotographyPlatform}, phòng chụp ảnh và buồng tối (bảng \texttt{Rooms}) cùng các thiết bị chuyên dụng (bảng \texttt{Equipment}) là các tài nguyên vật lý giới hạn. 
+
+Hiện tượng \textbf{Tranh chấp dữ liệu (Race Condition)} dẫn đến \textbf{Đặt phòng trùng (Overbooking / Double Booking)}~\cite{zhao2023efficiently} xảy ra khi:
+\begin{itemize}[leftmargin=2em]
+    \item Khách hàng A và Khách hàng B cùng xem một buồng tối \texttt{room\_id = 3} trên ứng dụng tại cùng một thời điểm.
+    \item Cả hai nhận thấy phòng đang ở trạng thái \texttt{'AVAILABLE'} trong khung giờ từ 14:00 đến 16:00 chiều thứ Bảy.
+    \item Đúng 14:00:00.100, cả hai cùng nhấn nút "Xác nhận đặt phòng".
+    \item Hai yêu cầu được gửi song song về hai luồng (\textit{threads}) khác nhau trên Backend API và thực thi hai câu lệnh truy vấn xuống Microsoft SQL Server độc lập.
+\end{itemize}
+
+\subsection{Hạn chế của các cấp độ cô lập mặc định và nguyên nhân dẫn đến Deadlock}
+Trong hệ quản trị cơ sở dữ liệu Microsoft SQL Server:
+\begin{enumerate}[leftmargin=2em]
+    \item \textbf{Cơ chế mặc định Read Committed:}
+    SQL Server sử dụng cấp độ cô lập giao dịch mặc định là \texttt{READ COMMITTED}. Ở cấp độ này, khi câu lệnh \texttt{SELECT} kiểm tra lịch trùng thực thi, SQL Server chỉ xin khóa chia sẻ (\textit{Shared Lock - S}). Ngay sau khi đọc xong các bản ghi hiện có, khóa S này lập tức được giải phóng mà không đợi giao dịch kết thúc.
+    \begin{itemize}
+        \item Cả Giao dịch A và Giao dịch B đều đọc thấy 0 bản ghi xung đột.
+        \item Cả hai giao dịch đều kết luận phòng rảnh và cùng tiến hành thực thi câu lệnh \texttt{INSERT} vào bảng \texttt{Reservations}.
+        \item \textbf{Hậu quả:} Cả hai đơn đặt cùng được ghi nhận thành công cho cùng một khung giờ trên cùng \texttt{room\_id}. Đây là lỗi vi phạm nghiêm trọng quy tắc nghiệp vụ.
+    \end{itemize}
+
+    \item \textbf{Nguy cơ Deadlock khi sử dụng Repeatable Read hoặc HOLDLOCK thông thường:}
+    Một giải pháp trực quan mà các lập trình viên thường nghĩ đến là nâng cấp độ cô lập lên \texttt{REPEATABLE READ} hoặc dùng gợi ý khóa \texttt{HOLDLOCK} (tương đương với mức \texttt{SERIALIZABLE}). Tuy nhiên, cách này dẫn đến hiện tượng \textbf{Bế tắc (Deadlock)}~\cite{habibi2024towards, zhang2023adaptive}:
+    \begin{itemize}
+        \item Giao dịch A và B cùng thực thi \texttt{SELECT ... WITH (HOLDLOCK)}. Cả hai đều được cấp khóa chia sẻ (\textit{S-Lock}) và giữ khóa này cho đến khi kết thúc giao dịch.
+        \item Giao dịch A muốn \texttt{INSERT}, cần chuyển đổi (\textit{promote}) khóa từ S-Lock lên khóa độc quyền (\textit{Exclusive Lock - X-Lock}). Nhưng Giao dịch A bị chặn lại vì Giao dịch B đang nắm giữ S-Lock trên cùng phạm vi dữ liệu.
+        \item Đồng thời, Giao dịch B cũng muốn \texttt{INSERT} và cần X-Lock, nhưng lại bị chặn bởi S-Lock của Giao dịch A.
+        \item \textbf{Hậu quả Deadlock:} Hai giao dịch tạo thành một chu trình chờ đợi lẫn nhau vô tận. Bộ quét deadlock của SQL Server (\textit{Deadlock Monitor}) buộc phải can thiệp, chọn một giao dịch làm "nạn nhân" (\textit{Deadlock Victim}) và hủy bỏ (\textit{Rollback}) với mã lỗi 1205.
+    \end{itemize}
+\end{enumerate}
+
+\subsection{Giải pháp tối ưu: Cơ chế phối hợp khóa dòng UPDLOCK và HOLDLOCK trên Rooms \& Reservations}
+Để loại bỏ cả hai vấn đề \textbf{Overbooking} và \textbf{Deadlock}, hệ thống áp dụng kỹ thuật phối hợp khóa nâng cao \texttt{WITH (UPDLOCK, HOLDLOCK)} ngay trong câu truy vấn kiểm tra của Stored Procedure theo khuyến nghị kỹ thuật chuyên sâu của Microsoft và các công trình nghiên cứu hiện đại về kiểm soát đồng thời~\cite{zhang2023adaptive, microsoft2024locking}:
+
+\begin{figure}[H]
+\centering
+\begin{tcolorbox}[colback=yellow!5!white,colframe=orange!85!black,title=\textbf{NGUYÊN LÝ HOẠT ĐỘNG CỦA CẶP KHÓA UPDLOCK, HOLDLOCK THEO ROOM\_ID}]
+\begin{enumerate}[leftmargin=1.5em]
+    \item \textbf{UPDLOCK (Update Lock):} Yêu cầu SQL Server cấp phát khóa cập nhật (\textit{U-Lock}) ngay trong quá trình đọc dữ liệu thay vì khóa chia sẻ (\textit{S-Lock}). 
+    \begin{itemize}
+        \item Khóa U tương thích với khóa S (cho phép các tiến trình khác chỉ đọc thông thường tiếp tục xem dữ liệu).
+        \item \textbf{Điểm mấu chốt:} Khóa U \textbf{KHÔNG tương thích với một khóa U khác}. Do đó, tại một thời điểm, chỉ duy nhất MỘT giao dịch được cấp U-Lock trên cùng một tài nguyên phòng (\texttt{room\_id}).
+    \end{itemize}
+    \item \textbf{HOLDLOCK (Serializable Range Lock):} Yêu cầu SQL Server giữ khóa U này xuyên suốt toàn bộ thời gian tồn tại của giao dịch cho tới khi thực hiện \texttt{COMMIT} hoặc \texttt{ROLLBACK}, đồng thời khóa cả khoảng trống chỉ mục (\textit{Key-Range Lock}) để chống bóng ma (\textit{Phantom Read}).
+    \item \textbf{Khóa theo cấp phòng (\texttt{room\_id}) thay vì Studio:} Điểm cải tiến mang tính bước ngoặt so với mô hình cũ: hệ thống chỉ khóa độc quyền trên chính xác phòng được đặt. Các phòng khác trong cùng Studio vẫn đón nhận các giao dịch đặt chỗ đồng thời bình thường, nâng cao năng lực thông lượng (\textit{Throughput}) của toàn sàn lên gấp nhiều lần~\cite{habibi2024towards}.
+\end{enumerate}
+\end{tcolorbox}
+\caption{Nguyên lý xử lý đồng thời với UPDLOCK và HOLDLOCK}
+\end{figure}
+
+\subsection{Hiện thực hóa qua Stored Procedure sp\_CreateReservationFull}
+Dưới đây là mã nguồn T-SQL của thủ tục lưu trữ chuẩn hóa theo cấu trúc 18 bảng:
+
+\begin{lstlisting}[language=SQL]
+CREATE OR ALTER PROCEDURE dbo.sp_CreateReservationFull
+    @customer_id INT,
+    @room_id INT,
+    @package_id INT = NULL,
+    @start_time DATETIME,
+    @end_time DATETIME,
+    @customer_note NVARCHAR(MAX) = NULL,
+    @equipment_json NVARCHAR(MAX) = NULL,
+    @new_reservation_id INT OUTPUT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    IF @start_time >= @end_time OR @start_time < GETDATE()
+    BEGIN
+        RAISERROR(N'Loi: Thoi gian bat dau phai nho hon thoi gian ket thuc va phai o tuong lai.', 16, 1);
+        RETURN;
+    END
+
+    BEGIN TRY
+        BEGIN TRANSACTION;
+
+        -- 1. KHOA VA KIEM TRA TRANG THAI PHONG (ROOMS)
+        DECLARE @room_status VARCHAR(20), @price_per_hour DECIMAL(18,2), @studio_id INT;
+        SELECT @room_status = status, @price_per_hour = price_per_hour, @studio_id = studio_id
+        FROM dbo.Rooms WITH (UPDLOCK, HOLDLOCK)
+        WHERE room_id = @room_id;
+
+        IF @room_status IS NULL OR @room_status <> 'AVAILABLE'
+        BEGIN
+            RAISERROR(N'Loi: Phong khong ton tai hoac hien dang bao tri / tam ngung.', 16, 1);
+        END
+
+        -- 2. KHOA PHAM VI VA KIEM TRA TRANH CHAP TRUNG LICH (OVERBOOKING) TREN ROOM_ID
+        IF EXISTS (
+            SELECT 1 
+            FROM dbo.Reservations WITH (UPDLOCK, HOLDLOCK)
+            WHERE room_id = @room_id
+              AND status IN ('CONFIRMED', 'PENDING')
+              AND start_time < @end_time 
+              AND end_time > @start_time
+        )
+        BEGIN
+            RAISERROR(N'Xung dot lich: Phong da duoc dat trong khung gio nay. Vui long chon phong hoac gio khac.', 16, 2);
+        END
+
+        -- 3. TINH TIEN PHONG CO BAN VA GOI DICH VU
+        DECLARE @total_hours DECIMAL(6,2) = DATEDIFF(MINUTE, @start_time, @end_time) / 60.0;
+        DECLARE @base_room_fee DECIMAL(18,2) = @price_per_hour * @total_hours;
+        DECLARE @package_fee DECIMAL(18,2) = 0;
+
+        IF @package_id IS NOT NULL
+        BEGIN
+            SELECT @package_fee = price 
+            FROM dbo.ServicePackages WITH (READCOMMITTED)
+            WHERE package_id = @package_id AND studio_id = @studio_id;
+
+            IF @package_fee IS NULL
+                RAISERROR(N'Loi: Goi dich vu khong thuoc Studio nay.', 16, 3);
+        END
+
+        -- 4. KHOI TAO BAN GHI DON DAT PHONG (RESERVATIONS)
+        DECLARE @total_equip_fee DECIMAL(18,2) = 0;
+
+        INSERT INTO dbo.Reservations (
+            room_id, customer_id, start_time, end_time, 
+            total_amount, customer_note, status, created_at
+        )
+        VALUES (
+            @room_id, @customer_id, @start_time, @end_time,
+            @base_room_fee + @package_fee, @customer_note, 'PENDING', GETDATE()
+        );
+
+        SET @new_reservation_id = SCOPE_IDENTITY();
+
+        -- 5. GHI LICH SU TRANG THAI BAN DAU
+        INSERT INTO dbo.ReservationStatusHistory (reservation_id, changed_by, old_status, new_status, changed_at)
+        VALUES (@new_reservation_id, @customer_id, NULL, 'PENDING', GETDATE());
+
+        -- 6. TAO PHIEN SU DUNG (SERVICE SESSIONS) NEU CO GOI DICH VU
+        IF @package_id IS NOT NULL
+        BEGIN
+            INSERT INTO dbo.ServiceSessions (reservation_id, package_id, notes)
+            VALUES (@new_reservation_id, @package_id, N'Dang ky kem goi dich vu ban dau');
+        END
+
+        -- 7. XU LY THUE THIET BI DI KEM TU JSON VOI UPDLOCK
+        IF @equipment_json IS NOT NULL AND ISJSON(@equipment_json) = 1
+        BEGIN
+            DECLARE @ReqEquip TABLE (equipment_id INT, quantity INT);
+            INSERT INTO @ReqEquip (equipment_id, quantity)
+            SELECT equipment_id, quantity
+            FROM OPENJSON(@equipment_json)
+            WITH (equipment_id INT '$.equipment_id', quantity INT '$.quantity');
+
+            DECLARE @eq_id INT, @req_qty INT, @curr_qty INT, @eq_price DECIMAL(18,2);
+            DECLARE equip_cursor CURSOR LOCAL FAST_FORWARD FOR SELECT equipment_id, quantity FROM @ReqEquip;
+            OPEN equip_cursor;
+            FETCH NEXT FROM equip_cursor INTO @eq_id, @req_qty;
+
+            WHILE @@FETCH_STATUS = 0
+            BEGIN
+                SELECT @curr_qty = quantity, @eq_price = price
+                FROM dbo.Equipment WITH (UPDLOCK, HOLDLOCK)
+                WHERE equipment_id = @eq_id AND studio_id = @studio_id AND status = 'GOOD';
+
+                IF @curr_qty IS NULL OR @curr_qty < @req_qty
+                BEGIN
+                    CLOSE equip_cursor; DEALLOCATE equip_cursor;
+                    RAISERROR(N'Loi: Thiet bi (ID: %d) khong du so luong san sang.', 16, 4, @eq_id);
+                END
+
+                INSERT INTO dbo.ReservationEquipments (reservation_id, equipment_id, quantity, unit_price)
+                VALUES (@new_reservation_id, @eq_id, @req_qty, @eq_price);
+
+                SET @total_equip_fee = @total_equip_fee + (@eq_price * @req_qty);
+                FETCH NEXT FROM equip_cursor INTO @eq_id, @req_qty;
+            END
+
+            CLOSE equip_cursor; DEALLOCATE equip_cursor;
+        END
+
+        -- 8. CAP NHAT LAI TONG TIEN CHINH XAC
+        UPDATE dbo.Reservations
+        SET total_amount = @base_room_fee + @package_fee + @total_equip_fee
+        WHERE reservation_id = @new_reservation_id;
+
+        COMMIT TRANSACTION;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+        THROW;
+    END CATCH
+END;
+\end{lstlisting}

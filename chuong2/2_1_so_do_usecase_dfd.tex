@@ -1,0 +1,94 @@
+\section{Sơ đồ Use Case và Luồng dữ liệu}
+
+\subsection{Phân tích Sơ đồ Use Case hệ thống theo 18 bảng chuẩn hóa}
+Hệ thống \textbf{FilmPhotographyPlatform} tổ chức 4 nhóm vai trò người dùng trong cơ sở dữ liệu (\texttt{'ADMIN'}, \texttt{'EXPERT'}, \texttt{'PROVIDER'}, \texttt{'CUSTOMER'}) kết hợp cùng tác nhân tự động \texttt{AIAssistant}:
+
+\begin{figure}[H]
+\centering
+\begin{tcolorbox}[colback=blue!5!white,colframe=blue!75!black,title=\textbf{BẢNG TỔNG HỢP CÁC USE CASE TƯƠNG ỨNG VỚI 18 BẢNG TRONG CƠ SỞ DỮ LIỆU}]
+\begin{itemize}[leftmargin=1.5em]
+    \item \textbf{Khách hàng:}
+    \begin{itemize}
+        \item \textit{UC1.1 Đăng ký / Đăng nhập / Cập nhật hồ sơ (\texttt{Users})}
+        \item \textit{UC1.2 Tìm kiếm Studio, xem danh sách Phòng chức năng (\texttt{Studios, Rooms, StudioImages})}
+        \item \textit{UC1.3 Đặt lịch phòng tối theo giờ, chọn gói combo và thiết bị thuê thêm (\texttt{Reservations, Rooms, ServicePackages, ReservationEquipments})}
+        \item \textit{UC1.4 Thanh toán giao dịch qua ví điện tử / QR Code (\texttt{Payments})}
+        \item \textit{UC1.5 Đăng ký tham gia các khóa học chuyên sâu (\texttt{WorkshopRegistrations, Workshops})}
+        \item \textit{UC1.6 Đánh giá chấm điểm Studio (\texttt{Reviews})}
+        \item \textit{UC1.7 Đăng bài viết chia sẻ tác phẩm \& bình luận thảo luận (\texttt{CommunityPosts, PostComments})}
+    \end{itemize}
+    \item \textbf{Chủ cơ sở:}
+    \begin{itemize}
+        \item \textit{UC2.1 Tạo và cấu hình cơ sở Studio, tải ảnh đại diện (\texttt{Studios, StudioImages})}
+        \item \textit{UC2.2 Quản lý danh mục Phòng chức năng (Studio chụp, Buồng tối B\&W/Color) và đơn giá giờ (\texttt{Rooms})}
+        \item \textit{UC2.3 Quản lý kho máy móc \& vật tư tiêu hao (\texttt{Equipment})}
+        \item \textit{UC2.4 Ghi nhận lịch sử bảo trì, bảo dưỡng thiết bị (\texttt{EquipmentMaintenance})}
+        \item \textit{UC2.5 Tạo các gói dịch vụ và cấu hình máy móc đi kèm trong gói (\texttt{ServicePackages, PackageEquipment})}
+        \item \textit{UC2.6 Duyệt đơn, cập nhật trạng thái đơn đặt phòng (\texttt{Reservations, ReservationStatusHistory})}
+        \item \textit{UC2.7 Điều hành phiên làm việc thực tế, ghi nhận phụ phí (\texttt{ServiceSessions})}
+        \item \textit{UC2.8 Xem bảng điều khiển thống kê doanh thu, đánh giá từ khách (\texttt{Payments, Reviews})}
+    \end{itemize}
+    \item \textbf{Chuyên gia:}
+    \begin{itemize}
+        \item \textit{UC3.1 Mở lớp hội thảo / đào tạo chuyên sâu về kỹ thuật tráng rọi (\texttt{Workshops})}
+        \item \textit{UC3.2 Quản lý danh sách học viên đăng ký tham gia lớp (\texttt{WorkshopRegistrations})}
+        \item \textit{UC3.3 Viết bài hướng dẫn chuyên đề và tư vấn công thức hóa chất (\texttt{CommunityPosts})}
+    \end{itemize}
+\end{itemize}
+\end{tcolorbox}
+\caption{Cấu trúc phân rã Use Case theo 18 bảng cơ sở dữ liệu (phần 1/2)}
+\end{figure}
+
+\clearpage
+
+\begin{figure}[H]
+\centering
+\begin{tcolorbox}[colback=blue!5!white,colframe=blue!75!black,title=\textbf{BẢNG TỔNG HỢP CÁC USE CASE TƯƠNG ỨNG VỚI 18 BẢNG TRONG CƠ SỞ DỮ LIỆU (tiếp theo)}]
+\begin{itemize}[leftmargin=1.5em]
+    \item \textbf{Quản trị viên:}
+    \begin{itemize}
+        \item \textit{UC4.1 Quản trị người dùng, khóa/mở tài khoản (\texttt{Users})}
+        \item \textit{UC4.2 Kiểm duyệt Studio mới, giám sát an toàn giao dịch (\texttt{Studios, Payments})}
+        \item \textit{UC4.3 Giám sát lịch sử thay đổi trạng thái toàn sàn (\texttt{ReservationStatusHistory})}
+        \item \textit{UC4.4 Quản trị nội dung bài đăng và kiểm duyệt bình luận (\texttt{CommunityPosts, PostComments})}
+    \end{itemize}
+    \item \textbf{Trợ lý AI:}
+    \begin{itemize}
+        \item \textit{UC5.1 Tiếp nhận yêu cầu gợi ý thời gian tráng theo loại phim và nhiệt độ}
+        \item \textit{UC5.2 Tính toán định mức hóa chất và chẩn đoán khuyết tật ảnh âm bản scan}
+    \end{itemize}
+\end{itemize}
+\end{tcolorbox}
+\caption{Cấu trúc phân rã Use Case theo 18 bảng cơ sở dữ liệu (phần 2/2)}
+\end{figure}
+
+\subsection{Sơ đồ Luồng dữ liệu}
+
+\subsubsection{Sơ đồ luồng dữ liệu mức khung cảnh (Mức 0)}
+Hệ thống trao đổi dữ liệu hai chiều với 4 tác nhân con người và tác nhân hệ thống:
+\begin{itemize}[leftmargin=2em]
+    \item \textbf{Khách hàng} gửi: \textit{Thông tin cá nhân, Yêu cầu tìm kiếm phòng, Đơn đặt chỗ (kèm phòng, gói, thiết bị), Lệnh thanh toán, Đăng ký workshop, Đánh giá, Bài đăng/Bình luận} $\rightarrow$ Hệ thống phản hồi: \textit{Mã đặt chỗ, Trạng thái đơn, Hóa đơn thanh toán, Giấy xác nhận workshop}.
+    \item \textbf{Chủ cơ sở} gửi: \textit{Hồ sơ Studio, Cấu hình phòng (Rooms), Danh mục thiết bị, Gói dịch vụ (Packages), Phiên làm việc (Sessions), Lịch bảo trì} $\rightarrow$ Hệ thống phản hồi: \textit{Danh sách lịch hẹn, Cảnh báo xung đột, Thống kê doanh thu}.
+    \item \textbf{Chuyên gia} gửi: \textit{Chương trình Workshop, Lịch giảng dạy, Bài viết chuyên môn} $\rightarrow$ Hệ thống phản hồi: \textit{Danh sách học viên đăng ký}.
+    \item \textbf{Quản trị viên} gửi: \textit{Lệnh phê duyệt, Khóa tài khoản, Cấu hình hệ thống} $\rightarrow$ Hệ thống phản hồi: \textit{Nhật ký giao dịch, Báo cáo toàn sàn}.
+    \item \textbf{Trợ lý AI} nhận: \textit{Thông số cuộn phim, độ nhạy ISO, dung tích tank} $\rightarrow$ Phản hồi: \textit{Thời gian tráng và công thức bù nhiệt}.
+\end{itemize}
+
+\subsubsection{Sơ đồ luồng dữ liệu mức 1}
+Hệ thống được tổ chức thành 4 phân hệ chính truy xuất trực tiếp 18 kho dữ liệu:
+\begin{enumerate}[leftmargin=2em]
+    \item \textbf{Tiến trình 1.0 - Quản lý Định danh \& Phân quyền:} Tương tác với kho \texttt{Users}.
+    \item \textbf{Tiến trình 2.0 - Quản lý Cơ sở, Không gian \& Thiết bị:} Tương tác với \texttt{Studios}, \texttt{StudioImages}, \texttt{Rooms}, \texttt{Equipment}, \texttt{EquipmentMaintenance}, \texttt{ServicePackages}, \texttt{PackageEquipment}.
+    \item \textbf{Tiến trình 3.0 - Đặt phòng, Điều phối Phiên \& Thanh toán:} Tương tác với \texttt{Reservations}, \texttt{ReservationEquipments}, \texttt{ServiceSessions}, \texttt{ReservationStatusHistory}, \texttt{Payments}.
+    \item \textbf{Tiến trình 4.0 - Đào tạo Chuyên sâu \& Tương tác Cộng đồng:} Tương tác với \texttt{Workshops}, \texttt{WorkshopRegistrations}, \texttt{Reviews}, \texttt{CommunityPosts}, \texttt{PostComments}.
+\end{enumerate}
+
+\subsubsection{Sơ đồ luồng dữ liệu mức 2 cho quy trình đặt phòng và xử lý tranh chấp}
+Tiến trình 3.0 được phân rã chi tiết để làm rõ giải thuật kiểm tra và phân bổ tài nguyên:
+\begin{itemize}[leftmargin=2em]
+    \item \textbf{Bước 3.1:} Nhận yêu cầu đặt lịch gồm: \texttt{customer\_id}, \texttt{room\_id}, \texttt{start\_time}, \texttt{end\_time}, \texttt{package\_id}, danh sách thiết bị cần mượn thêm.
+    \item \textbf{Bước 3.2:} Khởi tạo Transaction với độ cô lập mở rộng, cấp phát khóa \texttt{UPDLOCK, HOLDLOCK} trên bảng \texttt{Rooms} và \texttt{Reservations} đối với \texttt{room\_id} trong khoảng thời gian được yêu cầu.
+    \item \textbf{Bước 3.3:} Kiểm tra giao cắt thời gian: Nếu tồn tại bản ghi trong khoảng $[start\_time, end\_time]$ ở trạng thái đã xác nhận thì hủy bỏ giao dịch, trả về mã lỗi xung đột lịch.
+    \item \textbf{Bước 3.4:} Khóa dòng trên bảng \texttt{Equipment} đối với các thiết bị yêu cầu, kiểm tra \texttt{quantity >= req\_qty}.
+    \item \textbf{Bước 3.5:} Thêm bản ghi vào \texttt{Reservations}, ghi log vào \texttt{ReservationStatusHistory}, thêm vào \texttt{ReservationEquipments}, tạo \texttt{ServiceSessions} và Commit giao dịch.
+\end{itemize}
