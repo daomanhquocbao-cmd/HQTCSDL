@@ -1,0 +1,78 @@
+\section{Hiện thực hóa các tính năng nâng cao}
+
+\subsection{Module Trợ lý AI và Phục chế ảnh phim}
+
+\subsubsection{Cơ chế hoạt động của Trợ lý AI tư vấn thông số tráng phim}
+Quá trình tráng phim thủ công phụ thuộc rất lớn vào ba thông số cơ bản: \textit{Nhiệt độ dung dịch hóa chất}, \textit{Nồng độ pha chế}, và \textit{Thời gian ngâm trong buồng tráng}. Một sai lệch nhỏ về nhiệt độ (chỉ $1^\circ\text{C}$) cũng có thể dẫn đến hiện tượng tráng quá tay hoặc tráng non thiếu chi tiết vùng tối~\cite{rogers2023sustainable}.
+
+Module \textbf{AIAssistant} được tích hợp thông qua việc kết nối API trí tuệ nhân tạo (kết hợp cơ sở dữ liệu chuyên ngành và mô hình ngôn ngữ lớn LLM):
+\begin{itemize}[leftmargin=2em]
+    \item \textbf{Đầu vào:} Người dùng cung cấp tên cuộn phim (ví dụ: \textit{Kodak Tri-X 400}), độ nhạy chụp thực tế (ISO/EI 400 hoặc đẩy sáng Push lên 1600), loại thuốc hiện hình dự định dùng (ví dụ: \textit{Kodak D-76} tỷ lệ stock hoặc 1:1), và nhiệt độ nước hiện tại của phòng tối ($20^\circ\text{C}$ hoặc $24^\circ\text{C}$).
+    \item \textbf{Xử lý thuật toán:} Hệ thống áp dụng công thức bù trừ nhiệt độ hóa học:
+    \begin{equation}
+        T_{\text{new}} = T_{\text{base}} \times e^{-k \cdot (C_{\text{actual}} - C_{\text{standard}})}
+    \end{equation}
+    kết hợp với mô hình AI để suy luận thời gian tráng tối ưu, chu kỳ đảo tank (ví dụ đảo liên tục 30 giây đầu, sau đó 10 giây mỗi phút), và lượng dung dịch cần pha theo thể tích tank của hãng Paterson hoặc Jobo.
+\end{itemize}
+
+\subsubsection{Phục chế ảnh phim hỏng và xử lý hạt}
+Đối với các bức ảnh phim sau khi quét gặp phải các sự cố thường gặp: trầy xước bề mặt nhũ tương, bám bụi bẩn, bị lọt sáng buồng chụp hoặc ngả màu do bảo quản phim quá hạn, hệ thống tích hợp thuật toán thị giác máy tính:
+\begin{enumerate}[leftmargin=2em]
+    \item \textbf{Phát hiện khuyết tật tự động:} Sử dụng mạng nơ-ron tích chập (CNN) và không gian tiềm ẩn kép để phát hiện các vệt xước mảnh và đốm bụi trên nền ảnh~\cite{wan2023old}.
+    \item \textbf{Khôi phục bù điểm ảnh:} Sử dụng mô hình khuếch tán tiềm ẩn (Latent Diffusion Models)~\cite{rombach2022high} để nội suy vùng điểm ảnh bị hỏng dựa trên ngữ cảnh thị giác xung quanh mà vẫn bảo tồn nguyên vẹn cấu trúc hạt phim tự nhiên~\cite{su2024deep}, không làm bết ảnh như các bộ lọc khử nhiễu số thông thường.
+\end{enumerate}
+
+\subsection{Tích hợp Thanh toán trực tuyến và Ví điện tử}
+Để tự động hóa hoàn toàn quy trình đặt chỗ mà không cần sự can thiệp thủ công của nhân viên trực tổng đài, hệ thống tích hợp giải pháp thanh toán điện tử chuẩn hóa dựa trên mã QR động~\cite{wicaksono2023utilizing} tuân thủ quy chuẩn VietQR của Ngân hàng Nhà nước~\cite{sbv2021vietqr}:
+
+\begin{figure}[H]
+\centering
+\begin{tcolorbox}[colback=green!5!white,colframe=green!60!black,title=\textbf{QUY TRÌNH THANH TOÁN TỰ ĐỘNG QUA VIETQR / MOBIFONEPAY}]
+\begin{enumerate}[leftmargin=1.5em]
+    \item \textbf{Bước 1:} Khi Stored Procedure \texttt{sp\_CreateReservationFull} thực thi thành công, một bản ghi \texttt{Reservations} được tạo ở trạng thái \texttt{Status = 'Pending'} và \texttt{PaymentStatus = 'Unpaid'}.
+    \item \textbf{Bước 2:} Backend API gọi dịch vụ thanh toán để sinh một mã \textbf{VietQR động} hoặc yêu cầu thanh toán qua cổng \textbf{MobiFonePay}. Mã QR này chứa mã ngân hàng đích, số tài khoản của cơ sở, số tiền cọc (30\% tổng giá trị đơn), và nội dung chuyển khoản được mã hóa đặc biệt theo cú pháp: \texttt{FILMHUB\_RES\_[ReservationId]}.
+    \item \textbf{Bước 3:} Ứng dụng di động hiển thị mã QR kèm bộ đếm ngược 15 phút giữ chỗ. Khách hàng sử dụng ứng dụng ngân hàng hoặc ví điện tử quét mã và chuyển tiền.
+    \item \textbf{Bước 4 (Webhook Callback):} Cổng thanh toán gửi một bản tin Webhook chứa chữ ký số về endpoint \texttt{POST /api/webhooks/payment} nhằm đảm bảo tính toàn vẹn và lũy đẳng (idempotency) của giao dịch~\cite{wicaksono2023utilizing}.
+    \item \textbf{Bước 5:} Backend xác thực chữ ký số, giải mã \texttt{ReservationId}, mở giao dịch cập nhật:
+    \begin{lstlisting}[language=SQL]
+    UPDATE dbo.Reservations
+    SET PaymentStatus = 'PartiallyPaid',
+        Status = 'Confirmed'
+    WHERE ReservationId = @ReservationId AND Status = 'Pending';
+    \end{lstlisting}
+    \item \textbf{Bước 6:} Hệ thống tự động gửi thông báo đẩy và email kèm mã xác nhận đặt phòng tới khách hàng và thông báo cho Chủ phòng chuẩn bị thiết bị.
+\end{enumerate}
+\end{tcolorbox}
+\caption{Quy trình xử lý thanh toán và xác nhận giữ chỗ tự động}
+\end{figure}
+
+\subsection{Giao diện quản lý dành cho Chủ cơ sở}
+Khác với giao diện của người chụp ảnh chú trọng vào tìm kiếm và khám phá, phân hệ \textbf{Provider Hub} được thiết kế như một trung tâm điều hành chuyên nghiệp phục vụ hoạt động sản xuất kinh doanh hàng ngày của chủ cơ sở:
+
+\begin{enumerate}[leftmargin=2em]
+    \item \textbf{Bảng điều khiển chỉ số tài chính \& Doanh thu tháng:}
+    \begin{itemize}
+        \item Hiển thị banner tổng doanh thu trong tháng theo thời gian thực (ví dụ: \texttt{25.400.000 đ}), so sánh tỷ lệ tăng trưởng với tháng trước.
+        \item Thống kê tổng số lượt đặt phòng đã phục vụ thành công, tỷ lệ lấp đầy phòng tối (\textit{Occupancy Rate}) trong các khung giờ cao điểm (thứ Bảy, Chủ Nhật).
+        \item Phân tích cơ cấu nguồn thu: Tỷ trọng doanh thu đến từ tiền thuê phòng cơ bản, doanh thu từ bán gói dịch vụ trọn gói và doanh thu từ phụ phí thuê thiết bị chuyên dụng / vật tư hóa chất.
+    \end{itemize}
+
+    \item \textbf{Giám sát trạng thái hoạt động của các phòng tối (Studio Operational Status):}
+    \begin{itemize}
+        \item Danh sách trực quan hiển thị trạng thái từng phòng: \textit{Đang hoạt động (Active), Đầy lịch (Fully Booked), hoặc Đang bảo trì/vệ sinh hóa chất (Maintenance)}.
+        \item Nút thao tác nhanh cho phép bật/tắt nhận khách khẩn cấp khi gặp sự cố kỹ thuật về hệ thống thoát nước hoặc bóng đèn an toàn bị hỏng.
+    \end{itemize}
+
+    \item \textbf{Quản lý danh mục thiết bị \& Cảnh báo mức sẵn sàng:}
+    \begin{itemize}
+        \item Theo dõi trực quan tỷ lệ thiết bị khả dụng trên tổng số: Ví dụ \textit{"Máy phóng ảnh Durst: 3/4 sẵn sàng", "Máy scan Noritsu: 1/1 đang phục vụ"}.
+        \item Cảnh báo tự động khi số lượng vật tư hóa chất tiêu hao (dung dịch D-76, thuốc Fixer) chạm ngưỡng tối thiểu để chủ cơ sở kịp thời pha chế mẻ mới.
+    \end{itemize}
+
+    \item \textbf{Điều hành phiên sử dụng thực tế (Check-in / Check-out Management):}
+    \begin{itemize}
+        \item Danh sách các đơn đặt phòng sắp diễn ra trong ngày kèm đếm ngược thời gian.
+        \item Nút kích hoạt \textbf{"Check-in Khách đến"} để ghi nhận \texttt{CheckInTime} vào bảng \texttt{ServiceSessions}.
+        \item Nút \textbf{"Check-out \& Kết toán"} mở modal ghi nhận phụ phí: thời gian lấn giờ (tính theo bước nhảy 15 phút), lượng giấy rọi ảnh hoặc hóa chất dùng thêm, kiểm kê tình trạng máy móc trước khi khách rời khỏi studio và in hóa đơn điện tử hoàn tất giao dịch.
+    \end{itemize}
+\end{enumerate}

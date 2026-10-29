@@ -1,0 +1,97 @@
+\section{Kiến trúc công nghệ}
+
+\subsection{Tổng quan kiến trúc phân tầng}
+Hệ thống \textbf{FilmPhotography Hub} được xây dựng theo mô hình kiến trúc phân tầng hiện đại, tách biệt rõ ràng giữa tầng hiển thị giao diện, tầng điều phối nghiệp vụ và tầng lưu trữ dữ liệu. Kiến trúc này mang lại tính độc lập cao, giúp hệ thống dễ dàng mở rộng, thuận tiện cho việc bảo trì, kiểm thử tự động và tăng cường độ an toàn thông tin.
+
+\begin{figure}[H]
+\centering
+\begin{tcolorbox}[colback=blue!5!white,colframe=blue!80!black,title=\textbf{MÔ HÌNH KIẾN TRÚC PHÂN TẦNG CỦA HỆ THỐNG}]
+\begin{itemize}[leftmargin=1.5em]
+    \item \textbf{Tầng Trình diễn:} 
+    Ứng dụng di động Flutter~\cite{alzewairi2024critical} kết hợp giao diện Web tối ưu hóa cho màn hình điện thoại.
+    \item \textbf{Tầng Cổng giao tiếp và Bảo mật:}
+    Xác thực qua JWT Token~\cite{nugraha2023performance}, kiểm tra chứng thực phân quyền theo vai trò (RBAC)~\cite{sandhu2023role}, kiểm soát tần suất truy cập và chống tấn công CORS/XSS.
+    \item \textbf{Tầng Nghiệp vụ ứng dụng:}
+    Backend RESTful API xây dựng trên nền tảng ASP.NET Core / Node.js đóng gói các dịch vụ: \texttt{BookingService}, \texttt{InventoryService}, \texttt{PaymentService}, \texttt{AIAssistantService}.
+    \item \textbf{Tầng Truy cập dữ liệu:}
+    Sử dụng Micro-ORM (Dapper) kết hợp trực tiếp với các Stored Procedures trong SQL Server để đạt hiệu năng thực thi truy vấn tối đa.
+    \item \textbf{Tầng Cơ sở dữ liệu:}
+    Microsoft SQL Server quản lý dữ liệu tập trung, đảm bảo tính ACID, cơ chế khóa dòng \texttt{UPDLOCK, HOLDLOCK} và các ràng buộc toàn vẹn quan hệ.
+\end{itemize}
+\end{tcolorbox}
+\caption{Mô hình kiến trúc tổng thể của FilmPhotography Hub}
+\end{figure}
+
+\subsection{Tầng Cơ sở dữ liệu: Microsoft SQL Server \& T-SQL}
+Microsoft SQL Server được chọn làm hệ quản trị cơ sở dữ liệu nền tảng cho dự án nhờ các ưu điểm vượt trội:
+\begin{itemize}[leftmargin=2em]
+    \item \textbf{Khả năng quản trị giao dịch mạnh mẽ (ACID Compliance):} Bảo đảm tính nguyên tố (\textit{Atomicity}), tính nhất quán (\textit{Consistency}), tính cô lập (\textit{Isolation}) và tính bền vững (\textit{Durability}) trong các giao dịch phân bổ tài nguyên phức tạp~\cite{silberschatz2020database}.
+    \item \textbf{Hỗ trợ phong phú các cơ chế khóa (Fine-Grained Locking):} Cung cấp đầy đủ các chỉ dẫn khóa dòng (\textit{Lock Hints}) như \texttt{ROWLOCK}, \texttt{UPDLOCK}, \texttt{HOLDLOCK}, cho phép can thiệp trực tiếp vào bộ điều phối khóa (\textit{Lock Manager}) của công cụ lưu trữ để tối ưu hóa xử lý đồng thời~\cite{microsoft2024locking}.
+    \item \textbf{Thực thi thủ tục lưu trữ (Stored Procedures) biên dịch trước:} Việc đẩy toàn bộ logic kiểm tra tranh chấp và cập nhật trạng thái vào Stored Procedure giúp giảm thiểu đáng kể độ trễ truyền thông mạng (\textit{Network Round-Trip Time}) giữa Web Server và Database Server.
+\end{itemize}
+
+\subsection{Tầng Backend: RESTful API và Cơ chế phân quyền JWT theo 5 vai trò}
+Backend được thiết kế theo chuẩn RESTful API, cung cấp các endpoint an toàn trao đổi dữ liệu định dạng JSON.
+
+\subsubsection{Cơ chế xác thực dựa trên JSON Web Token (JWT)}
+Mỗi phiên làm việc của người dùng được xác thực thông qua một chuỗi token mã hóa gồm 3 phần: \texttt{Header.Payload.Signature}~\cite{nugraha2023performance}.
+\begin{itemize}[leftmargin=2em]
+    \item Khi người dùng đăng nhập thành công qua endpoint \texttt{POST /api/auth/login}, máy chủ sẽ tạo ra một JWT Token được ký số bằng thuật toán HMAC-SHA256 với khóa bí mật an toàn (\textit{Secret Key}).
+    \item Trong phần \texttt{Payload}, token mang theo các \textit{Claims} tiêu chuẩn: \texttt{UserId}, \texttt{Email}, và quan trọng nhất là thuộc tính \texttt{Role} đại diện cho 1 trong 5 vai trò: \texttt{Photographer}, \texttt{ServiceProvider}, \texttt{Expert}, \texttt{Admin}, hoặc \texttt{AIAssistant}.
+    \item Token có thời hạn hợp lệ (\textit{Expiration Time}) được cấu hình linh hoạt (ví dụ: 2 giờ), kèm theo cơ chế \textit{Refresh Token} được lưu trữ an toàn trong cơ sở dữ liệu để tái cấp phiên làm việc mà không yêu cầu người dùng nhập lại mật khẩu.
+\end{itemize}
+
+\subsubsection{Bộ lọc phân quyền truy cập theo vai trò (RBAC)}
+Mọi yêu cầu gửi tới các endpoint nhạy cảm đều phải đi qua Middleware xác thực theo chuẩn RBAC~\cite{sandhu2023role}. Hệ thống sử dụng các Attribute/Annotation để khai báo quyền hạn nghiêm ngặt:
+\begin{lstlisting}[language=C++]
+// Vi du minh hoa Endpoint trong ASP.NET Core / C#
+[Authorize(Roles = "ServiceProvider,Admin")]
+[HttpPut("studios/{studioId}/status")]
+public async Task<IActionResult> UpdateStudioStatus(int studioId, [FromBody] UpdateStudioStatusDto dto)
+{
+    // Chi ServiceProvider so huu studio hoac Admin moi duoc quyen thuc thi
+    var currentUserId = int.Parse(User.FindFirst("UserId").Value);
+    var currentUserRole = User.FindFirst(ClaimTypes.Role).Value;
+    
+    var result = await _studioService.UpdateStatusAsync(studioId, dto.Status, currentUserId, currentUserRole);
+    if (!result.IsSuccess) return BadRequest(result.Message);
+    return Ok(result);
+}
+\end{lstlisting}
+
+\begin{table}[H]
+\centering
+\caption{Ma trận phân quyền truy cập tài nguyên API theo 5 vai trò}
+\label{tab:rbac_matrix}
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabularx}{\textwidth}{X c c c c c}
+\toprule
+\textbf{Nhóm tài nguyên API} & \textbf{Photo-grapher} & \textbf{Service-Provider} & \textbf{Expert} & \textbf{Admin} & \textbf{AI} \\
+\midrule
+Xem danh sách Studio \& Thiết bị & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark \\
+Tạo / Cập nhật cấu hình Studio & $\times$ & \checkmark\textsuperscript{*} & $\times$ & \checkmark & $\times$ \\
+Tạo đơn đặt lịch (sp\_CreateReservation) & \checkmark & $\times$ & $\times$ & \checkmark & $\times$ \\
+Duyệt lịch \& Check-in / Check-out & $\times$ & \checkmark\textsuperscript{*} & $\times$ & \checkmark & $\times$ \\
+Xem Dashboard doanh thu \& Thống kê & $\times$ & \checkmark\textsuperscript{*} & $\times$ & \checkmark & $\times$ \\
+Đăng bài hướng dẫn Masterclass & $\times$ & $\times$ & \checkmark & \checkmark & $\times$ \\
+Phê duyệt tài khoản đối tác & $\times$ & $\times$ & $\times$ & \checkmark & $\times$ \\
+Gọi API gợi ý thông số & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark \\
+\bottomrule
+\end{tabularx}
+\smallskip
+
+\raggedright\footnotesize\textsuperscript{*} Chỉ áp dụng với Studio / Cơ sở do chính mình quản lý.
+\end{table}
+
+\subsection{Tầng Giao diện người dùng trên nền tảng Flutter}
+Nhằm mang lại trải nghiệm tiện dụng tối đa cho người dùng hiện đại, giao diện của hệ thống được xây dựng bám sát triết lý ưu tiên thiết bị di động (Mobile-First) trên nền tảng Flutter~\cite{alzewairi2024critical}:
+\begin{itemize}[leftmargin=2em]
+    \item \textbf{Khung chuẩn hóa di động (Phone Frame 390x800px):} Phỏng theo kích thước thực tế của các dòng điện thoại thông minh tiêu chuẩn (iPhone 13/14/15, Samsung Galaxy), tối ưu hóa trải nghiệm điều khiển bằng một tay.
+    \item \textbf{Cơ chế chuyển đổi giao diện Dark/Light Mode:} Đặc biệt đối với các ứng dụng liên quan đến nghệ thuật ảnh phim và phòng tối, chế độ nền tối (\textit{Dark Mode}) với độ tương phản cao, tông màu trầm ấm giúp mắt người dùng không bị chói lóa khi sử dụng trong điều kiện ánh sáng yếu.
+    \item \textbf{Phân luồng màn hình trực quan:}
+    \begin{itemize}
+        \item Giao diện Khách hàng (\texttt{customer}): Màn hình trang chủ (\texttt{index.html}), danh sách phòng (\texttt{rooms.html}), chi tiết phòng (\texttt{room-detail.html}) và màn hình đặt lịch tích hợp tính tổng tiền tự động (\texttt{booking.html}).
+        \item Giao diện Chủ phòng (\texttt{provider}): Bảng điều khiển tổng quan (\texttt{provider-index.html}), danh sách phòng và trạng thái vận hành (\texttt{provider-rooms.html}), biểu mẫu tạo phòng mới (\texttt{provider-room-form.html}), và quản trị hồ sơ tài chính (\texttt{provider-dashboard.html}).
+    \end{itemize}
+\end{itemize}
