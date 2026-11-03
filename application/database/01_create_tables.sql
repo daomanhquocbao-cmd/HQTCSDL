@@ -183,16 +183,6 @@ CREATE TABLE dbo.Reviews (
 );
 GO
 
--- 17. Bảng CommunityPosts (Bài viết chia sẻ cộng đồng)
-CREATE TABLE dbo.CommunityPosts (
-    post_id INT IDENTITY(1,1) PRIMARY KEY,
-    author_id INT NULL FOREIGN KEY REFERENCES dbo.Users(user_id) ON DELETE CASCADE,
-    title NVARCHAR(200) NOT NULL,
-    content NVARCHAR(MAX) NOT NULL,
-    image_url NVARCHAR(500) NULL,
-    created_at DATETIME DEFAULT GETDATE()
-);
-GO
 
 -- 18. Bảng PostComments (Bình luận bài viết cộng đồng - Đã sửa lỗi Cascade)
 CREATE TABLE dbo.PostComments (
