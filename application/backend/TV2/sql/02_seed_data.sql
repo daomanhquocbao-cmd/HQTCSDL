@@ -1,0 +1,188 @@
+USE FilmPhotographyPlatform;
+GO
+
+SET NOCOUNT ON;
+
+PRINT N'=== BẮT ĐẦU BƠM DỮ LIỆU ĐỒNG BỘ CHO CÁC BẢNG MỞ RỘNG ===';
+
+-- Lấy khoảng giá trị ID hiện có trên hệ thống để đảm bảo khớp tuyệt đối khóa ngoại (FK)
+DECLARE @min_u INT = (SELECT MIN(user_id) FROM Users);
+DECLARE @max_u INT = (SELECT MAX(user_id) FROM Users);
+DECLARE @min_std INT = (SELECT MIN(studio_id) FROM Studios);
+DECLARE @max_std INT = (SELECT MAX(studio_id) FROM Studios);
+DECLARE @min_res INT = (SELECT MIN(reservation_id) FROM Reservations);
+DECLARE @max_res INT = (SELECT MAX(reservation_id) FROM Reservations);
+DECLARE @min_eq INT = (SELECT MIN(equipment_id) FROM Equipment);
+DECLARE @max_eq INT = (SELECT MAX(equipment_id) FROM Equipment);
+DECLARE @min_pkg INT = (SELECT MIN(package_id) FROM ServicePackages);
+DECLARE @max_pkg INT = (SELECT MAX(package_id) FROM ServicePackages);
+
+-- 1. BƠM STUDIO IMAGES (Ảnh gallery cho các Studio)
+PRINT N'1. Đang bơm StudioImages...';
+DECLARE @img INT = 1;
+WHILE @img <= 200
+BEGIN
+    INSERT INTO StudioImages (studio_id, image_url, is_primary)
+    VALUES (
+        @min_std + (ABS(CHECKSUM(NEWID())) % (@max_std - @min_std + 1)),
+        N'https://images.filmplatform.com/studios/gallery_' + CAST(@img AS VARCHAR(5)) + N'.jpg',
+        CASE WHEN @img % 5 = 1 THEN 1 ELSE 0 END
+    );
+    SET @img = @img + 1;
+END
+GO
+
+-- 2. BƠM PAYMENTS (Thanh toán cho các đơn Reservations)
+PRINT N'2. Đang bơm Payments...';
+DECLARE @min_res INT = (SELECT MIN(reservation_id) FROM Reservations);
+DECLARE @max_res INT = (SELECT MAX(reservation_id) FROM Reservations);
+
+DECLARE @pay INT = 1;
+WHILE @pay <= 1000
+BEGIN
+    INSERT INTO Payments (reservation_id, amount, payment_method, transaction_code, status)
+    VALUES (
+        @min_res + (ABS(CHECKSUM(NEWID())) % (@max_res - @min_res + 1)),
+        250000.00,
+        CASE (@pay % 3) WHEN 0 THEN 'VNPAY' WHEN 1 THEN 'MOMO' ELSE 'BANK_TRANSFER' END,
+        'TXN_CODE_' + CAST(ABS(CHECKSUM(NEWID())) AS VARCHAR(20)),
+        'SUCCESS'
+    );
+    SET @pay = @pay + 1;
+END
+GO
+
+-- 3. BƠM REVIEWS (Đánh giá Studio từ khách hàng)
+PRINT N'3. Đang bơm Reviews...';
+DECLARE @min_std INT = (SELECT MIN(studio_id) FROM Studios);
+DECLARE @max_std INT = (SELECT MAX(studio_id) FROM Studios);
+DECLARE @min_u INT = (SELECT MIN(user_id) FROM Users);
+DECLARE @max_u INT = (SELECT MAX(user_id) FROM Users);
+
+DECLARE @rev INT = 1;
+WHILE @rev <= 500
+BEGIN
+    INSERT INTO Reviews (studio_id, customer_id, rating, comment)
+    VALUES (
+        @min_std + (ABS(CHECKSUM(NEWID())) % (@max_std - @min_std + 1)),
+        @min_u + (ABS(CHECKSUM(NEWID())) % (@max_u - @min_u + 1)),
+        3 + (ABS(CHECKSUM(NEWID())) % 3), -- Rating từ 3 đến 5 sao
+        N'Không gian phòng tối chuyên nghiệp, thiết bị hiện đại, rất đáng trải nghiệm!'
+    );
+    SET @rev = @rev + 1;
+END
+GO
+
+-- 4. BƠM COMMUNITY POSTS & COMMENTS (Bài viết & Bình luận cộng đồng)
+PRINT N'4. Đang bơm CommunityPosts & PostComments...';
+DECLARE @min_u INT = (SELECT MIN(user_id) FROM Users);
+DECLARE @max_u INT = (SELECT MAX(user_id) FROM Users);
+
+DECLARE @pst INT = 1;
+WHILE @pst <= 100
+BEGIN
+    INSERT INTO CommunityPosts (author_id, title, content, image_url)
+    VALUES (
+        @min_u + (ABS(CHECKSUM(NEWID())) % (@max_u - @min_u + 1)),
+        N'Chia sẻ công thức pha thuốc tráng phim B&W số #' + CAST(@pst AS VARCHAR(5)),
+        N'Bài viết hướng dẫn chi tiết tỉ lệ pha và nhiệt độ chuẩn để kiểm soát hạt phim tốt nhất.',
+        N'https://images.filmplatform.com/posts/post_' + CAST(@pst AS VARCHAR(5)) + N'.jpg'
+    );
+    SET @pst = @pst + 1;
+END
+
+DECLARE @cmt INT = 1;
+DECLARE @min_p INT = (SELECT MIN(post_id) FROM CommunityPosts);
+DECLARE @max_p INT = (SELECT MAX(post_id) FROM CommunityPosts);
+
+WHILE @cmt <= 300
+BEGIN
+    INSERT INTO PostComments (post_id, user_id, content)
+    VALUES (
+        @min_p + (ABS(CHECKSUM(NEWID())) % (@max_p - @min_p + 1)),
+        @min_u + (ABS(CHECKSUM(NEWID())) % (@max_u - @min_u + 1)),
+        N'Bài viết rất hữu ích, cảm ơn tác giả đã chia sẻ kinh nghiệm thực tế!'
+    );
+    SET @cmt = @cmt + 1;
+END
+GO
+
+-- 5. BƠM EQUIPMENT MAINTENANCE (Lịch sử bảo trì thiết bị)
+PRINT N'5. Đang bơm EquipmentMaintenance...';
+DECLARE @min_eq INT = (SELECT MIN(equipment_id) FROM Equipment);
+DECLARE @max_eq INT = (SELECT MAX(equipment_id) FROM Equipment);
+
+DECLARE @maint INT = 1;
+WHILE @maint <= 200
+BEGIN
+    INSERT INTO EquipmentMaintenance (equipment_id, cost, description)
+    VALUES (
+        @min_eq + (ABS(CHECKSUM(NEWID())) % (@max_eq - @min_eq + 1)),
+        150000.00,
+        N'Bảo trì định kỳ hệ thống quang học và thay thế linh kiện hao mòn.'
+    );
+    SET @maint = @maint + 1;
+END
+GO
+
+-- 6. BƠM PACKAGE EQUIPMENT (Bảng trung gian gói dịch vụ và thiết bị)
+PRINT N'6. Đang bơm bảng trung gian PackageEquipment...';
+DECLARE @min_pkg INT = (SELECT MIN(package_id) FROM ServicePackages);
+DECLARE @max_pkg INT = (SELECT MAX(package_id) FROM ServicePackages);
+DECLARE @min_eq INT = (SELECT MIN(equipment_id) FROM Equipment);
+DECLARE @max_eq INT = (SELECT MAX(equipment_id) FROM Equipment);
+
+DECLARE @pk_eq INT = 1;
+WHILE @pk_eq <= 150
+BEGIN
+    DECLARE @rand_pkg INT = @min_pkg + (ABS(CHECKSUM(NEWID())) % (@max_pkg - @min_pkg + 1));
+    DECLARE @rand_eq INT = @min_eq + (ABS(CHECKSUM(NEWID())) % (@max_eq - @min_eq + 1));
+
+    IF NOT EXISTS (SELECT 1 FROM PackageEquipment WHERE package_id = @rand_pkg AND equipment_id = @rand_eq)
+    BEGIN
+        INSERT INTO PackageEquipment (package_id, equipment_id, quantity_included)
+        VALUES (@rand_pkg, @rand_eq, 1);
+        SET @pk_eq = @pk_eq + 1;
+    END
+END
+GO
+
+-- 7. BƠM THÊM DỮ LIỆU
+USE FilmPhotographyPlatform;
+GO
+
+SET NOCOUNT ON;
+
+DECLARE @BatchCount INT = 0;
+DECLARE @MaxBatches INT = 100; -- 100 mẻ x 100,000 dòng = 10.000.000 dòng
+DECLARE @BatchSize INT = 100000;
+
+-- Lấy khoảng ID hiện có để giữ đúng ràng buộc khóa ngoại
+DECLARE @min_room INT = ISNULL((SELECT MIN(room_id) FROM Rooms), 1);
+DECLARE @max_room INT = ISNULL((SELECT MAX(room_id) FROM Rooms), 60);
+DECLARE @min_cust INT = ISNULL((SELECT MIN(user_id) FROM Users WHERE role = 'CUSTOMER'), 1);
+DECLARE @max_cust INT = ISNULL((SELECT MAX(user_id) FROM Users WHERE role = 'CUSTOMER'), 50000);
+
+WHILE @BatchCount < @MaxBatches
+BEGIN
+    INSERT INTO Reservations (room_id, customer_id, start_time, end_time, total_amount, customer_note, status, created_at)
+    SELECT TOP (@BatchSize)
+        @min_room + (ABS(CHECKSUM(NEWID())) % (@max_room - @min_room + 1)),
+        @min_cust + (ABS(CHECKSUM(NEWID())) % (@max_cust - @min_cust + 1)),
+        DATEADD(day, - (ABS(CHECKSUM(NEWID())) % 730), GETDATE()),
+        DATEADD(hour, 2, DATEADD(day, - (ABS(CHECKSUM(NEWID())) % 730), GETDATE())),
+        200000.00 + (ABS(CHECKSUM(NEWID())) % 1000000),
+        N'Load test data record scaling up for performance analysis.',
+        CASE (ABS(CHECKSUM(NEWID())) % 4)
+            WHEN 0 THEN 'PENDING'
+            WHEN 1 THEN 'CONFIRMED'
+            WHEN 2 THEN 'COMPLETED'
+            ELSE 'CANCELLED'
+        END,
+        GETDATE()
+    FROM sys.all_objects a
+    CROSS JOIN sys.all_objects b;
+
+    SET @BatchCount = @BatchCount + 1;
+END
+GO
