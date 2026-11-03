@@ -15,3 +15,16 @@ WHERE p.status = 'SUCCESS'
 GROUP BY s.studio_id, s.name
 ORDER BY TotalRevenue DESC;
 GO
+
+-- 2. BÁO CÁO: Kiểm tra danh sách thiết bị cần bảo trì hoặc sắp hết hạn
+SELECT 
+    eq.equipment_id,
+    s.name AS StudioName,
+    eq.name AS EquipmentName,
+    eq.equipment_type,
+    eq.quantity,
+    eq.status
+FROM dbo.Equipment eq
+JOIN dbo.Studios s ON eq.studio_id = s.studio_id
+WHERE eq.status <> 'GOOD' OR eq.quantity < 3;
+GO
