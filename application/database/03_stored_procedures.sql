@@ -79,4 +79,66 @@ BEGIN
 END;
 GO
 
+-- 2. STORED PROCEDURE: sp_RegisterWorkshop (Đăng ký Workshop thông minh)
+-- Kiểm tra sức chứa (capacity) và chống đăng ký trùng lặp
+CREATE OR ALTER PROCEDURE sp_RegisterWorkshop
+    @workshop_id INT,
+    @customer_id INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    BEGIN TRANSACTION;
+
+    BEGIN TRY
+        -- Bước 1: Kiểm tra Workshop có tồn tại không
+        DECLARE @capacity INT;
+        SELECT @capacity = capacity FROM dbo.Workshops WHERE workshop_id = @workshop_id;
+
+        IF @capacity IS NULL
+        BEGIN
+            RAISERROR(N'Lỗi: Workshop không tồn tại trên hệ thống.', 16, 1);
+            ROLLBACK TRANSACTION;
+            RETURN;
+        END
+
+        -- Bước 2: Kiểm tra khách hàng đã đăng ký workshop này trước đó chưa
+        IF EXISTS (
+            SELECT 1 FROM dbo.WorkshopRegistrations 
+            WHERE workshop_id = @workshop_id AND customer_id = @customer_id
+        )
+        BEGIN
+            RAISERROR(N'Lỗi: Bạn đã đăng ký tham gia workshop này từ trước rồi.', 16, 1);
+            ROLLBACK TRANSACTION;
+            RETURN;
+        END
+
+        -- Bước 3: Kiểm tra số lượng chỗ ngồi hiện tại có vượt capacity không
+        DECLARE @current_registrations INT;
+        SELECT @current_registrations = COUNT(*) 
+        FROM dbo.WorkshopRegistrations WITH (UPDLOCK)
+        WHERE workshop_id = @workshop_id;
+
+        IF @current_registrations >= @capacity
+        BEGIN
+            RAISERROR(N'Lỗi: Workshop đã đủ số lượng người tham gia tối đa (Hết chỗ).', 16, 1);
+            ROLLBACK TRANSACTION;
+            RETURN;
+        END
+
+        -- Bước 4: Thực hiện ghi danh
+        INSERT INTO dbo.WorkshopRegistrations (workshop_id, customer_id, registered_at)
+        VALUES (@workshop_id, @customer_id, GETDATE());
+
+        COMMIT TRANSACTION;
+        PRINT N'Thành công: Đăng ký tham gia Workshop hoàn tất!';
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+        
+        DECLARE @ErrMsg NVARCHAR(4000) = ERROR_MESSAGE();
+        RAISERROR(@ErrMsg, 16, 1);
+    END CATCH
+END;
+GO
+
 
