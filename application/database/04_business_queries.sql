@@ -28,3 +28,21 @@ FROM dbo.Equipment eq
 JOIN dbo.Studios s ON eq.studio_id = s.studio_id
 WHERE eq.status <> 'GOOD' OR eq.quantity < 3;
 GO
+
+-- 3. BÁO CÁO: Lịch sử đặt phòng chi tiết của một Khách hàng cụ thể
+SELECT 
+    r.reservation_id,
+    u.username AS CustomerName,
+    rm.name AS RoomName,
+    s.name AS StudioName,
+    r.start_time,
+    r.end_time,
+    r.total_amount,
+    r.status
+FROM dbo.Reservations r
+JOIN dbo.Users u ON r.customer_id = u.user_id
+JOIN dbo.Rooms rm ON r.room_id = rm.room_id
+JOIN dbo.Studios s ON rm.studio_id = s.studio_id
+WHERE u.user_id = 3 -- Thay ID khách hàng cần tra cứu vào đây
+ORDER BY r.start_time DESC;
+GO
