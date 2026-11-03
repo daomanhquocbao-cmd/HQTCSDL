@@ -146,3 +146,43 @@ BEGIN
     END
 END
 GO
+
+-- 7. BƠM THÊM DỮ LIỆU
+USE FilmPhotographyPlatform;
+GO
+
+SET NOCOUNT ON;
+
+DECLARE @BatchCount INT = 0;
+DECLARE @MaxBatches INT = 100; -- 100 mẻ x 100,000 dòng = 10.000.000 dòng
+DECLARE @BatchSize INT = 100000;
+
+-- Lấy khoảng ID hiện có để giữ đúng ràng buộc khóa ngoại
+DECLARE @min_room INT = ISNULL((SELECT MIN(room_id) FROM Rooms), 1);
+DECLARE @max_room INT = ISNULL((SELECT MAX(room_id) FROM Rooms), 60);
+DECLARE @min_cust INT = ISNULL((SELECT MIN(user_id) FROM Users WHERE role = 'CUSTOMER'), 1);
+DECLARE @max_cust INT = ISNULL((SELECT MAX(user_id) FROM Users WHERE role = 'CUSTOMER'), 50000);
+
+WHILE @BatchCount < @MaxBatches
+BEGIN
+    INSERT INTO Reservations (room_id, customer_id, start_time, end_time, total_amount, customer_note, status, created_at)
+    SELECT TOP (@BatchSize)
+        @min_room + (ABS(CHECKSUM(NEWID())) % (@max_room - @min_room + 1)),
+        @min_cust + (ABS(CHECKSUM(NEWID())) % (@max_cust - @min_cust + 1)),
+        DATEADD(day, - (ABS(CHECKSUM(NEWID())) % 730), GETDATE()),
+        DATEADD(hour, 2, DATEADD(day, - (ABS(CHECKSUM(NEWID())) % 730), GETDATE())),
+        200000.00 + (ABS(CHECKSUM(NEWID())) % 1000000),
+        N'Load test data record scaling up for performance analysis.',
+        CASE (ABS(CHECKSUM(NEWID())) % 4)
+            WHEN 0 THEN 'PENDING'
+            WHEN 1 THEN 'CONFIRMED'
+            WHEN 2 THEN 'COMPLETED'
+            ELSE 'CANCELLED'
+        END,
+        GETDATE()
+    FROM sys.all_objects a
+    CROSS JOIN sys.all_objects b;
+
+    SET @BatchCount = @BatchCount + 1;
+END
+GO
