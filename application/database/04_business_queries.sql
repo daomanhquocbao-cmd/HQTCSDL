@@ -46,3 +46,17 @@ JOIN dbo.Studios s ON rm.studio_id = s.studio_id
 WHERE u.user_id = 3 -- Thay ID khách hàng cần tra cứu vào đây
 ORDER BY r.start_time DESC;
 GO
+
+-- 4. BÁO CÁO: Thống kê số lượng người đăng ký tham gia các Workshop
+SELECT 
+    w.workshop_id,
+    w.title AS WorkshopTitle,
+    u.username AS ExpertName,
+    w.capacity,
+    COUNT(wr.registration_id) AS CurrentRegistered,
+    (w.capacity - COUNT(wr.registration_id)) AS RemainingSlots
+FROM dbo.Workshops w
+JOIN dbo.Users u ON w.expert_id = u.user_id
+LEFT JOIN dbo.WorkshopRegistrations wr ON w.workshop_id = wr.workshop_id
+GROUP BY w.workshop_id, w.title, u.username, w.capacity;
+GO
