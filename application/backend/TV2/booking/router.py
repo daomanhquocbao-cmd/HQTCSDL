@@ -1,39 +1,57 @@
-from fastapi import APIRouter, Depends, Query, HTTPException
-from typing import Optional
-from booking.schemas import CreateBookingSchema
-from booking.services import BookingService
-from booking.models import BookingModel
-from middlewares.auth import get_current_user
+"""Các endpoint /api/bookings."""
+from typing import List, Optional
 
-router = APIRouter(prefix="/api/bookings", tags=["Booking"])
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-@router.post("", status_code=201)
-def create_booking(data: CreateBookingSchema, current_user: dict = Depends(get_current_user)):
-    return BookingService.create_new_booking(user_id=current_user["user_id"], data=data)
+from booking import service
+from booking.auth import get_current_user
+from booking.schemas import BookingCreate, BookingOut, BookingStatus
 
-@router.get("")
-def get_bookings(
-    status: Optional[str] = Query(None),
-    user_id: Optional[int] = Query(None),
-    current_user: dict = Depends(get_current_user)):
-    return BookingModel.get_all_bookings(status_filter=status, user_id=user_id)
+router = APIRouter(prefix="/api/bookings", tags=["Bookings"])
 
-@router.get("/{booking_id}")
-def get_booking_detail(booking_id: int, current_user: dict = Depends(get_current_user)):
-    booking = BookingModel.get_booking_by_id(booking_id)
-    if not booking:
-        raise HTTPException(status_code=404, detail="Không tìm thấy lịch đặt.")
-    return booking
+_ERROR_MAP = {
+    service.RoomNotFoundError: status.HTTP_404_NOT_FOUND,
+    service.BookingNotFoundError: status.HTTP_404_NOT_FOUND,
+    service.TimeConflictError: status.HTTP_409_CONFLICT,
+    service.PermissionDeniedError: status.HTTP_403_FORBIDDEN,
+    service.InvalidStateError: status.HTTP_400_BAD_REQUEST,
+}
 
-@router.delete("/{booking_id}/cancel")
-def cancel_booking(booking_id: int, current_user: dict = Depends(get_current_user)):
-    return BookingService.cancel_booking(booking_id, current_user)
 
-@router.patch("/{booking_id}/confirm")
-def confirm_booking(booking_id: int, current_user: dict = Depends(get_current_user)):
-    if current_user["role"] != "admin":
-        raise HTTPException(status_code=403, detail="Yêu cầu quyền Admin.")
-    success = BookingModel.update_status(booking_id, "CONFIRMED")
-    if not success:
-        raise HTTPException(status_code=404, detail="Không tìm thấy lịch đặt.")
-    return {"message": "Đã xác nhận lịch đặt thành công."}
+def _raise_http(exc: service.BookingError):
+    code = _ERROR_MAP.get(type(exc), status.HTTP_400_BAD_REQUEST)
+    raise HTTPException(status_code=code, detail=str(exc))
+
+
+@router.post("", response_model=BookingOut, status_code=status.HTTP_201_CREATED)
+def create_booking(data: BookingCreate, user: dict = Depends(get_current_user)):
+    try:
+        return service.create_booking(user["user_id"], data)
+    except service.BookingError as exc:
+        _raise_http(exc)
+
+
+@router.get("", response_model=List[BookingOut])
+def list_my_bookings(
+    status_filter: Optional[BookingStatus] = Query(default=None, alias="status"),
+    user: dict = Depends(get_current_user),
+):
+    return service.list_my_bookings(
+        user["user_id"], status_filter.value if status_filter else None
+    )
+
+
+@router.get("/{booking_id}", response_model=BookingOut)
+def get_booking(booking_id: int, user: dict = Depends(get_current_user)):
+    try:
+        return service.get_booking(booking_id, user["user_id"], user["role"])
+    except service.BookingError as exc:
+        _raise_http(exc)
+
+
+@router.patch("/{booking_id}/cancel", response_model=BookingOut)
+def cancel_booking(booking_id: int, user: dict = Depends(get_current_user)):
+    try:
+        return service.cancel_booking(booking_id, user["user_id"], user["role"])
+    except service.BookingError as exc:
+        _raise_http(exc)
