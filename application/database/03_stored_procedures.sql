@@ -57,24 +57,3 @@ BEGIN
         DECLARE @hours DECIMAL(18,2) = DATEDIFF(minute, @start_time, @end_time) / 60.0;
         DECLARE @total_amount DECIMAL(18,2) = @hours * @price_per_hour;
 
-        -- Bước 4: Thêm mới đơn đặt phòng
-        INSERT INTO dbo.Reservations (
-            room_id, customer_id, start_time, end_time, 
-            total_amount, customer_note, status, created_at
-        )
-        VALUES (
-            @room_id, @customer_id, @start_time, @end_time, 
-            @total_amount, @customer_note, 'PENDING', GETDATE()
-        );
-
-        COMMIT TRANSACTION;
-        PRINT N'Thành công: Đặt phòng đã được tạo ở trạng thái PENDING.';
-    END TRY
-    BEGIN CATCH
-        IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
-        
-        DECLARE @ErrorMessage NVARCHAR(4000) = ERROR_MESSAGE();
-        RAISERROR(@ErrorMessage, 16, 1);
-    END CATCH
-END;
-GO
