@@ -452,5 +452,66 @@
         }
     </script>
 
+<script src="provider-common.js"></script>
+    <script>Provider.addPcShortcut('provider-pc-bookings.html');</script>
+    <script>
+        // ---- Nối API thật khi đã đăng nhập ----
+        (async function () {
+            const P = Provider;
+            if (!P.token()) return;
+            let rooms, pending;
+            try {
+                const studios = await P.data.studios();
+                rooms = await P.data.rooms(studios);
+                pending = await P.data.bookings('PENDING');
+            } catch (e) { P.toast(e.message, 'bad'); return; }
+            if (!P.isLive()) return;
+
+            const roomName = id => (rooms.find(r => r.room_id === id) || {}).name || ('Phòng #' + id);
+            const list = document.querySelector('.bookings-list');
+            const cardToBooking = {};
+            list.innerHTML = '';
+            if (!pending.length) {
+                list.innerHTML = '<div style="text-align:center;color:#64748b;font-size:0.78rem;padding:30px 10px;">Không có yêu cầu nào đang chờ duyệt.</div>';
+            }
+            pending.forEach(b => {
+                const cardId = 'card-' + b.reservation_id;
+                cardToBooking[cardId] = b.reservation_id;
+                const cust = b.customer_name || ('Khách #' + b.customer_id);
+                const room = roomName(b.room_id);
+                const time = P.fmtRange(b.start_time, b.end_time);
+                const hrs = P.hoursBetween(b.start_time, b.end_time);
+                const note = b.customer_note || 'Không có';
+                const card = document.createElement('div');
+                card.className = 'booking-card'; card.id = cardId;
+                card.innerHTML = `
+                    <div class="card-top"><span class="customer-name">${P.esc(cust)}</span><span class="req-status">Chờ duyệt</span></div>
+                    <div class="booking-info highlight">🏠 ${P.esc(room)}</div>
+                    <div class="booking-info">📅 ${time} (${hrs % 1 ? hrs.toFixed(1) : hrs} giờ)</div>
+                    <div class="note-box"><strong>Yêu cầu kèm theo:</strong> ${P.esc(note)}</div>
+                    <div class="card-actions"><button class="btn-approve">Duyệt lịch</button><button class="btn-reject">Từ chối</button></div>`;
+                card.querySelector('.btn-approve').addEventListener('click', () => openModal('approve', cust, room, time, note, cardId));
+                card.querySelector('.btn-reject').addEventListener('click', () => openModal('reject', cust, room, time, note, cardId));
+                list.appendChild(card);
+            });
+
+            // Ghi đè hàm xác nhận của bản demo: gọi API đổi trạng thái
+            window.confirmAction = async function () {
+                const id = cardToBooking[selectedCardId];
+                const approve = document.getElementById('mConfirmBtn').className.indexOf('reject-mode') === -1;
+                closeModal();
+                if (!id) return;
+                try {
+                    await P.data.setBookingStatus(id, approve ? 'CONFIRMED' : 'CANCELLED');
+                    const card = document.getElementById(selectedCardId);
+                    card.style.opacity = '0.5'; card.style.pointerEvents = 'none';
+                    const tag = card.querySelector('.req-status');
+                    tag.innerText = approve ? 'Đã duyệt' : 'Đã từ chối';
+                    tag.style.background = '#e2e8f0'; tag.style.color = '#64748b';
+                    P.toast(approve ? 'Đã duyệt lịch đặt' : 'Đã từ chối lịch đặt', 'ok');
+                } catch (e) { P.toast(e.status === 403 ? 'Không đủ quyền: ' + e.message : 'Thao tác thất bại: ' + e.message, 'bad'); }
+            };
+        })();
+    </script>
 </body>
 </html>
