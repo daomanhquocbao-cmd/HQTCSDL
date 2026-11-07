@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lịch đặt - Provider Hub (PC)</title>
+    <link rel="stylesheet" href="provider-pc.css">
+</head>
+<body>
+<div class="pc-shell">
+    <aside class="pc-sidebar" id="pcSidebar"></aside>
+    <div class="pc-main">
+        <header class="pc-topbar" id="pcTopbar"></header>
+        <main class="pc-content">
+            <div class="alert bad" id="pageError" role="alert" hidden></div>
+            <div class="alert warn" id="liveNote" hidden>
+                Lưu ý: endpoint <code>GET /api/bookings</code> của Backend hiện chỉ trả các đơn do chính tài khoản đang đăng nhập đặt,
+                và <code>PATCH /api/bookings/{id}/status</code> chỉ cho vai trò ADMIN. Muốn provider duyệt đơn của khách, Backend cần bổ sung endpoint riêng.
+            </div>
+
+            <div class="card">
+                <div class="toolbar">
+                    <div class="tabs" id="tabs" role="tablist" aria-label="Lọc theo trạng thái"></div>
+                    <span class="spacer"></span>
+                    <input class="input" id="search" type="search" placeholder="Tìm khách / phòng / ghi chú..." aria-label="Tìm kiếm đơn đặt">
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="table-wrap">
+                    <table class="data">
+                        <thead>
+                            <tr><th>Mã</th><th>Khách hàng</th><th>Phòng</th><th>Thời gian</th><th class="num">Tổng tiền</th><th>Trạng thái</th><th></th></tr>
+                        </thead>
+                        <tbody id="rows"></tbody>
+                    </table>
+                </div>
+                <div class="muted small" id="summary" style="margin-top:12px;"></div>
+            </div>
+        </main>
+    </div>
+</div>
+
+<div class="modal-overlay" id="actionModal" role="dialog" aria-modal="true" aria-labelledby="mTitle">
+    <div class="modal">
+        <div class="modal-head"><span id="mTitle">Xác nhận</span><button class="icon-btn" data-close aria-label="Đóng">✕</button></div>
+        <dl class="kv" id="mDetails"></dl>
+        <div class="modal-foot">
+            <button class="btn btn-ghost" data-close>Quay lại</button>
+            <button class="btn btn-primary" id="mConfirm">Xác nhận</button>
+        </div>
+    </div>
+</div>
+
+<script src="provider-common.js"></script>
+<script>
+(async function () {
+    const P = Provider, $ = id => document.getElementById(id);
+    await P.mountPC('bookings', 'Lịch đặt');
+
+    const TABS = [['PENDING', 'Chờ duyệt'], ['CONFIRMED', 'Đã duyệt'], ['COMPLETED', 'Hoàn thành'], ['CANCELLED', 'Đã hủy'], ['', 'Tất cả']];
+    let bookings = [], rooms = [], tab = 'PENDING', pendingAction = null;
+
+    const roomName = id => (rooms.find(r => r.room_id === id) || {}).name || ('Phòng #' + id);
+    const custName = b => b.customer_name || ('Khách #' + b.customer_id);
+
+    async function load() {
+        try {
+            const studios = await P.data.studios();
+            [rooms, bookings] = await Promise.all([P.data.rooms(studios), P.data.bookings()]);
+            P.refreshChrome();
+            const u = P.currentUser();
+            $('liveNote').hidden = !(P.isLive() && u && String(u.role).toUpperCase() === 'PROVIDER');
+            render();
+        } catch (err) { const b = $('pageError'); b.hidden = false; b.textContent = 'Không tải được dữ liệu: ' + err.message; }
+    }
+
+    function render() {
+        $('tabs').innerHTML = TABS.map(([k, label]) => {
+            const n = k ? bookings.filter(b => b.status === k).length : bookings.length;
+            return `<button class="tab${k === tab ? ' active' : ''}" role="tab" aria-selected="${k === tab}" data-tab="${k}">${label}<span class="count">${n}</span></button>`;
+        }).join('');
+
+        const q = $('search').value.trim().toLowerCase();
+        const list = bookings
+            .filter(b => (!tab || b.status === tab))
+            .filter(b => !q || (custName(b) + ' ' + roomName(b.room_id) + ' ' + (b.customer_note || '')).toLowerCase().includes(q))
+            .sort((a, b) => new Date(b.start_time) - new Date(a.start_time));
+
+        $('rows').innerHTML = list.map(b => {
+            const st = P.BOOKING_STATUS[b.status] || { label: b.status, cls: 'muted' };
+            const hrs = P.hoursBetween(b.start_time, b.end_time);
+            let actions = '';
+            if (b.status === 'PENDING') actions = `<button class="btn btn-ok btn-sm" data-act="CONFIRMED" data-id="${b.reservation_id}">Duyệt</button><button class="btn btn-bad btn-sm" data-act="CANCELLED" data-id="${b.reservation_id}">Từ chối</button>`;
+            else if (b.status === 'CONFIRMED') actions = `<button class="btn btn-ghost btn-sm" data-act="COMPLETED" data-id="${b.reservation_id}">Đánh dấu hoàn thành</button>`;
+            return `<tr>
+                <td>#${b.reservation_id}</td>
+                <td><strong>${P.esc(custName(b))}</strong>${b.customer_note ? `<span class="sub">${P.esc(b.customer_note)}</span>` : ''}</td>
+                <td>${P.esc(roomName(b.room_id))}</td>
+                <td>${P.fmtRange(b.start_time, b.end_time)}<span class="sub">${hrs % 1 ? hrs.toFixed(1) : hrs} giờ</span></td>
+                <td class="num">${P.money(b.total_amount)}</td>
+                <td><span class="badge ${st.cls}">${st.label}</span></td>
+                <td><div class="row-actions">${actions}</div></td>
+            </tr>`;
+        }).join('') || '<tr><td colspan="7" class="empty">Không có đơn đặt nào trong mục này.</td></tr>';
+        $('summary').textContent = `Hiển thị ${list.length} / ${bookings.length} đơn`;
+    }
+
+    $('tabs').addEventListener('click', e => { const t = e.target.closest('[data-tab]'); if (t) { tab = t.dataset.tab; render(); } });
+    $('search').addEventListener('input', render);
+
+    /* ---------- Modal xác nhận ---------- */
+    const COPY = {
+        CONFIRMED: { title: 'Xác nhận duyệt lịch đặt', btn: 'Đồng ý duyệt', color: 'var(--ok)', toast: 'Đã duyệt lịch đặt.' },
+        CANCELLED: { title: 'Xác nhận từ chối lịch đặt', btn: 'Xác nhận từ chối', color: 'var(--bad)', toast: 'Đã từ chối lịch đặt.' },
+        COMPLETED: { title: 'Đánh dấu đã hoàn thành', btn: 'Hoàn thành', color: 'var(--primary-color)', toast: 'Đơn đã được đánh dấu hoàn thành.' }
+    };
+    let lastFocus = null;
+    const modal = $('actionModal');
+    const closeModal = () => { modal.classList.remove('open'); if (lastFocus) lastFocus.focus(); };
+    modal.addEventListener('click', e => { if (e.target === modal || e.target.hasAttribute('data-close')) closeModal(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+    $('rows').addEventListener('click', e => {
+        const btn = e.target.closest('[data-act]'); if (!btn) return;
+        const b = bookings.find(x => x.reservation_id === Number(btn.dataset.id));
+        const c = COPY[btn.dataset.act];
+        pendingAction = { id: b.reservation_id, status: btn.dataset.act };
+        $('mTitle').textContent = c.title; $('mTitle').style.color = c.color;
+        $('mConfirm').textContent = c.btn;
+        $('mConfirm').className = 'btn ' + (btn.dataset.act === 'CANCELLED' ? 'btn-bad' : 'btn-primary');
+        $('mDetails').innerHTML = `
+            <dt>Khách hàng</dt><dd>${P.esc(custName(b))}</dd>
+            <dt>Phòng</dt><dd>${P.esc(roomName(b.room_id))}</dd>
+            <dt>Thời gian</dt><dd>${P.fmtRange(b.start_time, b.end_time)}</dd>
+            <dt>Tổng tiền</dt><dd>${P.money(b.total_amount)}</dd>
+            <dt>Yêu cầu kèm theo</dt><dd>${P.esc(b.customer_note || 'Không có')}</dd>`;
+        lastFocus = btn; modal.classList.add('open'); $('mConfirm').focus();
+    });
+
+    $('mConfirm').addEventListener('click', async () => {
+        if (!pendingAction) return;
+        const btn = $('mConfirm'); btn.disabled = true;
+        try {
+            await P.data.setBookingStatus(pendingAction.id, pendingAction.status);
+            P.toast(COPY[pendingAction.status].toast, 'ok');
+            closeModal();
+            await load();
+        } catch (err) {
+            P.toast(err.status === 403 ? 'Không đủ quyền: ' + err.message : 'Thao tác thất bại: ' + err.message, 'bad');
+        } finally { btn.disabled = false; }
+    });
+
+    await load();
+})();
+</script>
+</body>
+</html>
