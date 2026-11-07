@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tổng quan - Provider Hub (PC)</title>
+    <link rel="stylesheet" href="provider-pc.css">
+</head>
+<body>
+<div class="pc-shell">
+    <aside class="pc-sidebar" id="pcSidebar"></aside>
+    <div class="pc-main">
+        <header class="pc-topbar" id="pcTopbar"></header>
+        <main class="pc-content">
+            <div class="alert bad" id="pageError" role="alert" hidden></div>
+
+            <section class="kpi-grid" aria-label="Chỉ số chính">
+                <div class="card kpi banner">
+                    <span class="kpi-label" id="revLabel">Doanh thu tháng này</span>
+                    <span class="kpi-value" id="kpiRevenue">—</span>
+                    <span class="kpi-sub" id="kpiRevenueSub">&nbsp;</span>
+                </div>
+                <div class="card kpi">
+                    <span class="kpi-label">Phòng / Studio</span>
+                    <span class="kpi-value" id="kpiRooms">—</span>
+                    <span class="kpi-sub" id="kpiRoomsSub">&nbsp;</span>
+                </div>
+                <div class="card kpi">
+                    <span class="kpi-label">Lịch chờ duyệt</span>
+                    <span class="kpi-value" id="kpiPending">—</span>
+                    <span class="kpi-sub" id="kpiPendingSub">&nbsp;</span>
+                </div>
+                <div class="card kpi">
+                    <span class="kpi-label">Đánh giá trung bình</span>
+                    <span class="kpi-value" id="kpiRating">—</span>
+                    <span class="kpi-sub" id="kpiRatingSub">&nbsp;</span>
+                </div>
+            </section>
+
+            <section class="grid-2">
+                <div class="card">
+                    <div class="card-head">
+                        <span class="card-title">📈 Doanh thu 5 tháng gần nhất</span>
+                        <span class="badge ok" id="revDelta" hidden></span>
+                    </div>
+                    <div class="chart" id="chart" role="img" aria-label="Biểu đồ cột doanh thu theo tháng"></div>
+                    <div class="chart-labels" id="chartLabels"></div>
+                </div>
+                <div class="card">
+                    <div class="card-head"><span class="card-title">🏆 Phòng được đặt nhiều nhất</span></div>
+                    <div id="topRooms"></div>
+                </div>
+            </section>
+
+            <section class="grid-2">
+                <div class="card">
+                    <div class="card-head">
+                        <span class="card-title">Yêu cầu đặt lịch gần đây</span>
+                        <a class="btn btn-ghost btn-sm" href="provider-pc-bookings.html">Duyệt ngay →</a>
+                    </div>
+                    <div id="recent"></div>
+                </div>
+                <div class="card">
+                    <div class="card-head">
+                        <span class="card-title">Phòng đang vận hành</span>
+                        <a class="btn btn-ghost btn-sm" href="provider-pc-rooms.html">Tất cả →</a>
+                    </div>
+                    <div id="roomList"></div>
+                </div>
+            </section>
+        </main>
+    </div>
+</div>
+
+<script src="provider-common.js"></script>
+<script>
+(async function () {
+    const P = Provider, $ = id => document.getElementById(id);
+    await P.mountPC('dashboard', 'Tổng quan quản lý');
+
+    try {
+        const studios = await P.data.studios();
+        const [rooms, bookings] = await Promise.all([P.data.rooms(studios), P.data.bookings()]);
+        P.refreshChrome();
+
+        const activeRooms = rooms.filter(r => r.status === 'AVAILABLE');
+        const roomName = id => (rooms.find(r => r.room_id === id) || {}).name || ('Phòng #' + id);
+        const custName = b => b.customer_name || ('Khách #' + b.customer_id);
+
+        /* --- Doanh thu theo tháng (đơn đã duyệt / hoàn thành) --- */
+        const paid = bookings.filter(b => b.status === 'CONFIRMED' || b.status === 'COMPLETED');
+        const now = new Date();
+        let months;
+        if (P.isLive()) {
+            months = [];
+            for (let i = 4; i >= 0; i--) {
+                const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                const total = paid.filter(b => { const t = new Date(b.start_time); return t.getFullYear() === d.getFullYear() && t.getMonth() === d.getMonth(); })
+                                  .reduce((s, b) => s + Number(b.total_amount || 0), 0);
+                months.push({ label: 'T' + (d.getMonth() + 1), value: total });
+            }
+        } else {
+            months = P.data.revenueByMonth();
+        }
+        const cur = months[months.length - 1].value, prev = months[months.length - 2].value;
+        $('revLabel').textContent = 'Doanh thu tháng ' + (now.getMonth() + 1) + '/' + now.getFullYear();
+        $('kpiRevenue').textContent = P.money(cur);
+        if (prev > 0) {
+            const pct = Math.round((cur - prev) / prev * 100);
+            $('kpiRevenueSub').textContent = (pct >= 0 ? '▲ Tăng ' : '▼ Giảm ') + Math.abs(pct) + '% so với tháng trước';
+            const delta = $('revDelta'); delta.hidden = false;
+            delta.textContent = (pct >= 0 ? '▲ +' : '▼ ') + pct + '%';
+            delta.className = 'badge ' + (pct >= 0 ? 'ok' : 'bad');
+        } else {
+            $('kpiRevenueSub').textContent = 'Chưa có dữ liệu tháng trước';
+        }
+
+        const max = Math.max(...months.map(m => m.value), 1);
+        $('chart').innerHTML = months.map((m, i) =>
+            `<div class="chart-col${i === months.length - 1 ? ' last' : ''}"><span class="chart-val">${P.moneyShort(m.value)}</span><div class="chart-bar" style="height:${Math.max(2, m.value / max * 100)}%"></div></div>`).join('');
+        $('chartLabels').innerHTML = months.map(m => `<span>${P.esc(m.label)}</span>`).join('');
+
+        /* --- KPI còn lại --- */
+        const pending = bookings.filter(b => b.status === 'PENDING');
+        $('kpiRooms').textContent = activeRooms.length;
+        $('kpiRoomsSub').textContent = studios.length + ' cơ sở • ' + (rooms.length - activeRooms.length) + ' phòng đang ẩn/bảo trì';
+        $('kpiPending').textContent = pending.length;
+        $('kpiPendingSub').textContent = pending.length ? 'Cần xử lý sớm' : 'Không có yêu cầu nào đang chờ';
+        const rated = studios.filter(s => s.avg_rating != null);
+        if (rated.length) {
+            const reviews = rated.reduce((s, x) => s + (x.review_count || 0), 0);
+            const avg = reviews ? rated.reduce((s, x) => s + x.avg_rating * (x.review_count || 0), 0) / reviews : rated.reduce((s, x) => s + x.avg_rating, 0) / rated.length;
+            $('kpiRating').textContent = '⭐ ' + avg.toFixed(1);
+            $('kpiRatingSub').textContent = reviews + ' đánh giá';
+        } else {
+            $('kpiRating').textContent = '—';
+            $('kpiRatingSub').textContent = 'Chưa có đánh giá';
+        }
+
+        /* --- Phòng được đặt nhiều nhất --- */
+        const counts = {};
+        bookings.filter(b => b.status !== 'CANCELLED').forEach(b => { counts[b.room_id] = (counts[b.room_id] || 0) + 1; });
+        const ranked = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+        const totalCount = ranked.reduce((s, [, c]) => s + c, 0) || 1;
+        const colors = ['var(--ok)', 'var(--primary-color)', 'var(--warn)', '#a855f7', '#ec4899'];
+        $('topRooms').innerHTML = ranked.length ? ranked.map(([id, c], i) => {
+            const pct = Math.round(c / totalCount * 100);
+            return `<div class="stat-row"><div><strong>${i + 1}. ${P.esc(roomName(Number(id)))}</strong><span>${pct}% (${c} lượt)</span></div><div class="progress"><div style="width:${pct}%;background:${colors[i % colors.length]}"></div></div></div>`;
+        }).join('') : '<div class="empty">Chưa có lượt đặt nào.</div>';
+
+        /* --- Yêu cầu gần đây --- */
+        $('recent').innerHTML = pending.slice(0, 5).map(b => `
+            <div class="list-item">
+                <div><strong>${P.esc(custName(b))} — ${P.esc(roomName(b.room_id))}</strong><span class="muted small">${P.fmtRange(b.start_time, b.end_time)}${b.customer_note ? ' • ' + P.esc(b.customer_note) : ''}</span></div>
+                <span class="badge warn">Chờ duyệt</span>
+            </div>`).join('') || '<div class="empty">Không có yêu cầu nào đang chờ duyệt.</div>';
+
+        /* --- Danh sách phòng --- */
+        $('roomList').innerHTML = activeRooms.slice(0, 6).map(r => `
+            <div class="list-item">
+                <div><strong>${P.esc(r.name)}</strong><span class="muted small">${P.esc(P.ROOM_TYPES[r.room_type] || r.room_type)} • ${P.money(r.price_per_hour)}/giờ</span></div>
+                <span class="badge ok">● Hoạt động</span>
+            </div>`).join('') || '<div class="empty">Chưa có phòng nào. <a href="provider-pc-rooms.html">Thêm phòng</a></div>';
+    } catch (err) {
+        const box = $('pageError'); box.hidden = false; box.textContent = 'Không tải được dữ liệu: ' + err.message;
+    }
+})();
+</script>
+</body>
+</html>
