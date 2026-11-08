@@ -192,43 +192,44 @@
 
             <div class="form-container">
                 <div class="card-form">
-                    <form id="roomForm">
-                        
+                    <form id="roomForm" novalidate>
+
                         <div class="form-group">
-                            <label class="form-label">Tên cơ sở / Tên phòng</label>
-                            <input type="text" id="roomName" class="form-input" required value="SAIGON DARKROOM Q1">
+                            <label class="form-label" for="roomName">Tên phòng</label>
+                            <input type="text" id="roomName" class="form-input" required minlength="2" maxlength="100" placeholder="VD: SAIGON DARKROOM Q1">
                         </div>
 
                         <div class="form-group">
-                            <label class="form-label">Loại cơ sở</label>
+                            <label class="form-label" for="studioId">Cơ sở</label>
+                            <select id="studioId" class="form-select" required></select>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="roomType">Loại hình</label>
                             <select id="roomType" class="form-select">
-                                <option selected>Phòng Tối (Darkroom)</option>
-                                <option>Studio Chụp ảnh</option>
-                                <option>Trạm Scan Phim</option>
+                                <option value="DARKROOM">Phòng Tối (Darkroom)</option>
+                                <option value="STUDIO">Studio Chụp ảnh</option>
                             </select>
                         </div>
 
                         <div class="form-group">
-                            <label class="form-label">Giá thuê (VNĐ / giờ)</label>
-                            <input type="number" id="roomPrice" class="form-input" required value="150000">
+                            <label class="form-label" for="roomPrice">Giá thuê (VNĐ / giờ)</label>
+                            <input type="number" id="roomPrice" class="form-input" required min="0" step="1000" placeholder="150000">
                         </div>
 
                         <div class="form-group">
-                            <label class="form-label">Mô tả phòng</label>
-                            <textarea id="roomDesc" class="form-textarea">Phòng tối tiêu chuẩn phục vụ tráng/rọi ảnh đen trắng & màu.</textarea>
+                            <label class="form-label" for="roomCap">Sức chứa (người)</label>
+                            <input type="number" id="roomCap" class="form-input" required min="1" step="1" placeholder="4">
                         </div>
 
                         <div class="form-group">
-                            <label class="form-label">Thiết bị có sẵn</label>
-                            <div class="equip-grid">
-                                <label class="checkbox-item"><input type="checkbox" name="equip" value="Máy rọi Kaiser" checked> Máy rọi Kaiser</label>
-                                <label class="checkbox-item"><input type="checkbox" name="equip" value="Hóa chất C41" checked> Hóa chất C41</label>
-                                <label class="checkbox-item"><input type="checkbox" name="equip" value="Tank Paterson" checked> Tank Paterson</label>
-                                <label class="checkbox-item"><input type="checkbox" name="equip" value="Đèn an toàn" checked> Đèn an toàn</label>
-                            </div>
+                            <label class="form-label" for="roomDesc">Mô tả phòng</label>
+                            <textarea id="roomDesc" class="form-textarea" maxlength="2000" placeholder="Phòng tối tiêu chuẩn phục vụ tráng/rọi ảnh..."></textarea>
                         </div>
 
-                        <button type="submit" class="submit-btn">LƯU THÔNG TIN</button>
+                        <div id="formError" role="alert" style="display:none;color:#dc2626;font-size:0.72rem;font-weight:700;margin-top:6px;"></div>
+
+                        <button type="submit" class="submit-btn" id="submitBtn">LƯU THÔNG TIN</button>
 
                     </form>
                 </div>
@@ -256,54 +257,72 @@
         </div>
     </div>
 
-    <!-- Script kết nối API FastAPI -->
+    <script src="provider-common.js"></script>
+    <script>Provider.addPcShortcut('provider-pc-rooms.html');</script>
     <script>
-        document.getElementById('roomForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
+        (async function () {
+            const P = Provider, $ = id => document.getElementById(id);
+            const editId = new URLSearchParams(location.search).get('id');
+            const errBox = $('formError');
+            const showErr = m => { errBox.textContent = m; errBox.style.display = m ? 'block' : 'none'; };
 
-            const roomName = document.getElementById('roomName').value;
-            const roomType = document.getElementById('roomType').value;
-            const roomPrice = parseFloat(document.getElementById('roomPrice').value);
-            const roomDesc = document.getElementById('roomDesc').value;
-
-            const selectedEquips = [];
-            document.querySelectorAll('input[name="equip"]:checked').forEach((checkbox) => {
-                selectedEquips.push(checkbox.value);
-            });
-
-            const payload = {
-                room_name: roomName,
-                room_type: roomType,
-                price_per_hour: roomPrice,
-                description: roomDesc,
-                equipments: selectedEquips
-            };
-
+            // Tải danh sách cơ sở (và phòng cần sửa) từ Backend / demo
+            let studios = [], room = null;
             try {
-                let response = await fetch('http://127.0.0.1:8000/api/rooms/save', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-
-                let result = await response.json();
-
-                if (result.success) {
-                    alert(result.message);
-                    window.location.href = 'provider-rooms.html';
-                } else {
-                    alert('Lưu thông tin thất bại từ server!');
+                studios = await P.data.studios();
+                if (editId) {
+                    const rooms = await P.data.rooms(studios);
+                    room = rooms.find(r => String(r.room_id) === editId) || null;
                 }
-            } catch (error) {
-                console.error('Lỗi kết nối Backend:', error);
-                alert('Không thể kết nối tới máy chủ Backend FastAPI!');
-            }
-        });
-        if (result.success) {
-    alert(result.message);
-     window.location.href = 'provider-rooms.html'; // Tạm tắt chuyển trang để soi Network
-}
+            } catch (e) { showErr('Không tải được dữ liệu: ' + e.message); }
 
+            $('studioId').innerHTML = studios.map(s => `<option value="${s.studio_id}">${P.esc(s.name)}</option>`).join('');
+            if (!studios.length) showErr('Bạn chưa có cơ sở nào. Hãy tạo cơ sở (Studio) trước — có sẵn trên bản PC (mục Phòng & Studio).');
+
+            if (room) {
+                document.querySelector('.page-title').textContent = 'Sửa thông tin phòng';
+                $('roomName').value = room.name;
+                $('studioId').value = room.studio_id;
+                $('studioId').disabled = true;      // backend không cho đổi cơ sở khi sửa
+                $('roomType').value = room.room_type;
+                $('roomPrice').value = room.price_per_hour;
+                $('roomCap').value = room.capacity;
+                $('roomDesc').value = room.description || '';
+            } else if (editId) {
+                showErr('Không tìm thấy phòng cần sửa.');
+            } else {
+                document.querySelector('.page-title').textContent = 'Thêm phòng mới';
+            }
+
+            $('roomForm').addEventListener('submit', async function (e) {
+                e.preventDefault();
+                showErr('');
+                if (!P.requireLogin()) return;
+
+                const payload = {
+                    studio_id: Number($('studioId').value),
+                    name: $('roomName').value.trim(),
+                    room_type: $('roomType').value,
+                    capacity: parseInt($('roomCap').value, 10),
+                    price_per_hour: parseFloat($('roomPrice').value),
+                    description: $('roomDesc').value.trim() || null
+                };
+                if (payload.name.length < 2) return showErr('Tên phòng tối thiểu 2 ký tự.');
+                if (!payload.studio_id) return showErr('Vui lòng chọn cơ sở.');
+                if (!(payload.price_per_hour >= 0)) return showErr('Giá thuê không hợp lệ.');
+                if (!(payload.capacity >= 1)) return showErr('Sức chứa phải từ 1 người.');
+
+                const btn = $('submitBtn'); btn.disabled = true; btn.textContent = 'ĐANG LƯU...';
+                try {
+                    await P.data.saveRoom(editId, payload);
+                    P.toast(editId ? 'Đã cập nhật phòng' : 'Đã thêm phòng mới', 'ok');
+                    setTimeout(() => { location.href = 'provider-rooms.html'; }, 700);
+                } catch (err) {
+                    showErr(err.message);
+                    btn.disabled = false; btn.textContent = 'LƯU THÔNG TIN';
+                }
+            });
+        })();
     </script>
 
 </body>
