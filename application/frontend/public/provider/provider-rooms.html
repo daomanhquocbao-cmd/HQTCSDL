@@ -605,7 +605,7 @@
                 let matchStatus = (cardStatus === 'active' && showActive) || (cardStatus === 'hidden' && showHidden);
 
                 // Kiểm tra điều kiện 2: Quận
-                let matchDistrict = selectedDistricts.includes(cardDistrict);
+                let matchDistrict = selectedDistricts.includes(cardDistrict) || !['Q1','Q2','Q3','BinhThanh'].includes(cardDistrict);
 
                 // Kiểm tra điều kiện 3: Loại hình
                 let matchType = selectedTypes.includes(cardType);
@@ -656,5 +656,75 @@
         applyFilter();
     </script>
 
+<script src="provider-common.js"></script>
+    <script>Provider.addPcShortcut('provider-pc-rooms.html');</script>
+    <script>
+        // ---- Nối API thật khi đã đăng nhập; chưa đăng nhập / offline thì giữ dữ liệu demo ở trên ----
+        (async function () {
+            const P = Provider;
+            if (!P.token()) return;
+            let studios, rooms;
+            try { studios = await P.data.studios(); rooms = await P.data.rooms(studios); } catch (e) { P.toast(e.message, 'bad'); return; }
+            if (!P.isLive()) return;
+
+            const districtOf = addr => {
+                const a = (addr || '').toLowerCase();
+                if (/quận 1\b|q\.?1\b/.test(a)) return 'Q1';
+                if (/quận 2\b|thủ đức|q\.?2\b/.test(a)) return 'Q2';
+                if (/quận 3\b|q\.?3\b/.test(a)) return 'Q3';
+                if (/bình thạnh/.test(a)) return 'BinhThanh';
+                return 'other';
+            };
+            const studioOf = id => studios.find(s => s.studio_id === id) || {};
+            const list = document.getElementById('roomsList');
+            const empty = document.getElementById('emptyState');
+            const byId = {};
+
+            function render() {
+                list.querySelectorAll('.room-card').forEach(c => c.remove());
+                rooms.forEach(r => {
+                    byId['room-' + r.room_id] = r;
+                    const st = studioOf(r.studio_id);
+                    const hidden = r.status === 'INACTIVE';
+                    const card = document.createElement('div');
+                    card.className = 'room-card';
+                    card.id = 'room-' + r.room_id;
+                    card.dataset.status = hidden ? 'hidden' : 'active';
+                    card.dataset.district = districtOf(st.address);
+                    card.dataset.type = String(r.room_type).toLowerCase();
+                    card.dataset.price = Math.round(r.price_per_hour);
+                    card.innerHTML = `
+                        <div class="card-top">
+                            <span class="card-title">${P.esc(r.name)}</span>
+                            <span class="room-status status-text${hidden ? ' is-hidden' : ''}">${hidden ? 'Đã ẩn' : 'Hoạt động'}</span>
+                        </div>
+                        <div class="room-info">
+                            <span>Giá thuê: <strong>${P.money(r.price_per_hour)}/h</strong></span>
+                            <span>Cơ sở: ${P.esc(st.name || '—')}</span>
+                        </div>
+                        <div class="card-actions">
+                            <button class="btn-edit" onclick="window.location.href='provider-room-form.html?id=${r.room_id}'">Sửa thông tin</button>
+                            <button class="${hidden ? 'btn-restore' : 'btn-hide'} action-btn-toggle" onclick="toggleHideRoom('room-${r.room_id}')">${hidden ? 'Hiện Studio' : 'Ẩn Studio'}</button>
+                        </div>`;
+                    list.insertBefore(card, empty);
+                });
+                applyFilter();
+            }
+
+            // Ghi đè hàm ẩn / hiện của bản demo: gọi API rồi vẽ lại
+            window.toggleHideRoom = async function (cardId) {
+                const room = byId[cardId]; if (!room) return;
+                const next = room.status === 'INACTIVE' ? 'AVAILABLE' : 'INACTIVE';
+                try {
+                    await P.data.setRoomStatus(room, next);
+                    room.status = next;
+                    P.toast(next === 'INACTIVE' ? 'Đã ẩn phòng' : 'Đã hiện lại phòng', 'ok');
+                    render();
+                } catch (e) { P.toast('Thao tác thất bại: ' + e.message, 'bad'); }
+            };
+
+            render();
+        })();
+    </script>
 </body>
 </html>
