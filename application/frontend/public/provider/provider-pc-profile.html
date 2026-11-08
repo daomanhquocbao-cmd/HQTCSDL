@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hồ sơ &amp; Bảo mật - Provider Hub (PC)</title>
+    <link rel="stylesheet" href="provider-pc.css">
+</head>
+<body>
+<div class="pc-shell">
+    <aside class="pc-sidebar" id="pcSidebar"></aside>
+    <div class="pc-main">
+        <header class="pc-topbar" id="pcTopbar"></header>
+        <main class="pc-content">
+            <div class="alert bad" id="pageError" role="alert" hidden></div>
+
+            <section class="grid-2 even">
+                <div class="card">
+                    <div class="card-head"><span class="card-title">Thông tin tài khoản</span></div>
+                    <div style="display:flex;align-items:center;gap:16px;margin-bottom:18px;">
+                        <div class="avatar" id="bigAvatar" style="width:64px;height:64px;font-size:1.4rem;">--</div>
+                        <div>
+                            <div style="font-size:1.1rem;font-weight:800;" id="pName">—</div>
+                            <span class="badge warn" id="pRole">—</span>
+                        </div>
+                    </div>
+                    <dl class="kv">
+                        <dt>User ID</dt>
+                        <dd><span id="pId">—</span> <button class="btn btn-ghost btn-sm" id="idToggle" aria-label="Hiện hoặc ẩn User ID">👁️</button></dd>
+                        <dt>Email</dt><dd id="pEmail">—</dd>
+                        <dt>Số điện thoại</dt><dd id="pPhone">—</dd>
+                        <dt>Cơ sở quản lý</dt><dd id="pStudios">—</dd>
+                        <dt>Trạng thái</dt><dd style="color:var(--ok)">● Đã xác thực (Active)</dd>
+                    </dl>
+                </div>
+
+                <div class="card">
+                    <div class="card-head"><span class="card-title">Bảo mật &amp; phiên làm việc</span></div>
+                    <dl class="kv" style="margin-bottom:16px;">
+                        <dt>Phiên đăng nhập</dt><dd id="sState">—</dd>
+                        <dt>Token hết hạn</dt><dd id="sExp">—</dd>
+                        <dt>Máy chủ API</dt><dd id="sApi">—</dd>
+                    </dl>
+                    <div style="display:flex;flex-direction:column;gap:10px;">
+                        <button class="btn btn-ghost" id="pwBtn" disabled title="Backend chưa có endpoint đổi mật khẩu">🔑 Đổi mật khẩu (Backend chưa hỗ trợ)</button>
+                        <button class="btn btn-ghost" id="themeBtn2">🌓 Đổi giao diện sáng / tối</button>
+                        <button class="btn btn-bad" id="logoutBtn">Đăng xuất</button>
+                    </div>
+                </div>
+            </section>
+
+            <section class="card">
+                <div class="card-head"><span class="card-title">Cơ sở của bạn</span><a class="btn btn-ghost btn-sm" href="provider-pc-rooms.html">Quản lý phòng →</a></div>
+                <div class="table-wrap">
+                    <table class="data">
+                        <thead><tr><th>Cơ sở</th><th>Địa chỉ</th><th>Điện thoại</th><th class="num">Đánh giá</th></tr></thead>
+                        <tbody id="studioRows"></tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+</div>
+
+<script src="provider-common.js"></script>
+<script>
+(async function () {
+    const P = Provider, $ = id => document.getElementById(id);
+    await P.mountPC('profile', 'Hồ sơ & Bảo mật');
+
+    const mask = id => { const s = String(id); return s.length <= 2 ? '**' + s : s[0] + '*'.repeat(Math.max(2, s.length - 2)) + s.slice(-1); };
+
+    function jwtExp(t) {
+        try {
+            const payload = JSON.parse(atob(t.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+            return payload.exp ? new Date(payload.exp * 1000) : null;
+        } catch (e) { return null; }
+    }
+
+    try {
+        const me = await P.data.me();
+        const studios = await P.data.studios();
+        P.refreshChrome(me);
+
+        let shown = false;
+        const paintId = () => { $('pId').textContent = shown ? me.user_id : mask(me.user_id); };
+        paintId();
+        $('idToggle').onclick = () => { shown = !shown; paintId(); };
+
+        $('bigAvatar').textContent = P.initials(me.username);
+        $('pName').textContent = me.username;
+        $('pRole').textContent = 'QUYỀN: ' + String(me.role).toUpperCase();
+        $('pEmail').textContent = me.email || '—';
+        $('pPhone').textContent = me.phone || 'Chưa cập nhật';
+        $('pStudios').textContent = studios.length + ' cơ sở';
+
+        $('sState').textContent = P.isLive() ? '● Đang đăng nhập' : '○ Chế độ demo (chưa đăng nhập)';
+        const exp = P.token() ? jwtExp(P.token()) : null;
+        $('sExp').textContent = exp ? exp.toLocaleString('vi-VN') : '—';
+        $('sApi').textContent = P.apiBase();
+
+        $('studioRows').innerHTML = studios.map(s => `<tr>
+            <td><strong>${P.esc(s.name)}</strong></td><td>${P.esc(s.address)}</td><td>${P.esc(s.phone || '—')}</td>
+            <td class="num">${s.avg_rating != null ? '⭐ ' + Number(s.avg_rating).toFixed(1) + ' (' + (s.review_count || 0) + ')' : '—'}</td></tr>`).join('')
+            || '<tr><td colspan="4" class="empty">Chưa có cơ sở nào.</td></tr>';
+    } catch (err) { const b = $('pageError'); b.hidden = false; b.textContent = 'Không tải được dữ liệu: ' + err.message; }
+
+    $('themeBtn2').onclick = P.toggleTheme;
+    $('logoutBtn').onclick = () => { if (confirm('Bạn có chắc chắn muốn đăng xuất?')) P.logout(); };
+})();
+</script>
+</body>
+</html>
