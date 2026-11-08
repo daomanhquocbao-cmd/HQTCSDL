@@ -86,4 +86,5 @@ TC2.8 & EXPERT & Tạo mới một lớp học \texttt{POST /api/workshops} & HT
     \item \textbf{Thiết lập:} Đơn đặt chỗ \texttt{reservation\_id = 1001} có thời gian kết thúc dự kiến là 16:00, tiền phòng gốc là 300.000 VNĐ. Khách hàng thực tế rời phòng lúc 16:40 (sử dụng lấn giờ 40 phút) và sử dụng thêm 1 gói giấy rọi ảnh trị giá 120.000 VNĐ.
     \item \textbf{Hành động:} Chủ phòng thực hiện thao tác Check-out, nhập thời gian trả phòng thực tế và phụ phí vật tư phát sinh vào \texttt{ServiceSessions}.
     \item \textbf{Kết quả thực tế:} Hệ thống ghi nhận \texttt{additional\_fee = 270.000 VNĐ}, tổng quyết toán cuối cùng 570.000 VNĐ. Trạng thái trong \texttt{ReservationStatusHistory} chuyển sang \texttt{'COMPLETED'}.
+\end{itemize}
 
