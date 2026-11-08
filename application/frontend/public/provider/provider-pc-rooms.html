@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phòng &amp; Studio - Provider Hub (PC)</title>
+    <link rel="stylesheet" href="provider-pc.css">
+</head>
+<body>
+<div class="pc-shell">
+    <aside class="pc-sidebar" id="pcSidebar"></aside>
+    <div class="pc-main">
+        <header class="pc-topbar" id="pcTopbar"></header>
+        <main class="pc-content">
+            <div class="alert bad" id="pageError" role="alert" hidden></div>
+
+            <div class="card">
+                <div class="toolbar">
+                    <input class="input" id="search" type="search" placeholder="Tìm theo tên phòng..." aria-label="Tìm theo tên phòng">
+                    <select class="select" id="fType" aria-label="Lọc theo loại">
+                        <option value="">Tất cả loại hình</option>
+                        <option value="DARKROOM">Phòng tối (Darkroom)</option>
+                        <option value="STUDIO">Studio chụp ảnh</option>
+                    </select>
+                    <select class="select" id="fStudio" aria-label="Lọc theo cơ sở"><option value="">Tất cả cơ sở</option></select>
+                    <select class="select" id="fStatus" aria-label="Lọc theo trạng thái">
+                        <option value="">Mọi trạng thái</option>
+                        <option value="AVAILABLE" selected>Đang hoạt động</option>
+                        <option value="INACTIVE">Đã ẩn</option>
+                        <option value="MAINTENANCE">Bảo trì</option>
+                    </select>
+                    <select class="select" id="fSort" aria-label="Sắp xếp">
+                        <option value="name">Sắp xếp: Tên A-Z</option>
+                        <option value="priceAsc">Giá tăng dần</option>
+                        <option value="priceDesc">Giá giảm dần</option>
+                    </select>
+                    <span class="spacer"></span>
+                    <button class="btn btn-ghost" id="addStudioBtn">+ Thêm cơ sở</button>
+                    <button class="btn btn-primary" id="addRoomBtn">+ Thêm phòng</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="table-wrap">
+                    <table class="data">
+                        <thead>
+                            <tr>
+                                <th>Phòng</th><th>Cơ sở</th><th>Loại hình</th>
+                                <th class="num">Sức chứa</th><th class="num">Giá / giờ</th><th>Trạng thái</th><th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="rows"></tbody>
+                    </table>
+                </div>
+                <div class="muted small" id="summary" style="margin-top:12px;"></div>
+            </div>
+        </main>
+    </div>
+</div>
+
+<!-- Modal thêm / sửa phòng -->
+<div class="modal-overlay" id="roomModal" role="dialog" aria-modal="true" aria-labelledby="roomModalTitle">
+    <form class="modal" id="roomForm" novalidate>
+        <div class="modal-head"><span id="roomModalTitle">Thêm phòng</span><button type="button" class="icon-btn" data-close aria-label="Đóng">✕</button></div>
+        <div class="form-grid">
+            <div class="field full">
+                <label for="rName">Tên phòng</label>
+                <input class="input" id="rName" maxlength="100" required>
+                <div class="err" data-err="name"></div>
+            </div>
+            <div class="field">
+                <label for="rStudio">Cơ sở</label>
+                <select class="select" id="rStudio" required></select>
+                <div class="err" data-err="studio_id"></div>
+            </div>
+            <div class="field">
+                <label for="rType">Loại hình</label>
+                <select class="select" id="rType">
+                    <option value="DARKROOM">Phòng tối (Darkroom)</option>
+                    <option value="STUDIO">Studio chụp ảnh</option>
+                </select>
+            </div>
+            <div class="field">
+                <label for="rPrice">Giá thuê (VNĐ / giờ)</label>
+                <input class="input" id="rPrice" type="number" min="0" step="1000" required>
+                <div class="err" data-err="price_per_hour"></div>
+            </div>
+            <div class="field">
+                <label for="rCap">Sức chứa (người)</label>
+                <input class="input" id="rCap" type="number" min="1" step="1" required>
+                <div class="err" data-err="capacity"></div>
+            </div>
+            <div class="field full">
+                <label for="rDesc">Mô tả</label>
+                <textarea class="textarea" id="rDesc" maxlength="2000"></textarea>
+            </div>
+        </div>
+        <div class="modal-foot">
+            <button type="button" class="btn btn-ghost" data-close>Hủy</button>
+            <button type="submit" class="btn btn-primary" id="roomSave">Lưu phòng</button>
+        </div>
+    </form>
+</div>
+
+<!-- Modal thêm cơ sở (Studio) -->
+<div class="modal-overlay" id="studioModal" role="dialog" aria-modal="true" aria-labelledby="studioModalTitle">
+    <form class="modal" id="studioForm" novalidate>
+        <div class="modal-head"><span id="studioModalTitle">Thêm cơ sở mới</span><button type="button" class="icon-btn" data-close aria-label="Đóng">✕</button></div>
+        <div class="form-grid">
+            <div class="field full"><label for="sName">Tên cơ sở</label><input class="input" id="sName" maxlength="100" required><div class="err" data-err="name"></div></div>
+            <div class="field full"><label for="sAddr">Địa chỉ</label><input class="input" id="sAddr" maxlength="255" required><div class="err" data-err="address"></div></div>
+            <div class="field"><label for="sPhone">Số điện thoại</label><input class="input" id="sPhone" maxlength="20"></div>
+            <div class="field full"><label for="sDesc">Mô tả</label><textarea class="textarea" id="sDesc" maxlength="4000"></textarea></div>
+        </div>
+        <div class="modal-foot">
+            <button type="button" class="btn btn-ghost" data-close>Hủy</button>
+            <button type="submit" class="btn btn-primary">Lưu cơ sở</button>
+        </div>
+    </form>
+</div>
+
+<script src="provider-common.js"></script>
+<script>
+(async function () {
+    const P = Provider, $ = id => document.getElementById(id);
+    await P.mountPC('rooms', 'Phòng & Studio');
+
+    let studios = [], rooms = [], editingId = null;
+
+    /* ---------- Tải dữ liệu ---------- */
+    async function load() {
+        try {
+            studios = await P.data.studios();
+            rooms = await P.data.rooms(studios);
+            P.refreshChrome();
+            fillStudioSelects();
+            render();
+        } catch (err) {
+            const box = $('pageError'); box.hidden = false; box.textContent = 'Không tải được dữ liệu: ' + err.message;
+        }
+    }
+    function fillStudioSelects() {
+        const keep = $('fStudio').value;
+        $('fStudio').innerHTML = '<option value="">Tất cả cơ sở</option>' + studios.map(s => `<option value="${s.studio_id}">${P.esc(s.name)}</option>`).join('');
+        $('fStudio').value = keep;
+        $('rStudio').innerHTML = studios.map(s => `<option value="${s.studio_id}">${P.esc(s.name)}</option>`).join('');
+    }
+    const studioName = id => (studios.find(s => s.studio_id === id) || {}).name || '—';
+
+    /* ---------- Hiển thị bảng ---------- */
+    function render() {
+        const q = $('search').value.trim().toLowerCase();
+        let list = rooms.filter(r =>
+            (!q || r.name.toLowerCase().includes(q)) &&
+            (!$('fType').value || r.room_type === $('fType').value) &&
+            (!$('fStudio').value || String(r.studio_id) === $('fStudio').value) &&
+            (!$('fStatus').value || r.status === $('fStatus').value));
+        const sort = $('fSort').value;
+        list.sort((a, b) => sort === 'priceAsc' ? a.price_per_hour - b.price_per_hour : sort === 'priceDesc' ? b.price_per_hour - a.price_per_hour : a.name.localeCompare(b.name, 'vi'));
+
+        $('rows').innerHTML = list.map(r => {
+            const st = P.ROOM_STATUS[r.status] || { label: r.status, cls: 'muted' };
+            const hidden = r.status === 'INACTIVE';
+            return `<tr>
+                <td><strong>${P.esc(r.name)}</strong>${r.description ? `<span class="sub">${P.esc(r.description.slice(0, 70))}${r.description.length > 70 ? '…' : ''}</span>` : ''}</td>
+                <td>${P.esc(studioName(r.studio_id))}</td>
+                <td>${P.esc(P.ROOM_TYPES[r.room_type] || r.room_type)}</td>
+                <td class="num">${r.capacity}</td>
+                <td class="num">${P.money(r.price_per_hour)}</td>
+                <td><span class="badge ${st.cls}">${st.label}</span></td>
+                <td><div class="row-actions">
+                    <button class="btn btn-ghost btn-sm" data-edit="${r.room_id}">Sửa</button>
+                    <button class="btn ${hidden ? 'btn-ok' : 'btn-bad'} btn-sm" data-toggle="${r.room_id}">${hidden ? 'Hiện lại' : 'Ẩn phòng'}</button>
+                </div></td>
+            </tr>`;
+        }).join('') || `<tr><td colspan="7" class="empty">${rooms.length ? 'Không có phòng nào khớp bộ lọc.' : 'Chưa có phòng nào. Hãy bấm “+ Thêm phòng”.'}</td></tr>`;
+        $('summary').textContent = `Hiển thị ${list.length} / ${rooms.length} phòng • ${studios.length} cơ sở`;
+    }
+    ['search', 'fType', 'fStudio', 'fStatus', 'fSort'].forEach(id => $(id).addEventListener(id === 'search' ? 'input' : 'change', render));
+
+    /* ---------- Modal ---------- */
+    let lastFocus = null;
+    function openModal(id) { lastFocus = document.activeElement; $(id).classList.add('open'); const f = $(id).querySelector('input,select,textarea'); if (f) f.focus(); }
+    function closeModal(el) { el.classList.remove('open'); if (lastFocus) lastFocus.focus(); }
+    document.querySelectorAll('.modal-overlay').forEach(ov => {
+        ov.addEventListener('click', e => { if (e.target === ov || e.target.hasAttribute('data-close')) closeModal(ov); });
+    });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') document.querySelectorAll('.modal-overlay.open').forEach(closeModal); });
+
+    function clearErrors(form) { form.querySelectorAll('[data-err]').forEach(e => e.textContent = ''); form.querySelectorAll('.invalid').forEach(e => e.classList.remove('invalid')); }
+    function setErr(form, key, msg, inputId) { const e = form.querySelector(`[data-err="${key}"]`); if (e) e.textContent = msg; if (inputId) $(inputId).classList.add('invalid'); }
+
+    function openRoomForm(room) {
+        if (!studios.length) { P.toast('Bạn cần tạo cơ sở (Studio) trước khi thêm phòng.', 'warn'); openStudioForm(); return; }
+        editingId = room ? room.room_id : null;
+        clearErrors($('roomForm'));
+        $('roomModalTitle').textContent = room ? 'Sửa thông tin phòng' : 'Thêm phòng';
+        $('rName').value = room ? room.name : '';
+        $('rStudio').value = room ? room.studio_id : studios[0].studio_id;
+        $('rStudio').disabled = !!room;           // backend không cho đổi cơ sở khi sửa
+        $('rType').value = room ? room.room_type : 'DARKROOM';
+        $('rPrice').value = room ? room.price_per_hour : '';
+        $('rCap').value = room ? room.capacity : '';
+        $('rDesc').value = room ? (room.description || '') : '';
+        openModal('roomModal');
+    }
+    function openStudioForm() { clearErrors($('studioForm')); $('studioForm').reset(); openModal('studioModal'); }
+
+    $('addRoomBtn').onclick = () => openRoomForm(null);
+    $('addStudioBtn').onclick = openStudioForm;
+
+    /* ---------- Lưu phòng ---------- */
+    $('roomForm').addEventListener('submit', async e => {
+        e.preventDefault();
+        const f = $('roomForm'); clearErrors(f);
+        const payload = {
+            studio_id: Number($('rStudio').value),
+            name: $('rName').value.trim(),
+            room_type: $('rType').value,
+            capacity: parseInt($('rCap').value, 10),
+            price_per_hour: parseFloat($('rPrice').value),
+            description: $('rDesc').value.trim() || null
+        };
+        let bad = false;
+        if (payload.name.length < 2) { setErr(f, 'name', 'Tên phòng tối thiểu 2 ký tự.', 'rName'); bad = true; }
+        if (!(payload.price_per_hour >= 0)) { setErr(f, 'price_per_hour', 'Nhập giá thuê hợp lệ (≥ 0).', 'rPrice'); bad = true; }
+        if (!(payload.capacity >= 1)) { setErr(f, 'capacity', 'Sức chứa phải từ 1 người.', 'rCap'); bad = true; }
+        if (!payload.studio_id) { setErr(f, 'studio_id', 'Chọn cơ sở.', 'rStudio'); bad = true; }
+        if (bad) return;
+
+        const btn = $('roomSave'); btn.disabled = true; btn.textContent = 'Đang lưu...';
+        try {
+            await P.data.saveRoom(editingId, payload);
+            closeModal($('roomModal'));
+            P.toast(editingId ? 'Đã cập nhật phòng.' : 'Đã thêm phòng mới.', 'ok');
+            await load();
+        } catch (err) {
+            if (err.status === 401 || err.status === 403) P.toast('Phiên đăng nhập không hợp lệ hoặc không đủ quyền: ' + err.message, 'bad');
+            else P.toast('Lưu thất bại: ' + err.message, 'bad');
+        } finally { btn.disabled = false; btn.textContent = 'Lưu phòng'; }
+    });
+
+    /* ---------- Lưu cơ sở ---------- */
+    $('studioForm').addEventListener('submit', async e => {
+        e.preventDefault();
+        const f = $('studioForm'); clearErrors(f);
+        const payload = { name: $('sName').value.trim(), address: $('sAddr').value.trim(), phone: $('sPhone').value.trim() || null, description: $('sDesc').value.trim() || null };
+        let bad = false;
+        if (payload.name.length < 2) { setErr(f, 'name', 'Tên cơ sở tối thiểu 2 ký tự.', 'sName'); bad = true; }
+        if (payload.address.length < 3) { setErr(f, 'address', 'Địa chỉ tối thiểu 3 ký tự.', 'sAddr'); bad = true; }
+        if (bad) return;
+        try {
+            await P.data.createStudio(payload);
+            closeModal($('studioModal'));
+            P.toast('Đã thêm cơ sở mới.', 'ok');
+            await load();
+        } catch (err) { P.toast('Lưu thất bại: ' + err.message, 'bad'); }
+    });
+
+    /* ---------- Sửa / ẩn / hiện ---------- */
+    $('rows').addEventListener('click', async e => {
+        const edit = e.target.closest('[data-edit]'), tog = e.target.closest('[data-toggle]');
+        if (edit) { openRoomForm(rooms.find(r => r.room_id === Number(edit.dataset.edit))); }
+        if (tog) {
+            const room = rooms.find(r => r.room_id === Number(tog.dataset.toggle));
+            const next = room.status === 'INACTIVE' ? 'AVAILABLE' : 'INACTIVE';
+            if (next === 'INACTIVE' && !confirm('Ẩn phòng "' + room.name + '"? Khách sẽ không thấy phòng này để đặt.')) return;
+            try {
+                await P.data.setRoomStatus(room, next);
+                P.toast(next === 'INACTIVE' ? 'Đã ẩn phòng.' : 'Đã hiện lại phòng.', 'ok');
+                await load();
+            } catch (err) { P.toast('Thao tác thất bại: ' + err.message, 'bad'); }
+        }
+    });
+
+    await load();
+})();
+</script>
+</body>
+</html>
