@@ -69,3 +69,42 @@ GROUP BY rm.room_id, rm.name, s.name, s.open_time, s.close_time
 ORDER BY occupancy_pct DESC;
 GO
 
+/* =====================================================================
+   PHẦN 2 - CÓ INDEX vs KHÔNG CÓ INDEX
+   Mỗi thí nghiệm: đo lần 1 (có index) -> xóa index -> đo lần 2 -> tạo lại index.
+   So sánh "logical reads" và "elapsed time" ở tab Messages.
+   ===================================================================== */
+
+PRINT N'=== 2A. Lịch sử đặt phòng của 1 khách: IX_Res_Customer ===';
+DECLARE @cid INT = (SELECT TOP (1) customer_id FROM dbo.Reservations GROUP BY customer_id ORDER BY COUNT(*) DESC);
+
+PRINT N'--- Có index ---';
+SELECT reservation_id, room_id, start_time, total_amount, status
+FROM dbo.Reservations WHERE customer_id = @cid ORDER BY start_time DESC;
+
+DROP INDEX IX_Res_Customer ON dbo.Reservations;
+
+PRINT N'--- KHÔNG có index (quét toàn bộ bảng) ---';
+SELECT reservation_id, room_id, start_time, total_amount, status
+FROM dbo.Reservations WHERE customer_id = @cid ORDER BY start_time DESC;
+
+CREATE INDEX IX_Res_Customer ON dbo.Reservations(customer_id, start_time DESC);   -- tạo lại
+GO
+
+PRINT N'=== 2B. Kiểm tra trùng lịch 1 phòng: IX_Res_Room_Time (chính là truy vấn trong sp_CreateReservation) ===';
+DECLARE @room INT = (SELECT TOP (1) room_id FROM dbo.Rooms ORDER BY room_id DESC);
+DECLARE @s DATETIME = DATEADD(HOUR, 10, CAST(CAST(DATEADD(DAY, 30, GETDATE()) AS DATE) AS DATETIME));
+DECLARE @e DATETIME = DATEADD(HOUR, 2, @s);
+
+PRINT N'--- Có index ---';
+SELECT COUNT(*) AS conflicts FROM dbo.Reservations
+WHERE room_id = @room AND status IN ('PENDING', 'CONFIRMED', 'IN_USE') AND start_time < @e AND end_time > @s;
+
+DROP INDEX IX_Res_Room_Time ON dbo.Reservations;
+
+PRINT N'--- KHÔNG có index ---';
+SELECT COUNT(*) AS conflicts FROM dbo.Reservations
+WHERE room_id = @room AND status IN ('PENDING', 'CONFIRMED', 'IN_USE') AND start_time < @e AND end_time > @s;
+
+CREATE INDEX IX_Res_Room_Time ON dbo.Reservations(room_id, start_time, end_time) INCLUDE (status);   -- tạo lại
+GO
