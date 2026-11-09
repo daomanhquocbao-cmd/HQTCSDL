@@ -108,3 +108,31 @@ WHERE room_id = @room AND status IN ('PENDING', 'CONFIRMED', 'IN_USE') AND start
 
 CREATE INDEX IX_Res_Room_Time ON dbo.Reservations(room_id, start_time, end_time) INCLUDE (status);   -- tạo lại
 GO
+
+/* =====================================================================
+   PHẦN 3 - VIẾT TRUY VẤN "SARGable": cùng kết quả, khác tốc độ
+   Bọc cột trong hàm (YEAR(), MONTH()) làm SQL Server không dùng được index.
+   So sánh với điều kiện khoảng thời gian trên cùng cột.
+   ===================================================================== */
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_Res_Start' AND object_id = OBJECT_ID('dbo.Reservations'))
+    CREATE INDEX IX_Res_Start ON dbo.Reservations(start_time) INCLUDE (status, total_amount);
+GO
+
+DECLARE @from DATETIME = DATEFROMPARTS(YEAR(GETDATE()) - 1, 3, 1);
+DECLARE @to   DATETIME = DATEADD(MONTH, 1, @from);
+
+PRINT N'--- KHÔNG SARGable: bọc cột trong hàm -> quét toàn bộ index ---';
+SELECT COUNT(*) AS reservations, SUM(total_amount) AS amount
+FROM dbo.Reservations
+WHERE YEAR(start_time) = YEAR(@from) AND MONTH(start_time) = MONTH(@from) AND status = 'COMPLETED';
+
+PRINT N'--- SARGable: điều kiện khoảng -> dò thẳng đến đúng vùng dữ liệu (Index Seek) ---';
+SELECT COUNT(*) AS reservations, SUM(total_amount) AS amount
+FROM dbo.Reservations
+WHERE start_time >= @from AND start_time < @to AND status = 'COMPLETED';
+GO
+
+SET STATISTICS TIME OFF;
+SET STATISTICS IO OFF;
+GO
+
