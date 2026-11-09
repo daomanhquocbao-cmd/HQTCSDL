@@ -139,3 +139,146 @@ FROM dbo.vw_ReservationDetail
 WHERE customer_id = @cid
 ORDER BY start_time DESC;
 GO
+
+/* =====================================================================
+   PHẦN B - KIỂM TRA TOÀN VẸN DỮ LIỆU (mỗi truy vấn phải trả về 0 dòng)
+   ===================================================================== */
+
+-- B1. Hai đơn còn hiệu lực cùng phòng bị chồng giờ
+SELECT a.reservation_id AS res_a, b.reservation_id AS res_b, a.room_id
+FROM dbo.Reservations a
+JOIN dbo.Reservations b ON a.room_id = b.room_id AND a.reservation_id < b.reservation_id
+WHERE a.status IN ('PENDING', 'CONFIRMED', 'IN_USE') AND b.status IN ('PENDING', 'CONFIRMED', 'IN_USE')
+  AND a.start_time < b.end_time AND a.end_time > b.start_time;
+GO
+
+-- B2. Đơn bị thanh toán vượt tổng tiền
+SELECT r.reservation_id, r.total_amount, SUM(p.amount) AS paid
+FROM dbo.Reservations r
+JOIN dbo.Payments p ON p.reservation_id = r.reservation_id AND p.status = 'SUCCESS'
+GROUP BY r.reservation_id, r.total_amount
+HAVING SUM(p.amount) > r.total_amount;
+GO
+
+-- B3. Tổng tiền đơn không khớp công thức (phòng + thiết bị + gói)
+SELECT r.reservation_id, r.total_amount,
+       CAST(DATEDIFF(MINUTE, r.start_time, r.end_time) / 60.0 * rm.price_per_hour AS DECIMAL(18,2))
+       + ISNULL((SELECT SUM(quantity * unit_price) FROM dbo.ReservationEquipments WHERE reservation_id = r.reservation_id), 0)
+       + ISNULL((SELECT SUM(price) FROM dbo.ReservationPackages WHERE reservation_id = r.reservation_id), 0) AS expected_total
+FROM dbo.Reservations r
+JOIN dbo.Rooms rm ON rm.room_id = r.room_id
+WHERE ABS(r.total_amount
+          - (CAST(DATEDIFF(MINUTE, r.start_time, r.end_time) / 60.0 * rm.price_per_hour AS DECIMAL(18,2))
+             + ISNULL((SELECT SUM(quantity * unit_price) FROM dbo.ReservationEquipments WHERE reservation_id = r.reservation_id), 0)
+             + ISNULL((SELECT SUM(price) FROM dbo.ReservationPackages WHERE reservation_id = r.reservation_id), 0))) > 0.01;
+GO
+
+-- B4. Workshop có số đăng ký vượt sức chứa
+SELECT w.workshop_id, w.capacity, COUNT(*) AS registered
+FROM dbo.Workshops w
+JOIN dbo.WorkshopRegistrations wr ON wr.workshop_id = w.workshop_id
+GROUP BY w.workshop_id, w.capacity
+HAVING COUNT(*) > w.capacity;
+GO
+
+/* =====================================================================
+   PHẦN C - KỊCH BẢN DEMO STORED PROCEDURE
+   Chạy từng khối (bôi đen + F5) hoặc chạy cả phần C một lượt.
+   Đơn demo đặt vào ~60 ngày sau, giờ 10:00-12:00 để không đụng dữ liệu mẫu.
+   ===================================================================== */
+
+DECLARE @cust INT = (SELECT user_id FROM dbo.Users WHERE username = 'customer001');
+DECLARE @cust2 INT = (SELECT user_id FROM dbo.Users WHERE username = 'customer002');
+DECLARE @admin INT = (SELECT user_id FROM dbo.Users WHERE username = 'admin');
+DECLARE @room INT, @studio INT, @provider INT;
+
+SELECT TOP (1) @room = rm.room_id, @studio = s.studio_id, @provider = s.provider_id
+FROM dbo.Rooms rm JOIN dbo.Studios s ON s.studio_id = rm.studio_id
+WHERE rm.room_type = 'STUDIO' AND rm.status = 'AVAILABLE' AND s.status = 'APPROVED'
+ORDER BY rm.room_id;
+
+DECLARE @day DATETIME = DATEADD(DAY, 60, CAST(CAST(GETDATE() AS DATE) AS DATETIME));
+DECLARE @start DATETIME = DATEADD(HOUR, 10, @day);
+DECLARE @end   DATETIME = DATEADD(HOUR, 12, @day);
+
+PRINT N'--- Bước 1: tìm phòng còn trống ---';
+EXEC dbo.sp_SearchAvailableRooms @start_time = @start, @end_time = @end, @room_type = 'STUDIO';
+
+PRINT N'--- Bước 2: khách 1 đặt phòng (thành công) ---';
+DECLARE @res INT;
+EXEC dbo.sp_CreateReservation @room_id = @room, @customer_id = @cust,
+     @start_time = @start, @end_time = @end, @customer_note = N'Demo đặt phòng', @reservation_id = @res OUTPUT;
+
+PRINT N'--- Bước 3: khách 2 đặt TRÙNG khung giờ -> phải báo lỗi 50108 ---';
+BEGIN TRY
+    EXEC dbo.sp_CreateReservation @room_id = @room, @customer_id = @cust2,
+         @start_time = @start, @end_time = @end;
+END TRY
+BEGIN CATCH
+    PRINT N'Đã chặn đúng: ' + ERROR_MESSAGE();
+END CATCH
+
+PRINT N'--- Bước 4: thuê thêm 1 máy ảnh + chọn gói Chân dung ---';
+DECLARE @eq INT = (SELECT equipment_id FROM dbo.Equipment WHERE studio_id = @studio AND category = 'CAMERA');
+DECLARE @pkg INT = (SELECT package_id FROM dbo.ServicePackages WHERE studio_id = @studio AND name = N'Gói Chân dung');
+EXEC dbo.sp_AddReservationEquipment @reservation_id = @res, @equipment_id = @eq, @quantity = 1, @actor_id = @cust;
+EXEC dbo.sp_AddReservationPackage   @reservation_id = @res, @package_id = @pkg, @actor_id = @cust;
+SELECT reservation_id, status, total_amount FROM dbo.Reservations WHERE reservation_id = @res;
+
+PRINT N'--- Bước 5: thuê vượt số lượng tồn -> phải báo lỗi 50206 ---';
+BEGIN TRY
+    EXEC dbo.sp_AddReservationEquipment @reservation_id = @res, @equipment_id = @eq, @quantity = 999, @actor_id = @cust;
+END TRY
+BEGIN CATCH
+    PRINT N'Đã chặn đúng: ' + ERROR_MESSAGE();
+END CATCH
+
+PRINT N'--- Bước 6: chủ studio xác nhận đơn -> sinh mã QR ---';
+EXEC dbo.sp_ConfirmReservation @reservation_id = @res, @actor_id = @provider;
+
+PRINT N'--- Bước 7: thanh toán cọc 50%, sau đó thử trả vượt tổng tiền -> báo lỗi 50804 ---';
+DECLARE @total DECIMAL(18,2) = (SELECT total_amount FROM dbo.Reservations WHERE reservation_id = @res);
+DECLARE @tx1 VARCHAR(100) = 'DEMO' + CAST(@res AS VARCHAR(10)) + 'X' + CAST(ABS(CHECKSUM(NEWID())) % 100000 AS VARCHAR(10));
+DECLARE @half DECIMAL(18,2) = ROUND(@total * 0.5, 0);
+EXEC dbo.sp_ProcessPayment @reservation_id = @res, @amount = @half, @payment_method = 'VNPAY',
+     @actor_id = @cust, @transaction_code = @tx1;
+BEGIN TRY
+    EXEC dbo.sp_ProcessPayment @reservation_id = @res, @amount = @total, @payment_method = 'VNPAY', @actor_id = @cust;
+END TRY
+BEGIN CATCH
+    PRINT N'Đã chặn đúng: ' + ERROR_MESSAGE();
+END CATCH
+
+PRINT N'--- Bước 8: check-in sớm (đơn ở 60 ngày sau) -> phải báo lỗi 50604 ---';
+DECLARE @qr VARCHAR(100) = (SELECT qr_code FROM dbo.Reservations WHERE reservation_id = @res);
+BEGIN TRY
+    EXEC dbo.sp_CheckIn @qr_code = @qr, @actor_id = @provider;
+END TRY
+BEGIN CATCH
+    PRINT N'Đã chặn đúng: ' + ERROR_MESSAGE();
+END CATCH
+
+PRINT N'--- Bước 9: khách hủy đơn (còn > 24h) -> được hoàn tiền ---';
+EXEC dbo.sp_CancelReservation @reservation_id = @res, @actor_id = @cust;
+
+PRINT N'--- Bước 10: lịch sử trạng thái do trigger tự ghi ---';
+SELECT history_id, old_status, new_status, changed_by, changed_at
+FROM dbo.ReservationStatusHistory WHERE reservation_id = @res ORDER BY history_id;
+
+PRINT N'--- Bước 11: đăng ký workshop (đã đủ chỗ -> lỗi 50903; còn chỗ -> thành công) ---';
+DECLARE @wFull INT = (SELECT TOP (1) workshop_id FROM dbo.Workshops WHERE status = 'CLOSED' AND start_time > GETDATE());
+DECLARE @wOpen INT = (SELECT TOP (1) workshop_id FROM dbo.Workshops WHERE status = 'OPEN' AND start_time > GETDATE() ORDER BY workshop_id);
+DECLARE @cust3 INT = (SELECT user_id FROM dbo.Users WHERE username = 'customer015');
+BEGIN TRY
+    EXEC dbo.sp_RegisterWorkshop @workshop_id = @wFull, @customer_id = @cust3;
+END TRY
+BEGIN CATCH
+    PRINT N'Đã chặn đúng: ' + ERROR_MESSAGE();
+END CATCH
+BEGIN TRY
+    EXEC dbo.sp_RegisterWorkshop @workshop_id = @wOpen, @customer_id = @cust3;
+END TRY
+BEGIN CATCH
+    PRINT N'Lưu ý (chạy lại lần 2 sẽ báo đã đăng ký): ' + ERROR_MESSAGE();
+END CATCH
+GO
