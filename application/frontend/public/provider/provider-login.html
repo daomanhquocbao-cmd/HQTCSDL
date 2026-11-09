@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Đăng nhập - Provider Hub</title>
+    <link rel="stylesheet" href="provider-pc.css">
+</head>
+<body>
+    <div class="login-wrap">
+        <form class="card login-card" id="loginForm" novalidate>
+            <div class="login-brand">
+                <span class="pc-brand-logo" style="width:46px;height:46px;font-size:1.5rem;">🎞️</span>
+                <div>
+                    <h1>Provider Hub</h1>
+                    <div class="muted small">Đăng nhập để quản lý phòng &amp; lịch đặt</div>
+                </div>
+            </div>
+
+            <div class="alert bad" id="loginError" role="alert" hidden></div>
+
+            <div class="field">
+                <label for="username">Tên đăng nhập</label>
+                <input class="input" id="username" autocomplete="username" required>
+            </div>
+            <div class="field">
+                <label for="password">Mật khẩu</label>
+                <input class="input" id="password" type="password" autocomplete="current-password" required>
+            </div>
+
+            <button class="btn btn-primary" id="loginBtn" type="submit">Đăng nhập</button>
+            <a class="btn btn-ghost" href="#" id="demoBtn">Xem thử bằng dữ liệu demo</a>
+
+            <details>
+                <summary class="muted small" style="cursor:pointer;">Cài đặt kết nối Backend</summary>
+                <div class="field" style="margin-top:10px;">
+                    <label for="apiBase">Địa chỉ API</label>
+                    <input class="input" id="apiBase" placeholder="http://127.0.0.1:8000">
+                    <div class="hint">Mặc định cổng 8000 (uvicorn app_full:app). Bấm Đăng nhập để lưu.</div>
+                </div>
+            </details>
+        </form>
+    </div>
+
+    <script src="provider-common.js"></script>
+    <script>
+        Provider.applyTheme();
+
+        const params = new URLSearchParams(location.search);
+        const next = params.get('next');
+        const defaultHome = () => window.innerWidth >= 1000 ? 'provider-pc-dashboard.html' : 'provider-index.html';
+        // Chỉ cho phép chuyển tới trang provider cùng thư mục, tránh open-redirect
+        const safeNext = n => /^provider[\w-]*\.html(\?.*)?$/.test(n || '') ? n : defaultHome();
+
+        const form = document.getElementById('loginForm');
+        const errBox = document.getElementById('loginError');
+        const apiInput = document.getElementById('apiBase');
+        apiInput.value = Provider.store.get(Provider.KEY.api) || '';
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            errBox.hidden = true;
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
+            if (!username || !password) { errBox.textContent = 'Vui lòng nhập tên đăng nhập và mật khẩu.'; errBox.hidden = false; return; }
+
+            const base = apiInput.value.trim();
+            if (base) Provider.store.set(Provider.KEY.api, base); else Provider.store.del(Provider.KEY.api);
+
+            const btn = document.getElementById('loginBtn');
+            btn.disabled = true; btn.textContent = 'Đang đăng nhập...';
+            try {
+                await Provider.login(username, password);
+                location.href = safeNext(next);
+            } catch (err) {
+                errBox.textContent = err.status === 401 ? 'Sai tên đăng nhập hoặc mật khẩu.' : err.message;
+                errBox.hidden = false;
+                btn.disabled = false; btn.textContent = 'Đăng nhập';
+            }
+        });
+
+        document.getElementById('demoBtn').addEventListener('click', (e) => {
+            e.preventDefault();
+            Provider.store.del(Provider.KEY.token);
+            Provider.store.del(Provider.KEY.user);
+            location.href = defaultHome();
+        });
+    </script>
+</body>
+</html>

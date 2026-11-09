@@ -349,7 +349,7 @@
                     <div class="section-title">Bảo mật & Phiên làm việc</div>
                     <button class="action-link-btn" onclick="alert('Chức năng đổi mật khẩu đang phát triển')">🔑 Đổi mật khẩu tài khoản</button>
                     <button class="action-link-btn" onclick="alert('Đã cập nhật Token phiên làm việc JWT thành công')">🔄 Làm mới Token phân quyền (JWT)</button>
-                    <button class="action-link-btn danger" onclick="if(confirm('Bạn có chắc chắn muốn đăng xuất?')) window.location.href='provider-index.html';">🚪 Đăng xuất tài khoản</button>
+                    <button class="action-link-btn danger" onclick="if(confirm('Bạn có chắc chắn muốn đăng xuất?')) Provider.logout();">🚪 Đăng xuất tài khoản</button>
                 </div>
 
             </div>
@@ -454,5 +454,27 @@
         }
     </script>
 
+<script src="provider-common.js"></script>
+    <script>Provider.addPcShortcut('provider-pc-profile.html');</script>
+    <script>
+        // Nếu đã đăng nhập thật: thay thông tin demo bằng thông tin tài khoản từ Backend
+        (async function () {
+            if (!Provider.token()) return;
+            try {
+                const me = await Provider.data.me();
+                if (!Provider.isLive()) return;
+                document.getElementById('userName').innerText = me.username;
+                document.getElementById('avatarDisplay').innerText = Provider.initials(me.username);
+                document.getElementById('userEmailDisplay').innerText = me.email;
+                document.getElementById('emailInput').value = me.email;
+                document.querySelector('.profile-role-badge').innerText = 'QUYỀN: ' + String(me.role).toUpperCase();
+                window.fullUserId = String(me.user_id);
+                document.getElementById('maskedUserId').innerText = getMaskedId(String(me.user_id));
+                const studios = await Provider.data.studios();
+                const rows = document.querySelectorAll('.info-row');
+                rows.forEach(r => { if (r.textContent.includes('Cơ sở quản lý')) r.querySelector('strong').innerText = studios.length + ' cơ sở'; });
+            } catch (e) { /* giữ dữ liệu demo */ }
+        })();
+    </script>
 </body>
 </html>
