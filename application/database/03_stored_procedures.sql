@@ -120,6 +120,53 @@ LEFT JOIN (SELECT reservation_id, SUM(amount) AS paid
            GROUP BY reservation_id) p ON p.reservation_id = r.reservation_id;
 GO
 
+/* =====================================================================
+   PHẦN C - TRIGGER
+   ===================================================================== */
+
+-- C1. Tự ghi lịch sử mỗi khi đơn được tạo hoặc đổi trạng thái.
+--     Procedure truyền "ai đang thao tác" qua SESSION_CONTEXT (key 'user_id').
+CREATE OR ALTER TRIGGER dbo.trg_Reservations_Audit
+ON dbo.Reservations
+AFTER INSERT, UPDATE
+AS
+BEGIN
+    SET NOCOUNT ON;
+    DECLARE @uid INT = TRY_CAST(SESSION_CONTEXT(N'user_id') AS INT);
+
+    INSERT INTO dbo.ReservationStatusHistory (reservation_id, changed_by, old_status, new_status)
+    SELECT i.reservation_id,
+           ISNULL(@uid, CASE WHEN d.reservation_id IS NULL THEN i.customer_id END),
+           d.status, i.status
+    FROM inserted i
+    LEFT JOIN deleted d ON d.reservation_id = i.reservation_id
+    WHERE d.reservation_id IS NULL          -- vừa tạo mới
+       OR d.status <> i.status;             -- hoặc đổi trạng thái
+END;
+GO
+
+-- C2. Chỉ cho đánh giá khi đơn đã COMPLETED, đúng khách, đúng studio.
+CREATE OR ALTER TRIGGER dbo.trg_Reviews_Validate
+ON dbo.Reviews
+AFTER INSERT, UPDATE
+AS
+BEGIN
+    SET NOCOUNT ON;
+    IF EXISTS (
+        SELECT 1
+        FROM inserted i
+        JOIN dbo.Reservations r ON r.reservation_id = i.reservation_id
+        JOIN dbo.Rooms rm ON rm.room_id = r.room_id
+        WHERE r.status <> 'COMPLETED'
+           OR r.customer_id <> i.customer_id
+           OR rm.studio_id <> i.studio_id)
+    BEGIN
+        IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+        THROW 50900, N'Chỉ được đánh giá đơn đã hoàn thành của chính mình, và đúng studio.', 1;
+    END
+END;
+GO
+
 
 
 
