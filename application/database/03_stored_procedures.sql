@@ -457,7 +457,249 @@ BEGIN
     END CATCH
 END;
 GO
+-- D7. Hủy đơn + hoàn tiền.
+--     Chính sách: khách hủy trước giờ bắt đầu >= 24h được hoàn tiền; dưới 24h không hoàn.
+--     Chủ studio / admin hủy thì luôn hoàn tiền.
+CREATE OR ALTER PROCEDURE dbo.sp_CancelReservation
+    @reservation_id INT,
+    @actor_id       INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+    BEGIN TRY
+        IF dbo.fn_CanManageReservation(@reservation_id, @actor_id) = 0
+                           THROW 50501, N'Bạn không có quyền hủy đơn này.', 1;
 
+        BEGIN TRANSACTION;
+
+        DECLARE @status VARCHAR(20), @start DATETIME, @customer_id INT;
+        SELECT @status = status, @start = start_time, @customer_id = customer_id
+        FROM dbo.Reservations WITH (UPDLOCK) WHERE reservation_id = @reservation_id;
+
+        IF @status NOT IN ('PENDING', 'CONFIRMED')
+                           THROW 50502, N'Chỉ hủy được đơn PENDING hoặc CONFIRMED.', 1;
+
+        DECLARE @refund BIT = CASE WHEN @actor_id <> @customer_id OR DATEDIFF(HOUR, GETDATE(), @start) >= 24
+                                   THEN 1 ELSE 0 END;
+
+        EXEC sys.sp_set_session_context @key = N'user_id', @value = @actor_id;
+        UPDATE dbo.Reservations SET status = 'CANCELLED' WHERE reservation_id = @reservation_id;
+        EXEC sys.sp_set_session_context @key = N'user_id', @value = NULL;
+
+        UPDATE dbo.Payments SET status = 'FAILED'   WHERE reservation_id = @reservation_id AND status = 'PENDING';
+        IF @refund = 1
+            UPDATE dbo.Payments SET status = 'REFUNDED' WHERE reservation_id = @reservation_id AND status = 'SUCCESS';
+
+        COMMIT TRANSACTION;
+
+        SELECT @reservation_id AS reservation_id, 'CANCELLED' AS status,
+               CASE WHEN @refund = 1 THEN N'Đã hoàn tiền các khoản đã thanh toán'
+                    ELSE N'Hủy sát giờ (< 24h): không hoàn tiền' END AS result;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+        EXEC sys.sp_set_session_context @key = N'user_id', @value = NULL;
+        THROW;
+    END CATCH
+END;
+GO
+
+-- D8. Check-in bằng mã QR (nhân viên studio / admin quét)
+--     Cho vào sớm tối đa 30 phút trước giờ bắt đầu.
+CREATE OR ALTER PROCEDURE dbo.sp_CheckIn
+    @qr_code  VARCHAR(100),
+    @actor_id INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+    BEGIN TRY
+        BEGIN TRANSACTION;
+
+        DECLARE @reservation_id INT, @status VARCHAR(20), @start DATETIME, @end DATETIME, @provider_id INT;
+        SELECT @reservation_id = r.reservation_id, @status = r.status, @start = r.start_time,
+               @end = r.end_time, @provider_id = s.provider_id
+        FROM dbo.Reservations r WITH (UPDLOCK)
+        JOIN dbo.Rooms rm ON rm.room_id = r.room_id
+        JOIN dbo.Studios s ON s.studio_id = rm.studio_id
+        WHERE r.qr_code = @qr_code;
+
+        IF @reservation_id IS NULL THROW 50601, N'Mã QR không hợp lệ.', 1;
+        IF @actor_id <> @provider_id AND NOT EXISTS (SELECT 1 FROM dbo.Users WHERE user_id = @actor_id AND role = 'ADMIN')
+                                   THROW 50602, N'Chỉ nhân viên studio hoặc admin mới được check-in.', 1;
+        IF @status <> 'CONFIRMED'  THROW 50603, N'Đơn chưa được xác nhận hoặc đã sử dụng.', 1;
+        IF GETDATE() < DATEADD(MINUTE, -30, @start) OR GETDATE() > @end
+                                   THROW 50604, N'Chưa đến giờ check-in (sớm nhất 30 phút) hoặc đã quá giờ.', 1;
+
+        EXEC sys.sp_set_session_context @key = N'user_id', @value = @actor_id;
+        UPDATE dbo.Reservations SET status = 'IN_USE' WHERE reservation_id = @reservation_id;
+        EXEC sys.sp_set_session_context @key = N'user_id', @value = NULL;
+
+        INSERT INTO dbo.ServiceSessions (reservation_id, checkin_time, status)
+        VALUES (@reservation_id, GETDATE(), 'IN_USE');
+
+        COMMIT TRANSACTION;
+        SELECT @reservation_id AS reservation_id, 'IN_USE' AS status, N'Check-in thành công' AS result;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+        EXEC sys.sp_set_session_context @key = N'user_id', @value = NULL;
+        THROW;
+    END CATCH
+END;
+GO
+
+-- D9. Check-out: kết thúc phiên, đơn -> COMPLETED, trừ kho vật tư tiêu hao
+CREATE OR ALTER PROCEDURE dbo.sp_CheckOut
+    @reservation_id INT,
+    @actor_id       INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+    BEGIN TRY
+        BEGIN TRANSACTION;
+
+        DECLARE @status VARCHAR(20), @provider_id INT;
+        SELECT @status = r.status, @provider_id = s.provider_id
+        FROM dbo.Reservations r WITH (UPDLOCK)
+        JOIN dbo.Rooms rm ON rm.room_id = r.room_id
+        JOIN dbo.Studios s ON s.studio_id = rm.studio_id
+        WHERE r.reservation_id = @reservation_id;
+
+        IF @status IS NULL THROW 50701, N'Không tìm thấy đơn.', 1;
+        IF @actor_id <> @provider_id AND NOT EXISTS (SELECT 1 FROM dbo.Users WHERE user_id = @actor_id AND role = 'ADMIN')
+                           THROW 50702, N'Chỉ nhân viên studio hoặc admin mới được check-out.', 1;
+        IF @status <> 'IN_USE' THROW 50703, N'Đơn chưa check-in hoặc đã kết thúc.', 1;
+
+        UPDATE dbo.ServiceSessions
+        SET checkout_time = GETDATE(), status = 'CHECKED_OUT'
+        WHERE reservation_id = @reservation_id;
+
+        EXEC sys.sp_set_session_context @key = N'user_id', @value = @actor_id;
+        UPDATE dbo.Reservations SET status = 'COMPLETED' WHERE reservation_id = @reservation_id;
+        EXEC sys.sp_set_session_context @key = N'user_id', @value = NULL;
+
+        -- Trừ kho vật tư tiêu hao (CONSUMABLE): gom tổng theo từng thiết bị rồi mới trừ
+        UPDATE e
+        SET e.quantity = CASE WHEN e.quantity - d.qty < 0 THEN 0 ELSE e.quantity - d.qty END
+        FROM dbo.Equipment e
+        JOIN (SELECT x.equipment_id, SUM(x.qty) AS qty FROM (
+                  SELECT re.equipment_id, re.quantity AS qty
+                  FROM dbo.ReservationEquipments re WHERE re.reservation_id = @reservation_id
+                  UNION ALL
+                  SELECT pe.equipment_id, pe.quantity_included
+                  FROM dbo.ReservationPackages rp
+                  JOIN dbo.PackageEquipment pe ON pe.package_id = rp.package_id
+                  WHERE rp.reservation_id = @reservation_id
+              ) x GROUP BY x.equipment_id) d ON d.equipment_id = e.equipment_id
+        WHERE e.equipment_type = 'CONSUMABLE';
+
+        COMMIT TRANSACTION;
+
+        SELECT reservation_id, actual_minutes, N'Check-out thành công' AS result
+        FROM dbo.ServiceSessions WHERE reservation_id = @reservation_id;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+        EXEC sys.sp_set_session_context @key = N'user_id', @value = NULL;
+        THROW;
+    END CATCH
+END;
+GO
+
+-- D10. Ghi nhận thanh toán (không cho trả vượt tổng tiền đơn)
+CREATE OR ALTER PROCEDURE dbo.sp_ProcessPayment
+    @reservation_id   INT,
+    @amount           DECIMAL(18,2),
+    @payment_method   VARCHAR(20),
+    @actor_id         INT,
+    @transaction_code VARCHAR(100) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+    BEGIN TRY
+        IF @amount <= 0 THROW 50801, N'Số tiền phải lớn hơn 0.', 1;
+        IF dbo.fn_CanManageReservation(@reservation_id, @actor_id) = 0
+                        THROW 50802, N'Bạn không có quyền thanh toán đơn này.', 1;
+
+        BEGIN TRANSACTION;
+
+        DECLARE @total DECIMAL(18,2), @status VARCHAR(20), @paid DECIMAL(18,2);
+        SELECT @total = total_amount, @status = status
+        FROM dbo.Reservations WITH (UPDLOCK, HOLDLOCK)          -- chống 2 lần thanh toán đồng thời vượt tổng tiền
+        WHERE reservation_id = @reservation_id;
+
+        IF @status NOT IN ('PENDING', 'CONFIRMED', 'IN_USE')
+                        THROW 50803, N'Đơn đã hủy hoặc đã hoàn tất, không nhận thanh toán.', 1;
+
+        SELECT @paid = ISNULL(SUM(amount), 0) FROM dbo.Payments
+        WHERE reservation_id = @reservation_id AND status = 'SUCCESS';
+
+        IF @paid + @amount > @total
+                        THROW 50804, N'Số tiền thanh toán vượt quá tổng tiền của đơn.', 1;
+
+        INSERT INTO dbo.Payments (reservation_id, amount, payment_method, transaction_code, status, paid_at)
+        VALUES (@reservation_id, @amount, @payment_method, @transaction_code, 'SUCCESS', GETDATE());
+
+        COMMIT TRANSACTION;
+
+        SELECT @total AS total_amount, @paid + @amount AS paid_amount, @total - @paid - @amount AS balance_due;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+        THROW;
+    END CATCH
+END;
+GO
+
+-- D11. Đăng ký workshop: kiểm tra trạng thái, trùng đăng ký, còn chỗ; đủ chỗ thì tự đóng.
+CREATE OR ALTER PROCEDURE dbo.sp_RegisterWorkshop
+    @workshop_id INT,
+    @customer_id INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+    BEGIN TRY
+        IF NOT EXISTS (SELECT 1 FROM dbo.Users WHERE user_id = @customer_id AND role = 'CUSTOMER' AND status = 'ACTIVE')
+            THROW 50901, N'Chỉ khách hàng đang hoạt động mới đăng ký được.', 1;
+
+        BEGIN TRANSACTION;
+
+        DECLARE @capacity INT, @status VARCHAR(20), @start DATETIME;
+        SELECT @capacity = capacity, @status = status, @start = start_time
+        FROM dbo.Workshops WITH (UPDLOCK, HOLDLOCK)         -- xếp hàng những người đăng ký cùng workshop
+        WHERE workshop_id = @workshop_id;
+
+        IF @capacity IS NULL   THROW 50902, N'Workshop không tồn tại.', 1;
+        IF @status <> 'OPEN'   THROW 50903, N'Workshop không còn nhận đăng ký.', 1;
+        IF @start <= GETDATE() THROW 50904, N'Workshop đã bắt đầu.', 1;
+        IF EXISTS (SELECT 1 FROM dbo.WorkshopRegistrations WHERE workshop_id = @workshop_id AND customer_id = @customer_id)
+                               THROW 50905, N'Bạn đã đăng ký workshop này rồi.', 1;
+
+        DECLARE @current INT = (SELECT COUNT(*) FROM dbo.WorkshopRegistrations WHERE workshop_id = @workshop_id);
+        IF @current >= @capacity THROW 50906, N'Workshop đã hết chỗ.', 1;
+
+        INSERT INTO dbo.WorkshopRegistrations (workshop_id, customer_id) VALUES (@workshop_id, @customer_id);
+
+        IF @current + 1 >= @capacity
+            UPDATE dbo.Workshops SET status = 'CLOSED' WHERE workshop_id = @workshop_id;
+
+        COMMIT TRANSACTION;
+        SELECT @workshop_id AS workshop_id, @current + 1 AS registered, @capacity AS capacity, N'Đăng ký thành công' AS result;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+        THROW;
+    END CATCH
+END;
+GO
+
+PRINT N'=== Đã tạo 3 hàm, 2 view, 2 trigger, 11 procedure ===';
+GO
 
 
 
