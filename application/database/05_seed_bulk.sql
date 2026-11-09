@@ -264,3 +264,185 @@ FROM dbo.Reservations r WHERE r.reservation_id > @maxRes AND r.status = 'COMPLET
 UNION ALL
 SELECT r.reservation_id, r.customer_id, 'PENDING', 'CANCELLED', DATEADD(DAY, 1, r.created_at)
 FROM dbo.Reservations r WHERE r.reservation_id > @maxRes AND r.status = 'CANCELLED';
+
+/* ---------------------------------------------------------------
+   5. PAYMENTS, SESSIONS, REVIEWS, DISPUTES
+   --------------------------------------------------------------- */
+PRINT N'5. Payments, ServiceSessions, Reviews, Disputes...';
+INSERT INTO dbo.Payments (reservation_id, amount, payment_method, transaction_code, status, paid_at, created_at)
+SELECT r.reservation_id, r.total_amount,
+       CHOOSE(r.reservation_id % 4 + 1, 'VNPAY', 'MOMO', 'STRIPE', 'BANK_TRANSFER'),
+       'TB' + CAST(r.reservation_id AS VARCHAR(10)) + 'A',
+       'SUCCESS', DATEADD(HOUR, 3, r.created_at), DATEADD(HOUR, 3, r.created_at)
+FROM dbo.Reservations r WHERE r.reservation_id > @maxRes AND r.status IN ('COMPLETED', 'IN_USE');
+
+INSERT INTO dbo.Payments (reservation_id, amount, payment_method, transaction_code, status, paid_at, created_at)
+SELECT r.reservation_id,
+       CASE WHEN r.reservation_id % 2 = 1 THEN r.total_amount ELSE ROUND(r.total_amount * 0.5, 0) END,
+       CHOOSE(r.reservation_id % 4 + 1, 'VNPAY', 'MOMO', 'STRIPE', 'BANK_TRANSFER'),
+       'TB' + CAST(r.reservation_id AS VARCHAR(10)) + 'B',
+       'SUCCESS', DATEADD(HOUR, 3, r.created_at), DATEADD(HOUR, 3, r.created_at)
+FROM dbo.Reservations r WHERE r.reservation_id > @maxRes AND r.status = 'CONFIRMED';
+
+INSERT INTO dbo.Payments (reservation_id, amount, payment_method, transaction_code, status, paid_at, created_at)
+SELECT r.reservation_id, r.total_amount, 'VNPAY',
+       'TB' + CAST(r.reservation_id AS VARCHAR(10)) + 'C',
+       'REFUNDED', DATEADD(HOUR, 3, r.created_at), DATEADD(HOUR, 3, r.created_at)
+FROM dbo.Reservations r WHERE r.reservation_id > @maxRes AND r.status = 'CANCELLED';
+
+INSERT INTO dbo.Payments (reservation_id, amount, payment_method, transaction_code, status, paid_at, created_at)
+SELECT r.reservation_id, r.total_amount, 'MOMO',
+       'TB' + CAST(r.reservation_id AS VARCHAR(10)) + 'D',
+       'PENDING', NULL, GETDATE()
+FROM dbo.Reservations r WHERE r.reservation_id > @maxRes AND r.status = 'PENDING' AND r.reservation_id % 2 = 0;
+
+INSERT INTO dbo.ServiceSessions (reservation_id, checkin_time, checkout_time, status)
+SELECT reservation_id, DATEADD(MINUTE, -5, start_time),
+       CASE WHEN status = 'COMPLETED' THEN DATEADD(MINUTE, 10, end_time) END,
+       CASE WHEN status = 'COMPLETED' THEN 'CHECKED_OUT' ELSE 'IN_USE' END
+FROM dbo.Reservations WHERE reservation_id > @maxRes AND status IN ('COMPLETED', 'IN_USE');
+
+-- 60% đơn hoàn thành có đánh giá, điểm phân bố khá thực tế
+INSERT INTO dbo.Reviews (reservation_id, studio_id, customer_id, rating, comment, created_at)
+SELECT r.reservation_id, rm.studio_id, r.customer_id,
+       CHOOSE((r.reservation_id - @maxRes) % 10 + 1, 5, 5, 4, 4, 4, 5, 3, 4, 2, 5),
+       CHOOSE((r.reservation_id - @maxRes) % 4 + 1,
+              N'Không gian đẹp, nhân viên hỗ trợ nhiệt tình.',
+              N'Thiết bị tốt, giá hợp lý, sẽ quay lại.',
+              N'Phòng ổn, thiết bị hơi cũ một chút.',
+              N'Rất tuyệt vời, thiết bị chuyên nghiệp!'),
+       DATEADD(DAY, 1, r.end_time)
+FROM dbo.Reservations r
+JOIN dbo.Rooms rm ON rm.room_id = r.room_id
+WHERE r.reservation_id > @maxRes AND r.status = 'COMPLETED' AND (r.reservation_id - @maxRes) % 5 < 3;
+
+-- Khoảng 0,5% đơn hoàn thành có khiếu nại ở nhiều trạng thái
+INSERT INTO dbo.Disputes (reservation_id, raised_by, reason, status, resolution, resolved_by, created_at, resolved_at)
+SELECT r.reservation_id, r.customer_id,
+       CHOOSE((r.reservation_id - @maxRes) % 3 + 1,
+              N'Thiết bị thuê bị lỗi giữa buổi chụp.',
+              N'Phòng không đúng như mô tả trên hệ thống.',
+              N'Bị tính thêm phí ngoài thỏa thuận.'),
+       CHOOSE((r.reservation_id - @maxRes) % 4 + 1, 'OPEN', 'IN_REVIEW', 'RESOLVED', 'REJECTED'),
+       CASE WHEN (r.reservation_id - @maxRes) % 4 >= 2 THEN N'Admin đã xem xét và phản hồi cho hai bên.' END,
+       CASE WHEN (r.reservation_id - @maxRes) % 4 >= 2 THEN @admin END,
+       DATEADD(DAY, 1, r.end_time),
+       CASE WHEN (r.reservation_id - @maxRes) % 4 >= 2 THEN DATEADD(DAY, 3, r.end_time) END
+FROM dbo.Reservations r
+WHERE r.reservation_id > @maxRes AND r.status = 'COMPLETED' AND (r.reservation_id - @maxRes) % 200 = 7;
+
+/* ---------------------------------------------------------------
+   6. WORKSHOPS + ĐĂNG KÝ, BÀI VIẾT + BÌNH LUẬN
+   --------------------------------------------------------------- */
+PRINT N'6. Workshops, CommunityPosts, PostComments...';
+;WITH st AS (
+    SELECT studio_id, CAST(ROW_NUMBER() OVER (ORDER BY studio_id) - 1 AS INT) AS idx
+    FROM dbo.Studios WHERE studio_id > @maxStudio AND status = 'APPROVED'
+), s0 AS (SELECT COUNT(*) AS c FROM st)
+INSERT INTO dbo.Workshops (expert_id, studio_id, title, description, capacity, fee, start_time, end_time, status)
+SELECT (SELECT user_id FROM dbo.Users WHERE username = 'expert' + CAST(n.i % 3 + 1 AS VARCHAR(1))),
+       CASE WHEN n.i % 5 = 0 THEN NULL ELSE st.studio_id END,
+       CHOOSE(n.i % 4 + 1, N'Tráng phim đen trắng', N'In ảnh trong phòng tối', N'Chụp chân dung phim', N'Nhập môn nhiếp ảnh 35mm')
+           + N' - khóa ' + CAST(n.i AS NVARCHAR(6)),
+       N'Workshop thực hành cho người mới bắt đầu.',
+       10 + n.i % 31,
+       (n.i % 4) * 100000,
+       DATEADD(HOUR, 9 + n.i % 8, DATEADD(DAY, (n.i % 300) - 200, @today)),
+       DATEADD(HOUR, 12 + n.i % 8, DATEADD(DAY, (n.i % 300) - 200, @today)),
+       CASE WHEN DATEADD(HOUR, 9 + n.i % 8, DATEADD(DAY, (n.i % 300) - 200, @today)) < GETDATE() THEN 'COMPLETED'
+            WHEN n.i % 10 = 9 THEN 'CLOSED'
+            ELSE 'OPEN' END
+FROM #n n
+CROSS JOIN s0
+JOIN st ON st.idx = n.i % s0.c
+WHERE n.i <= @WORKSHOPS
+ORDER BY n.i;
+
+-- Số người đăng ký = sức chứa x (1..10)/10 ; workshop thứ 10 trong mỗi chục là đầy chỗ
+;WITH w AS (
+    SELECT workshop_id, start_time, capacity,
+           CAST(ROW_NUMBER() OVER (ORDER BY workshop_id) AS INT) AS wn
+    FROM dbo.Workshops WHERE workshop_id > @maxWs
+), cu AS (
+    SELECT user_id, CAST(ROW_NUMBER() OVER (ORDER BY user_id) - 1 AS INT) AS idx
+    FROM dbo.Users WHERE username LIKE 'bcust%'
+)
+INSERT INTO dbo.WorkshopRegistrations (workshop_id, customer_id, registered_at)
+SELECT w.workshop_id, cu.user_id,
+       CASE WHEN w.start_time < GETDATE() THEN DATEADD(DAY, -10, w.start_time)
+            ELSE DATEADD(HOUR, -k.i, GETDATE()) END
+FROM w
+JOIN #n k ON k.i <= (w.capacity * (w.wn % 10 + 1)) / 10
+JOIN cu ON cu.idx = (w.wn * 13 + k.i) % @CUSTOMERS;
+
+;WITH cu AS (
+    SELECT user_id, CAST(ROW_NUMBER() OVER (ORDER BY user_id) - 1 AS INT) AS idx
+    FROM dbo.Users WHERE username LIKE 'bcust%'
+)
+INSERT INTO dbo.CommunityPosts (author_id, post_type, title, content, image_url, created_at)
+SELECT cu.user_id,
+       CHOOSE(n.i % 5 + 1, 'ARTICLE', 'TUTORIAL', 'EQUIPMENT_REVIEW', 'DISCUSSION', 'WORKSHOP_ANNOUNCEMENT'),
+       N'Bài viết cộng đồng số ' + CAST(n.i AS NVARCHAR(6)),
+       N'Nội dung chia sẻ kinh nghiệm chụp và tráng phim số ' + CAST(n.i AS NVARCHAR(6)) + N'.',
+       CASE WHEN n.i % 3 = 0 THEN N'https://images.filmplatform.vn/posts/b' + CAST(n.i AS NVARCHAR(6)) + N'.jpg' END,
+       DATEADD(MINUTE, -n.i * 30, GETDATE())
+FROM #n n JOIN cu ON cu.idx = (CAST(n.i AS BIGINT) * 31) % @CUSTOMERS
+WHERE n.i <= @POSTS
+ORDER BY n.i;
+
+DECLARE @P INT = (SELECT COUNT(*) FROM dbo.CommunityPosts WHERE post_id > @maxPost);
+;WITH p AS (
+    SELECT post_id, CAST(ROW_NUMBER() OVER (ORDER BY post_id) - 1 AS INT) AS idx
+    FROM dbo.CommunityPosts WHERE post_id > @maxPost
+), cu AS (
+    SELECT user_id, CAST(ROW_NUMBER() OVER (ORDER BY user_id) - 1 AS INT) AS idx
+    FROM dbo.Users WHERE username LIKE 'bcust%'
+)
+INSERT INTO dbo.PostComments (post_id, user_id, content, created_at)
+SELECT p.post_id, cu.user_id,
+       CHOOSE(n.i % 4 + 1, N'Bài viết rất hữu ích, cảm ơn bạn đã chia sẻ!',
+                           N'Mình cũng từng gặp trường hợp tương tự.',
+                           N'Cho mình hỏi thêm về phần này được không?',
+                           N'Hay quá, mong chờ bài tiếp theo.'),
+       DATEADD(MINUTE, -n.i * 5, GETDATE())
+FROM #n n
+JOIN p  ON p.idx  = (n.i - 1) % @P
+JOIN cu ON cu.idx = (CAST(n.i AS BIGINT) * 17) % @CUSTOMERS
+WHERE n.i <= @COMMENTS;
+
+END TRY
+BEGIN CATCH
+    -- Có lỗi giữa chừng: bật lại trigger rồi báo lỗi nguyên văn
+    IF OBJECT_ID(N'dbo.trg_Reservations_Audit', 'TR') IS NOT NULL ENABLE TRIGGER dbo.trg_Reservations_Audit ON dbo.Reservations;
+    IF OBJECT_ID(N'dbo.trg_Reviews_Validate',   'TR') IS NOT NULL ENABLE TRIGGER dbo.trg_Reviews_Validate   ON dbo.Reviews;
+    THROW;
+END CATCH
+
+-- Bật lại trigger, cập nhật thống kê để trình tối ưu chọn kế hoạch đúng
+IF OBJECT_ID(N'dbo.trg_Reservations_Audit', 'TR') IS NOT NULL ENABLE TRIGGER dbo.trg_Reservations_Audit ON dbo.Reservations;
+IF OBJECT_ID(N'dbo.trg_Reviews_Validate',   'TR') IS NOT NULL ENABLE TRIGGER dbo.trg_Reviews_Validate   ON dbo.Reviews;
+
+UPDATE STATISTICS dbo.Reservations;
+UPDATE STATISTICS dbo.Payments;
+UPDATE STATISTICS dbo.ReservationStatusHistory;
+UPDATE STATISTICS dbo.Reviews;
+UPDATE STATISTICS dbo.ServiceSessions;
+
+DROP TABLE #n;
+
+PRINT N'=== HOÀN TẤT NẠP BULK trong ' + CAST(DATEDIFF(SECOND, @t0, SYSDATETIME()) AS NVARCHAR(10)) + N' giây ===';
+SELECT 'Users' AS tbl, COUNT(*) AS n FROM dbo.Users UNION ALL
+SELECT 'Studios', COUNT(*) FROM dbo.Studios UNION ALL
+SELECT 'Rooms', COUNT(*) FROM dbo.Rooms UNION ALL
+SELECT 'Equipment', COUNT(*) FROM dbo.Equipment UNION ALL
+SELECT 'Reservations', COUNT(*) FROM dbo.Reservations UNION ALL
+SELECT 'ReservationStatusHistory', COUNT(*) FROM dbo.ReservationStatusHistory UNION ALL
+SELECT 'Payments', COUNT(*) FROM dbo.Payments UNION ALL
+SELECT 'ServiceSessions', COUNT(*) FROM dbo.ServiceSessions UNION ALL
+SELECT 'Reviews', COUNT(*) FROM dbo.Reviews UNION ALL
+SELECT 'Disputes', COUNT(*) FROM dbo.Disputes UNION ALL
+SELECT 'Workshops', COUNT(*) FROM dbo.Workshops UNION ALL
+SELECT 'WorkshopRegistrations', COUNT(*) FROM dbo.WorkshopRegistrations UNION ALL
+SELECT 'CommunityPosts', COUNT(*) FROM dbo.CommunityPosts UNION ALL
+SELECT 'PostComments', COUNT(*) FROM dbo.PostComments;
+GO
