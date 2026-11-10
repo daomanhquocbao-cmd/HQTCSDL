@@ -6,3 +6,7 @@ venv/
 .pytest_cache/
 .idea/
 .vscode/
+<<<<<<< HEAD
+=======
+.env
+>>>>>>> 8eab040 (feat: complete database setup, env config and backend dependencies)
