@@ -1,4 +1,4 @@
-"""Xác thực JWT cho module booking."""
+"""Xác thực JWT cho module booking và toàn bộ hệ thống."""
 import os
 from datetime import datetime, timedelta, timezone
 
@@ -9,12 +9,11 @@ from jose import JWTError, jwt
 JWT_SECRET = os.getenv("JWT_SECRET", "change-me-in-production")
 JWT_ALGORITHM = "HS256"
 
-# HTTPBearer trả 403 khi thiếu header Authorization
 security = HTTPBearer()
 
 
 def create_access_token(user_id: int, role: str = "CUSTOMER", expires_minutes: int = 60) -> str:
-    """Tạo JWT (dùng cho test / demo)."""
+    """Tạo chuỗi JWT mã hóa user_id, role và thời gian hết hạn."""
     payload = {
         "sub": str(user_id),
         "role": role,
@@ -26,7 +25,7 @@ def create_access_token(user_id: int, role: str = "CUSTOMER", expires_minutes: i
 def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
 ) -> dict:
-    """Giải mã token và trả về {'user_id': int, 'role': str}."""
+    """Giải mã token từ Authorization Header và trả về info user."""
     try:
         payload = jwt.decode(credentials.credentials, JWT_SECRET, algorithms=[JWT_ALGORITHM])
         user_id = int(payload["sub"])
