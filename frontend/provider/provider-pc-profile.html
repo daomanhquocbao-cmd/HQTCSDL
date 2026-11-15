@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hồ sơ &amp; Bảo mật - Provider Hub (PC)</title>
-    <link rel="stylesheet" href="provider-pc.css">
+    <link rel="stylesheet" href="../assets/css/provider-pc.css">
 </head>
 <body>
 <div class="pc-shell">
@@ -30,7 +30,7 @@
                         <dt>Email</dt><dd id="pEmail">—</dd>
                         <dt>Số điện thoại</dt><dd id="pPhone">—</dd>
                         <dt>Cơ sở quản lý</dt><dd id="pStudios">—</dd>
-                        <dt>Trạng thái</dt><dd style="color:var(--ok)">● Đã xác thực (Active)</dd>
+                        <dt>Trạng thái</dt><dd id="pStatus" style="color:var(--ok)">—</dd>
                     </dl>
                 </div>
 
@@ -42,18 +42,36 @@
                         <dt>Máy chủ API</dt><dd id="sApi">—</dd>
                     </dl>
                     <div style="display:flex;flex-direction:column;gap:10px;">
-                        <button class="btn btn-ghost" id="pwBtn" disabled title="Backend chưa có endpoint đổi mật khẩu">🔑 Đổi mật khẩu (Backend chưa hỗ trợ)</button>
                         <button class="btn btn-ghost" id="themeBtn2">🌓 Đổi giao diện sáng / tối</button>
                         <button class="btn btn-bad" id="logoutBtn">Đăng xuất</button>
                     </div>
                 </div>
             </section>
 
+            <section class="grid-2 even">
+                <form class="card" id="profileForm" novalidate>
+                    <div class="card-head"><span class="card-title">✏️ Cập nhật thông tin</span></div>
+                    <div class="field"><label for="fName">Họ và tên</label><input class="input" id="fName" maxlength="100" required></div>
+                    <div class="field"><label for="fEmail">Email</label><input class="input" id="fEmail" type="email" maxlength="100" required></div>
+                    <div class="field"><label for="fPhone">Số điện thoại</label><input class="input" id="fPhone" maxlength="20"></div>
+                    <div class="alert bad" id="profileErr" role="alert" hidden></div>
+                    <button class="btn btn-primary" type="submit">Lưu thông tin</button>
+                </form>
+                <form class="card" id="pwForm" novalidate>
+                    <div class="card-head"><span class="card-title">🔑 Đổi mật khẩu</span></div>
+                    <div class="field"><label for="pwOld">Mật khẩu hiện tại</label><input class="input" id="pwOld" type="password" autocomplete="current-password"></div>
+                    <div class="field"><label for="pwNew">Mật khẩu mới (tối thiểu 8 ký tự)</label><input class="input" id="pwNew" type="password" autocomplete="new-password"></div>
+                    <div class="field"><label for="pwNew2">Nhập lại mật khẩu mới</label><input class="input" id="pwNew2" type="password" autocomplete="new-password"></div>
+                    <div class="alert bad" id="pwErr" role="alert" hidden></div>
+                    <button class="btn btn-primary" type="submit">Đổi mật khẩu</button>
+                </form>
+            </section>
+
             <section class="card">
                 <div class="card-head"><span class="card-title">Cơ sở của bạn</span><a class="btn btn-ghost btn-sm" href="provider-pc-rooms.html">Quản lý phòng →</a></div>
                 <div class="table-wrap">
                     <table class="data">
-                        <thead><tr><th>Cơ sở</th><th>Địa chỉ</th><th>Điện thoại</th><th class="num">Đánh giá</th></tr></thead>
+                        <thead><tr><th>Cơ sở</th><th>Địa chỉ</th><th>Điện thoại</th><th>Trạng thái</th><th class="num">Đánh giá</th></tr></thead>
                         <tbody id="studioRows"></tbody>
                     </table>
                 </div>
@@ -62,7 +80,7 @@
     </div>
 </div>
 
-<script src="provider-common.js"></script>
+<script src="../assets/js/provider-common.js"></script>
 <script>
 (async function () {
     const P = Provider, $ = id => document.getElementById(id);
@@ -88,7 +106,9 @@
         $('idToggle').onclick = () => { shown = !shown; paintId(); };
 
         $('bigAvatar').textContent = P.initials(me.username);
-        $('pName').textContent = me.username;
+        $('pName').textContent = me.full_name || me.username;
+        $('pStatus').textContent = me.status === 'ACTIVE' || !me.status ? '● Đang hoạt động' : '○ ' + me.status;
+        $('fName').value = me.full_name || ''; $('fEmail').value = me.email || ''; $('fPhone').value = me.phone || '';
         $('pRole').textContent = 'QUYỀN: ' + String(me.role).toUpperCase();
         $('pEmail').textContent = me.email || '—';
         $('pPhone').textContent = me.phone || 'Chưa cập nhật';
@@ -97,14 +117,37 @@
         $('sState').textContent = P.isLive() ? '● Đang đăng nhập' : '○ Chế độ demo (chưa đăng nhập)';
         const exp = P.token() ? jwtExp(P.token()) : null;
         $('sExp').textContent = exp ? exp.toLocaleString('vi-VN') : '—';
-        $('sApi').textContent = P.apiBase();
+        $('sApi').textContent = P.apiBase() || location.origin;
 
         $('studioRows').innerHTML = studios.map(s => `<tr>
             <td><strong>${P.esc(s.name)}</strong></td><td>${P.esc(s.address)}</td><td>${P.esc(s.phone || '—')}</td>
+            <td>${(() => { const st = P.STUDIO_STATUS[s.status] || { label: s.status, cls: 'muted' }; return `<span class="badge ${st.cls}">${st.label}</span>`; })()}</td>
             <td class="num">${s.avg_rating != null ? '⭐ ' + Number(s.avg_rating).toFixed(1) + ' (' + (s.review_count || 0) + ')' : '—'}</td></tr>`).join('')
-            || '<tr><td colspan="4" class="empty">Chưa có cơ sở nào.</td></tr>';
+            || '<tr><td colspan="5" class="empty">Chưa có cơ sở nào.</td></tr>';
     } catch (err) { const b = $('pageError'); b.hidden = false; b.textContent = 'Không tải được dữ liệu: ' + err.message; }
 
+    const showErr = (id, msg) => { const b = $(id); b.hidden = !msg; b.textContent = msg || ''; };
+    $('profileForm').addEventListener('submit', async e => {
+        e.preventDefault(); showErr('profileErr', '');
+        const body = { full_name: $('fName').value.trim(), email: $('fEmail').value.trim(), phone: $('fPhone').value.trim() || null };
+        if (body.full_name.length < 2) return showErr('profileErr', 'Họ tên tối thiểu 2 ký tự.');
+        if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(body.email)) return showErr('profileErr', 'Email không hợp lệ.');
+        try {
+            const u = await P.data.updateProfile(body);
+            P.refreshChrome(u); $('pName').textContent = u.full_name || u.username;
+            $('pEmail').textContent = u.email; $('pPhone').textContent = u.phone || 'Chưa cập nhật';
+            P.toast('Đã lưu thông tin.', 'ok');
+        } catch (err) { showErr('profileErr', err.status === 404 || err.status === 405 ? 'Backend chưa có endpoint cập nhật hồ sơ (PATCH /api/users/me).' : err.message); }
+    });
+    $('pwForm').addEventListener('submit', async e => {
+        e.preventDefault(); showErr('pwErr', '');
+        const o = $('pwOld').value, n = $('pwNew').value;
+        if (!P.isLive()) return showErr('pwErr', 'Cần đăng nhập thật (không phải chế độ demo) để đổi mật khẩu.');
+        if (!o || n.length < 8) return showErr('pwErr', 'Nhập mật khẩu hiện tại và mật khẩu mới tối thiểu 8 ký tự.');
+        if (n !== $('pwNew2').value) return showErr('pwErr', 'Hai mật khẩu mới không khớp.');
+        try { await P.data.changePassword(o, n); e.target.reset(); P.toast('Đã đổi mật khẩu.', 'ok'); }
+        catch (err) { showErr('pwErr', err.status === 404 || err.status === 405 ? 'Backend chưa có endpoint đổi mật khẩu (POST /api/users/change-password).' : err.message); }
+    });
     $('themeBtn2').onclick = P.toggleTheme;
     $('logoutBtn').onclick = () => { if (confirm('Bạn có chắc chắn muốn đăng xuất?')) P.logout(); };
 })();

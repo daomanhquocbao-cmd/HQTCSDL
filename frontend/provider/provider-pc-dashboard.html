@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tổng quan - Provider Hub (PC)</title>
-    <link rel="stylesheet" href="provider-pc.css">
+    <link rel="stylesheet" href="../assets/css/provider-pc.css">
 </head>
 <body>
 <div class="pc-shell">
@@ -40,14 +40,14 @@
             <section class="grid-2">
                 <div class="card">
                     <div class="card-head">
-                        <span class="card-title">📈 Doanh thu 5 tháng gần nhất</span>
+                        <span class="card-title">📈 Doanh thu 6 tháng gần nhất</span>
                         <span class="badge ok" id="revDelta" hidden></span>
                     </div>
                     <div class="chart" id="chart" role="img" aria-label="Biểu đồ cột doanh thu theo tháng"></div>
                     <div class="chart-labels" id="chartLabels"></div>
                 </div>
                 <div class="card">
-                    <div class="card-head"><span class="card-title">🏆 Phòng được đặt nhiều nhất</span></div>
+                    <div class="card-head"><span class="card-title">🏆 Phòng hiệu quả nhất</span></div>
                     <div id="topRooms"></div>
                 </div>
             </section>
@@ -72,49 +72,35 @@
     </div>
 </div>
 
-<script src="provider-common.js"></script>
+<script src="../assets/js/provider-common.js"></script>
 <script>
 (async function () {
     const P = Provider, $ = id => document.getElementById(id);
     await P.mountPC('dashboard', 'Tổng quan quản lý');
 
     try {
-        const studios = await P.data.studios();
-        const [rooms, bookings] = await Promise.all([P.data.rooms(studios), P.data.bookings()]);
+        const [ov, rooms, bookings] = await Promise.all([P.data.overview(), P.data.rooms(), P.data.bookings()]);
         P.refreshChrome();
 
         const activeRooms = rooms.filter(r => r.status === 'AVAILABLE');
         const roomName = id => (rooms.find(r => r.room_id === id) || {}).name || ('Phòng #' + id);
-        const custName = b => b.customer_name || ('Khách #' + b.customer_id);
+        const custName = b => b.customer_name || b.customer || ('Khách #' + b.customer_id);
 
-        /* --- Doanh thu theo tháng (đơn đã duyệt / hoàn thành) --- */
-        const paid = bookings.filter(b => b.status === 'CONFIRMED' || b.status === 'COMPLETED');
+        /* --- Doanh thu theo tháng (tiền đã thanh toán thành công) --- */
         const now = new Date();
-        let months;
-        if (P.isLive()) {
-            months = [];
-            for (let i = 4; i >= 0; i--) {
-                const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-                const total = paid.filter(b => { const t = new Date(b.start_time); return t.getFullYear() === d.getFullYear() && t.getMonth() === d.getMonth(); })
-                                  .reduce((s, b) => s + Number(b.total_amount || 0), 0);
-                months.push({ label: 'T' + (d.getMonth() + 1), value: total });
-            }
-        } else {
-            months = P.data.revenueByMonth();
-        }
-        const cur = months[months.length - 1].value, prev = months[months.length - 2].value;
+        const months = (ov.revenue_by_month || []).map(m => ({ label: 'T' + Number(String(m.month).slice(-2)), value: m.revenue }));
+        if (!months.length) months.push({ label: 'T' + (now.getMonth() + 1), value: 0 });
+        const cur = ov.revenue_this_month, prev = months.length > 1 ? months[months.length - 2].value : 0;
         $('revLabel').textContent = 'Doanh thu tháng ' + (now.getMonth() + 1) + '/' + now.getFullYear();
         $('kpiRevenue').textContent = P.money(cur);
+        $('kpiRevenueSub').textContent = 'Tổng cộng: ' + P.money(ov.revenue_total);
         if (prev > 0) {
             const pct = Math.round((cur - prev) / prev * 100);
             $('kpiRevenueSub').textContent = (pct >= 0 ? '▲ Tăng ' : '▼ Giảm ') + Math.abs(pct) + '% so với tháng trước';
             const delta = $('revDelta'); delta.hidden = false;
             delta.textContent = (pct >= 0 ? '▲ +' : '▼ ') + pct + '%';
             delta.className = 'badge ' + (pct >= 0 ? 'ok' : 'bad');
-        } else {
-            $('kpiRevenueSub').textContent = 'Chưa có dữ liệu tháng trước';
         }
-
         const max = Math.max(...months.map(m => m.value), 1);
         $('chart').innerHTML = months.map((m, i) =>
             `<div class="chart-col${i === months.length - 1 ? ' last' : ''}"><span class="chart-val">${P.moneyShort(m.value)}</span><div class="chart-bar" style="height:${Math.max(2, m.value / max * 100)}%"></div></div>`).join('');
@@ -123,29 +109,24 @@
         /* --- KPI còn lại --- */
         const pending = bookings.filter(b => b.status === 'PENDING');
         $('kpiRooms').textContent = activeRooms.length;
-        $('kpiRoomsSub').textContent = studios.length + ' cơ sở • ' + (rooms.length - activeRooms.length) + ' phòng đang ẩn/bảo trì';
-        $('kpiPending').textContent = pending.length;
-        $('kpiPendingSub').textContent = pending.length ? 'Cần xử lý sớm' : 'Không có yêu cầu nào đang chờ';
-        const rated = studios.filter(s => s.avg_rating != null);
-        if (rated.length) {
-            const reviews = rated.reduce((s, x) => s + (x.review_count || 0), 0);
-            const avg = reviews ? rated.reduce((s, x) => s + x.avg_rating * (x.review_count || 0), 0) / reviews : rated.reduce((s, x) => s + x.avg_rating, 0) / rated.length;
-            $('kpiRating').textContent = '⭐ ' + avg.toFixed(1);
-            $('kpiRatingSub').textContent = reviews + ' đánh giá';
+        $('kpiRoomsSub').textContent = ov.studio_count + ' cơ sở • ' + (rooms.length - activeRooms.length) + ' phòng đang ẩn/bảo trì • ' + ov.equipment_count + ' thiết bị';
+        $('kpiPending').textContent = ov.pending_bookings;
+        $('kpiPendingSub').textContent = ov.pending_bookings ? 'Cần xử lý sớm • ' + ov.upcoming_bookings + ' lịch sắp tới' : 'Không có yêu cầu nào đang chờ';
+        if (ov.avg_rating != null) {
+            $('kpiRating').textContent = '⭐ ' + Number(ov.avg_rating).toFixed(1);
+            $('kpiRatingSub').textContent = ov.review_count + ' đánh giá';
         } else {
             $('kpiRating').textContent = '—';
             $('kpiRatingSub').textContent = 'Chưa có đánh giá';
         }
 
-        /* --- Phòng được đặt nhiều nhất --- */
-        const counts = {};
-        bookings.filter(b => b.status !== 'CANCELLED').forEach(b => { counts[b.room_id] = (counts[b.room_id] || 0) + 1; });
-        const ranked = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 5);
-        const totalCount = ranked.reduce((s, [, c]) => s + c, 0) || 1;
+        /* --- Phòng hiệu quả nhất (theo doanh thu đơn đã duyệt) --- */
+        const ranked = ov.top_rooms || [];
+        const totalRev = ranked.reduce((s, r) => s + r.revenue, 0) || 1;
         const colors = ['var(--ok)', 'var(--primary-color)', 'var(--warn)', '#a855f7', '#ec4899'];
-        $('topRooms').innerHTML = ranked.length ? ranked.map(([id, c], i) => {
-            const pct = Math.round(c / totalCount * 100);
-            return `<div class="stat-row"><div><strong>${i + 1}. ${P.esc(roomName(Number(id)))}</strong><span>${pct}% (${c} lượt)</span></div><div class="progress"><div style="width:${pct}%;background:${colors[i % colors.length]}"></div></div></div>`;
+        $('topRooms').innerHTML = ranked.length ? ranked.map((r, i) => {
+            const pct = Math.round(r.revenue / totalRev * 100);
+            return `<div class="stat-row"><div><strong>${i + 1}. ${P.esc(r.room_name)}</strong><span>${P.moneyShort(r.revenue)} • ${r.bookings} lượt</span></div><div class="progress"><div style="width:${pct}%;background:${colors[i % colors.length]}"></div></div></div>`;
         }).join('') : '<div class="empty">Chưa có lượt đặt nào.</div>';
 
         /* --- Yêu cầu gần đây --- */

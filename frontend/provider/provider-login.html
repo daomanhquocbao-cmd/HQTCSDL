@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Đăng nhập - Provider Hub</title>
-    <link rel="stylesheet" href="provider-pc.css">
+    <link rel="stylesheet" href="../assets/css/provider-pc.css">
 </head>
 <body>
     <div class="login-wrap">
@@ -36,13 +36,13 @@
                 <div class="field" style="margin-top:10px;">
                     <label for="apiBase">Địa chỉ API</label>
                     <input class="input" id="apiBase" placeholder="http://127.0.0.1:8000">
-                    <div class="hint">Mặc định cổng 8000 (uvicorn app_full:app). Bấm Đăng nhập để lưu.</div>
+                    <div class="hint">Mở qua http://localhost:8000/web/ thì để trống. Mặc định cổng 8000 (uvicorn app.main:app). Bấm Đăng nhập để lưu.</div>
                 </div>
             </details>
         </form>
     </div>
 
-    <script src="provider-common.js"></script>
+    <script src="../assets/js/provider-common.js"></script>
     <script>
         Provider.applyTheme();
 

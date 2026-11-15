@@ -452,7 +452,7 @@
         }
     </script>
 
-<script src="provider-common.js"></script>
+<script src="../assets/js/provider-common.js"></script>
     <script>Provider.addPcShortcut('provider-pc-bookings.html');</script>
     <script>
         // ---- Nối API thật khi đã đăng nhập ----
@@ -477,7 +477,7 @@
             pending.forEach(b => {
                 const cardId = 'card-' + b.reservation_id;
                 cardToBooking[cardId] = b.reservation_id;
-                const cust = b.customer_name || ('Khách #' + b.customer_id);
+                const cust = b.customer_name || b.customer || ('Khách #' + b.customer_id);
                 const room = roomName(b.room_id);
                 const time = P.fmtRange(b.start_time, b.end_time);
                 const hrs = P.hoursBetween(b.start_time, b.end_time);
@@ -502,11 +502,11 @@
                 closeModal();
                 if (!id) return;
                 try {
-                    await P.data.setBookingStatus(id, approve ? 'CONFIRMED' : 'CANCELLED');
+                    approve ? await P.data.confirmBooking(id) : await P.data.cancelBooking(id);
                     const card = document.getElementById(selectedCardId);
                     card.style.opacity = '0.5'; card.style.pointerEvents = 'none';
                     const tag = card.querySelector('.req-status');
-                    tag.innerText = approve ? 'Đã duyệt' : 'Đã từ chối';
+                    tag.innerText = approve ? 'Đã xác nhận' : 'Đã hủy';
                     tag.style.background = '#e2e8f0'; tag.style.color = '#64748b';
                     P.toast(approve ? 'Đã duyệt lịch đặt' : 'Đã từ chối lịch đặt', 'ok');
                 } catch (e) { P.toast(e.status === 403 ? 'Không đủ quyền: ' + e.message : 'Thao tác thất bại: ' + e.message, 'bad'); }

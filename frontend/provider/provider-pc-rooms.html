@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Phòng &amp; Studio - Provider Hub (PC)</title>
-    <link rel="stylesheet" href="provider-pc.css">
+    <link rel="stylesheet" href="../assets/css/provider-pc.css">
 </head>
 <body>
 <div class="pc-shell">
@@ -90,6 +90,21 @@
                 <input class="input" id="rCap" type="number" min="1" step="1" required>
                 <div class="err" data-err="capacity"></div>
             </div>
+            <div class="field">
+                <label for="rArea">Diện tích (m²)</label>
+                <input class="input" id="rArea" type="number" min="0" step="0.5">
+            </div>
+            <div class="field">
+                <label for="rStatus">Trạng thái</label>
+                <select class="select" id="rStatus">
+                    <option value="AVAILABLE">Đang hoạt động</option>
+                    <option value="MAINTENANCE">Bảo trì</option>
+                    <option value="INACTIVE">Đã ẩn</option>
+                </select>
+            </div>
+            <div class="field"><label for="rStyle">Phong cách</label><input class="input" id="rStyle" maxlength="100" placeholder="Vintage, tối giản..."></div>
+            <div class="field"><label for="rLight">Ánh sáng</label><input class="input" id="rLight" maxlength="200" placeholder="Đèn đỏ an toàn, Godox..."></div>
+            <div class="field full"><label for="rAmen">Tiện ích đi kèm</label><input class="input" id="rAmen" maxlength="500" placeholder="Bồn rửa, kệ phơi, máy lạnh..."></div>
             <div class="field full">
                 <label for="rDesc">Mô tả</label>
                 <textarea class="textarea" id="rDesc" maxlength="2000"></textarea>
@@ -109,7 +124,10 @@
         <div class="form-grid">
             <div class="field full"><label for="sName">Tên cơ sở</label><input class="input" id="sName" maxlength="100" required><div class="err" data-err="name"></div></div>
             <div class="field full"><label for="sAddr">Địa chỉ</label><input class="input" id="sAddr" maxlength="255" required><div class="err" data-err="address"></div></div>
+            <div class="field"><label for="sCity">Thành phố</label><input class="input" id="sCity" maxlength="100" required><div class="err" data-err="city"></div></div>
             <div class="field"><label for="sPhone">Số điện thoại</label><input class="input" id="sPhone" maxlength="20"></div>
+            <div class="field"><label for="sOpen">Giờ mở cửa</label><input class="input" id="sOpen" type="time" value="08:00" required></div>
+            <div class="field"><label for="sClose">Giờ đóng cửa</label><input class="input" id="sClose" type="time" value="21:00" required><div class="err" data-err="hours"></div></div>
             <div class="field full"><label for="sDesc">Mô tả</label><textarea class="textarea" id="sDesc" maxlength="4000"></textarea></div>
         </div>
         <div class="modal-foot">
@@ -119,7 +137,7 @@
     </form>
 </div>
 
-<script src="provider-common.js"></script>
+<script src="../assets/js/provider-common.js"></script>
 <script>
 (async function () {
     const P = Provider, $ = id => document.getElementById(id);
@@ -130,8 +148,7 @@
     /* ---------- Tải dữ liệu ---------- */
     async function load() {
         try {
-            studios = await P.data.studios();
-            rooms = await P.data.rooms(studios);
+            [studios, rooms] = await Promise.all([P.data.studios(), P.data.rooms()]);
             P.refreshChrome();
             fillStudioSelects();
             render();
@@ -163,7 +180,7 @@
             const hidden = r.status === 'INACTIVE';
             return `<tr>
                 <td><strong>${P.esc(r.name)}</strong>${r.description ? `<span class="sub">${P.esc(r.description.slice(0, 70))}${r.description.length > 70 ? '…' : ''}</span>` : ''}</td>
-                <td>${P.esc(studioName(r.studio_id))}</td>
+                <td>${P.esc(studioName(r.studio_id))}${r.area_sqm ? `<span class="sub">${r.area_sqm} m²${r.art_style ? ' • ' + P.esc(r.art_style) : ''}</span>` : ''}</td>
                 <td>${P.esc(P.ROOM_TYPES[r.room_type] || r.room_type)}</td>
                 <td class="num">${r.capacity}</td>
                 <td class="num">${P.money(r.price_per_hour)}</td>
@@ -202,6 +219,11 @@
         $('rPrice').value = room ? room.price_per_hour : '';
         $('rCap').value = room ? room.capacity : '';
         $('rDesc').value = room ? (room.description || '') : '';
+        $('rArea').value = room && room.area_sqm != null ? room.area_sqm : '';
+        $('rStyle').value = room ? (room.art_style || '') : '';
+        $('rLight').value = room ? (room.lighting || '') : '';
+        $('rAmen').value = room ? (room.amenities || '') : '';
+        $('rStatus').value = room ? room.status : 'AVAILABLE';
         openModal('roomModal');
     }
     function openStudioForm() { clearErrors($('studioForm')); $('studioForm').reset(); openModal('studioModal'); }
@@ -219,12 +241,18 @@
             room_type: $('rType').value,
             capacity: parseInt($('rCap').value, 10),
             price_per_hour: parseFloat($('rPrice').value),
-            description: $('rDesc').value.trim() || null
+            description: $('rDesc').value.trim() || null,
+            area_sqm: $('rArea').value === '' ? null : parseFloat($('rArea').value),
+            art_style: $('rStyle').value.trim() || null,
+            lighting: $('rLight').value.trim() || null,
+            amenities: $('rAmen').value.trim() || null,
+            status: $('rStatus').value
         };
         let bad = false;
         if (payload.name.length < 2) { setErr(f, 'name', 'Tên phòng tối thiểu 2 ký tự.', 'rName'); bad = true; }
         if (!(payload.price_per_hour >= 0)) { setErr(f, 'price_per_hour', 'Nhập giá thuê hợp lệ (≥ 0).', 'rPrice'); bad = true; }
         if (!(payload.capacity >= 1)) { setErr(f, 'capacity', 'Sức chứa phải từ 1 người.', 'rCap'); bad = true; }
+        if (payload.area_sqm !== null && !(payload.area_sqm > 0)) { P.toast('Diện tích phải lớn hơn 0.', 'warn'); bad = true; }
         if (!payload.studio_id) { setErr(f, 'studio_id', 'Chọn cơ sở.', 'rStudio'); bad = true; }
         if (bad) return;
 
@@ -244,15 +272,17 @@
     $('studioForm').addEventListener('submit', async e => {
         e.preventDefault();
         const f = $('studioForm'); clearErrors(f);
-        const payload = { name: $('sName').value.trim(), address: $('sAddr').value.trim(), phone: $('sPhone').value.trim() || null, description: $('sDesc').value.trim() || null };
+        const payload = { name: $('sName').value.trim(), address: $('sAddr').value.trim(), city: $('sCity').value.trim(), open_time: $('sOpen').value, close_time: $('sClose').value, phone: $('sPhone').value.trim() || null, description: $('sDesc').value.trim() || null };
         let bad = false;
         if (payload.name.length < 2) { setErr(f, 'name', 'Tên cơ sở tối thiểu 2 ký tự.', 'sName'); bad = true; }
         if (payload.address.length < 3) { setErr(f, 'address', 'Địa chỉ tối thiểu 3 ký tự.', 'sAddr'); bad = true; }
+        if (payload.city.length < 2) { setErr(f, 'city', 'Nhập thành phố.', 'sCity'); bad = true; }
+        if (!payload.open_time || !payload.close_time || payload.close_time <= payload.open_time) { setErr(f, 'hours', 'Giờ đóng cửa phải sau giờ mở cửa.', 'sClose'); bad = true; }
         if (bad) return;
         try {
             await P.data.createStudio(payload);
             closeModal($('studioModal'));
-            P.toast('Đã thêm cơ sở mới.', 'ok');
+            P.toast(P.currentUser() && P.currentUser().role === 'ADMIN' ? 'Đã thêm cơ sở mới.' : 'Đã gửi cơ sở mới, chờ admin duyệt.', 'ok');
             await load();
         } catch (err) { P.toast('Lưu thất bại: ' + err.message, 'bad'); }
     });

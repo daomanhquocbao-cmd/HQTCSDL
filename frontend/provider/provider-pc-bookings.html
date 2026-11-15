@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lịch đặt - Provider Hub (PC)</title>
-    <link rel="stylesheet" href="provider-pc.css">
+    <link rel="stylesheet" href="../assets/css/provider-pc.css">
 </head>
 <body>
 <div class="pc-shell">
@@ -13,16 +13,21 @@
         <header class="pc-topbar" id="pcTopbar"></header>
         <main class="pc-content">
             <div class="alert bad" id="pageError" role="alert" hidden></div>
-            <div class="alert warn" id="liveNote" hidden>
-                Lưu ý: endpoint <code>GET /api/bookings</code> của Backend hiện chỉ trả các đơn do chính tài khoản đang đăng nhập đặt,
-                và <code>PATCH /api/bookings/{id}/status</code> chỉ cho vai trò ADMIN. Muốn provider duyệt đơn của khách, Backend cần bổ sung endpoint riêng.
+
+            <div class="card">
+                <div class="card-head"><span class="card-title">📷 Check-in bằng mã QR</span></div>
+                <form class="scan-box" id="scanForm">
+                    <input class="input" id="scanInput" placeholder="Nhập / quét mã, vd: QR-00103-482915" aria-label="Mã QR của khách" autocomplete="off">
+                    <button class="btn btn-primary" type="submit">Check-in</button>
+                    <span class="muted small">Cho vào sớm tối đa 30 phút trước giờ bắt đầu; quá giờ kết thúc thì không check-in được.</span>
+                </form>
             </div>
 
             <div class="card">
                 <div class="toolbar">
                     <div class="tabs" id="tabs" role="tablist" aria-label="Lọc theo trạng thái"></div>
                     <span class="spacer"></span>
-                    <input class="input" id="search" type="search" placeholder="Tìm khách / phòng / ghi chú..." aria-label="Tìm kiếm đơn đặt">
+                    <input class="input" id="search" type="search" placeholder="Tìm khách / phòng / mã QR..." aria-label="Tìm kiếm đơn đặt">
                 </div>
             </div>
 
@@ -30,7 +35,7 @@
                 <div class="table-wrap">
                     <table class="data">
                         <thead>
-                            <tr><th>Mã</th><th>Khách hàng</th><th>Phòng</th><th>Thời gian</th><th class="num">Tổng tiền</th><th>Trạng thái</th><th></th></tr>
+                            <tr><th>Mã</th><th>Khách hàng</th><th>Phòng</th><th>Thời gian</th><th class="num">Tổng / Còn nợ</th><th>Trạng thái</th><th></th></tr>
                         </thead>
                         <tbody id="rows"></tbody>
                     </table>
@@ -41,10 +46,12 @@
     </div>
 </div>
 
+<!-- Xác nhận thao tác -->
 <div class="modal-overlay" id="actionModal" role="dialog" aria-modal="true" aria-labelledby="mTitle">
     <div class="modal">
         <div class="modal-head"><span id="mTitle">Xác nhận</span><button class="icon-btn" data-close aria-label="Đóng">✕</button></div>
         <dl class="kv" id="mDetails"></dl>
+        <p class="muted small" id="mHint" style="margin-top:12px;"></p>
         <div class="modal-foot">
             <button class="btn btn-ghost" data-close>Quay lại</button>
             <button class="btn btn-primary" id="mConfirm">Xác nhận</button>
@@ -52,27 +59,39 @@
     </div>
 </div>
 
-<script src="provider-common.js"></script>
+<!-- Chi tiết đơn -->
+<div class="modal-overlay" id="detailModal" role="dialog" aria-modal="true" aria-labelledby="dTitle">
+    <div class="modal wide">
+        <div class="modal-head"><span id="dTitle">Chi tiết đơn</span><button class="icon-btn" data-close aria-label="Đóng">✕</button></div>
+        <div id="dBody"></div>
+    </div>
+</div>
+
+<script src="../assets/js/provider-common.js"></script>
 <script>
 (async function () {
     const P = Provider, $ = id => document.getElementById(id);
     await P.mountPC('bookings', 'Lịch đặt');
 
-    const TABS = [['PENDING', 'Chờ duyệt'], ['CONFIRMED', 'Đã duyệt'], ['COMPLETED', 'Hoàn thành'], ['CANCELLED', 'Đã hủy'], ['', 'Tất cả']];
-    let bookings = [], rooms = [], tab = 'PENDING', pendingAction = null;
+    const TABS = [['PENDING', 'Chờ duyệt'], ['CONFIRMED', 'Đã xác nhận'], ['IN_USE', 'Đang dùng'], ['COMPLETED', 'Hoàn thành'], ['CANCELLED', 'Đã hủy'], ['', 'Tất cả']];
+    let bookings = [], tab = 'PENDING', pending = null, openId = null;
 
-    const roomName = id => (rooms.find(r => r.room_id === id) || {}).name || ('Phòng #' + id);
-    const custName = b => b.customer_name || ('Khách #' + b.customer_id);
+    const custName = b => b.customer_name || b.customer || ('Khách #' + b.customer_id);
+    const badge = (map, k) => { const s = map[k] || { label: k, cls: 'muted' }; return `<span class="badge ${s.cls}">${s.label}</span>`; };
+    const fail = (err, prefix) => P.toast((prefix || 'Thao tác thất bại') + ': ' + err.message, 'bad');
 
     async function load() {
-        try {
-            const studios = await P.data.studios();
-            [rooms, bookings] = await Promise.all([P.data.rooms(studios), P.data.bookings()]);
-            P.refreshChrome();
-            const u = P.currentUser();
-            $('liveNote').hidden = !(P.isLive() && u && String(u.role).toUpperCase() === 'PROVIDER');
-            render();
-        } catch (err) { const b = $('pageError'); b.hidden = false; b.textContent = 'Không tải được dữ liệu: ' + err.message; }
+        try { bookings = await P.data.bookings(); P.refreshChrome(); render(); }
+        catch (err) { const b = $('pageError'); b.hidden = false; b.textContent = 'Không tải được dữ liệu: ' + err.message; }
+    }
+
+    function actionButtons(b) {
+        const id = b.reservation_id, btn = (act, label, cls) => `<button class="btn ${cls} btn-sm" data-act="${act}" data-id="${id}">${label}</button>`;
+        let a = btn('DETAIL', 'Chi tiết', 'btn-ghost');
+        if (b.status === 'PENDING') a += btn('CONFIRM', 'Xác nhận', 'btn-ok') + btn('CANCEL', 'Hủy', 'btn-bad');
+        else if (b.status === 'CONFIRMED') a += btn('CHECKIN', 'Check-in', 'btn-primary') + btn('CANCEL', 'Hủy', 'btn-bad');
+        else if (b.status === 'IN_USE') a += btn('CHECKOUT', 'Check-out', 'btn-primary');
+        return a;
     }
 
     function render() {
@@ -80,75 +99,148 @@
             const n = k ? bookings.filter(b => b.status === k).length : bookings.length;
             return `<button class="tab${k === tab ? ' active' : ''}" role="tab" aria-selected="${k === tab}" data-tab="${k}">${label}<span class="count">${n}</span></button>`;
         }).join('');
-
         const q = $('search').value.trim().toLowerCase();
-        const list = bookings
-            .filter(b => (!tab || b.status === tab))
-            .filter(b => !q || (custName(b) + ' ' + roomName(b.room_id) + ' ' + (b.customer_note || '')).toLowerCase().includes(q))
+        const list = bookings.filter(b => !tab || b.status === tab)
+            .filter(b => !q || (custName(b) + ' ' + b.room_name + ' ' + (b.qr_code || '') + ' ' + (b.customer_note || '')).toLowerCase().includes(q))
             .sort((a, b) => new Date(b.start_time) - new Date(a.start_time));
-
         $('rows').innerHTML = list.map(b => {
-            const st = P.BOOKING_STATUS[b.status] || { label: b.status, cls: 'muted' };
-            const hrs = P.hoursBetween(b.start_time, b.end_time);
-            let actions = '';
-            if (b.status === 'PENDING') actions = `<button class="btn btn-ok btn-sm" data-act="CONFIRMED" data-id="${b.reservation_id}">Duyệt</button><button class="btn btn-bad btn-sm" data-act="CANCELLED" data-id="${b.reservation_id}">Từ chối</button>`;
-            else if (b.status === 'CONFIRMED') actions = `<button class="btn btn-ghost btn-sm" data-act="COMPLETED" data-id="${b.reservation_id}">Đánh dấu hoàn thành</button>`;
+            const hrs = P.hoursBetween(b.start_time, b.end_time), due = Number(b.balance_due != null ? b.balance_due : b.total_amount - b.paid_amount);
+            const live = ['PENDING', 'CONFIRMED', 'IN_USE'].includes(b.status);
             return `<tr>
                 <td>#${b.reservation_id}</td>
                 <td><strong>${P.esc(custName(b))}</strong>${b.customer_note ? `<span class="sub">${P.esc(b.customer_note)}</span>` : ''}</td>
-                <td>${P.esc(roomName(b.room_id))}</td>
+                <td>${P.esc(b.room_name)}${b.studio_name ? `<span class="sub">${P.esc(b.studio_name)}</span>` : ''}</td>
                 <td>${P.fmtRange(b.start_time, b.end_time)}<span class="sub">${hrs % 1 ? hrs.toFixed(1) : hrs} giờ</span></td>
-                <td class="num">${P.money(b.total_amount)}</td>
-                <td><span class="badge ${st.cls}">${st.label}</span></td>
-                <td><div class="row-actions">${actions}</div></td>
+                <td class="num">${P.money(b.total_amount)}${live && due > 0 ? `<span class="sub" style="color:var(--warn)">Còn nợ ${P.money(due)}</span>` : ''}</td>
+                <td>${badge(P.BOOKING_STATUS, b.status)}</td>
+                <td><div class="row-actions">${actionButtons(b)}</div></td>
             </tr>`;
         }).join('') || '<tr><td colspan="7" class="empty">Không có đơn đặt nào trong mục này.</td></tr>';
         $('summary').textContent = `Hiển thị ${list.length} / ${bookings.length} đơn`;
     }
-
     $('tabs').addEventListener('click', e => { const t = e.target.closest('[data-tab]'); if (t) { tab = t.dataset.tab; render(); } });
     $('search').addEventListener('input', render);
 
-    /* ---------- Modal xác nhận ---------- */
-    const COPY = {
-        CONFIRMED: { title: 'Xác nhận duyệt lịch đặt', btn: 'Đồng ý duyệt', color: 'var(--ok)', toast: 'Đã duyệt lịch đặt.' },
-        CANCELLED: { title: 'Xác nhận từ chối lịch đặt', btn: 'Xác nhận từ chối', color: 'var(--bad)', toast: 'Đã từ chối lịch đặt.' },
-        COMPLETED: { title: 'Đánh dấu đã hoàn thành', btn: 'Hoàn thành', color: 'var(--primary-color)', toast: 'Đơn đã được đánh dấu hoàn thành.' }
-    };
+    /* ---------- Modal ---------- */
     let lastFocus = null;
-    const modal = $('actionModal');
-    const closeModal = () => { modal.classList.remove('open'); if (lastFocus) lastFocus.focus(); };
-    modal.addEventListener('click', e => { if (e.target === modal || e.target.hasAttribute('data-close')) closeModal(); });
-    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+    const open = id => { lastFocus = document.activeElement; $(id).classList.add('open'); };
+    const close = el => { el.classList.remove('open'); if (el.id === 'detailModal') openId = null; if (lastFocus && lastFocus.focus) lastFocus.focus(); };
+    document.querySelectorAll('.modal-overlay').forEach(ov => ov.addEventListener('click', e => { if (e.target === ov || e.target.hasAttribute('data-close')) close(ov); }));
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') document.querySelectorAll('.modal-overlay.open').forEach(close); });
+
+    /* ---------- Xác nhận các thao tác chuyển trạng thái (mỗi thao tác = 1 stored procedure) ---------- */
+    const ACTIONS = {
+        CONFIRM: { title: 'Xác nhận đơn đặt', btn: 'Xác nhận đơn', cls: 'btn-primary', color: 'var(--ok)',
+            hint: 'Đơn chuyển sang CONFIRMED và hệ thống sinh mã QR để khách check-in.',
+            run: b => P.data.confirmBooking(b.reservation_id), done: r => 'Đã xác nhận. Mã QR: ' + (r && r.qr_code ? r.qr_code : '—') },
+        CANCEL: { title: 'Hủy đơn đặt', btn: 'Hủy đơn', cls: 'btn-bad', color: 'var(--bad)',
+            hint: 'Chủ studio hủy thì mọi khoản khách đã thanh toán đều được hoàn tiền (khách tự hủy sát giờ < 24h mới không được hoàn).',
+            run: b => P.data.cancelBooking(b.reservation_id), done: () => 'Đã hủy đơn và hoàn tiền các khoản đã thanh toán.' },
+        CHECKIN: { title: 'Check-in cho khách', btn: 'Check-in', cls: 'btn-primary', color: 'var(--primary-color)',
+            hint: 'Chỉ check-in được từ 30 phút trước giờ bắt đầu đến hết giờ kết thúc. Hệ thống mở phiên sử dụng.',
+            run: b => P.data.checkIn(b.qr_code), done: () => 'Check-in thành công. Đơn đang được sử dụng.' },
+        CHECKOUT: { title: 'Check-out - kết thúc phiên', btn: 'Check-out', cls: 'btn-primary', color: 'var(--primary-color)',
+            hint: 'Đơn chuyển sang COMPLETED, khách có thể đánh giá. Vật tư tiêu hao (CONSUMABLE) trong đơn sẽ bị trừ khỏi kho.',
+            run: b => P.data.checkOut(b.reservation_id), done: () => 'Check-out thành công. Đơn đã hoàn thành.' }
+    };
+    function openAction(act, b) {
+        const c = ACTIONS[act]; pending = { act, b };
+        $('mTitle').textContent = c.title; $('mTitle').style.color = c.color;
+        $('mConfirm').textContent = c.btn; $('mConfirm').className = 'btn ' + c.cls;
+        $('mHint').textContent = c.hint;
+        $('mDetails').innerHTML = `
+            <dt>Khách hàng</dt><dd>${P.esc(custName(b))}</dd>
+            <dt>Phòng</dt><dd>${P.esc(b.room_name)}</dd>
+            <dt>Thời gian</dt><dd>${P.fmtRange(b.start_time, b.end_time)}</dd>
+            <dt>Tổng tiền</dt><dd>${P.money(b.total_amount)} (đã thu ${P.money(b.paid_amount)})</dd>
+            ${b.qr_code ? `<dt>Mã QR</dt><dd><span class="qr-code">${P.esc(b.qr_code)}</span></dd>` : ''}`;
+        open('actionModal'); $('mConfirm').focus();
+    }
+    $('mConfirm').addEventListener('click', async () => {
+        if (!pending) return;
+        const btn = $('mConfirm'); btn.disabled = true;
+        const { act, b } = pending, c = ACTIONS[act];
+        try {
+            const r = await c.run(b);
+            P.toast(c.done(r), 'ok'); close($('actionModal'));
+            await load(); if (openId === b.reservation_id) await showDetail(b.reservation_id);
+        } catch (err) { fail(err); } finally { btn.disabled = false; }
+    });
+
+    /* ---------- Check-in bằng ô nhập mã QR ---------- */
+    $('scanForm').addEventListener('submit', async e => {
+        e.preventDefault();
+        const code = $('scanInput').value.trim();
+        if (!code) return P.toast('Nhập mã QR của khách.', 'warn');
+        try { const r = await P.data.checkIn(code); P.toast('Check-in thành công đơn #' + (r.reservation_id || ''), 'ok'); $('scanInput').value = ''; tab = 'IN_USE'; await load(); }
+        catch (err) { fail(err, 'Check-in thất bại'); }
+    });
+
+    /* ---------- Chi tiết đơn ---------- */
+    const dt = s => s ? P.fmtDate(s) + ' ' + P.fmtTime(s) : '—';
+    async function showDetail(id) {
+        openId = id;
+        let b;
+        try { b = await P.data.booking(id); } catch (err) { return fail(err, 'Không tải được chi tiết'); }
+        const due = Number(b.balance_due != null ? b.balance_due : b.total_amount - b.paid_amount);
+        const canPay = ['PENDING', 'CONFIRMED', 'IN_USE'].includes(b.status) && due > 0;
+        const canAdd = ['PENDING', 'CONFIRMED'].includes(b.status);
+        const eq = b.equipment || [], pk = b.packages || [], pays = b.payments || [], hist = b.history || [];
+        $('dTitle').innerHTML = `Đơn #${b.reservation_id} ${badge(P.BOOKING_STATUS, b.status)}`;
+        $('dBody').innerHTML = `
+            <dl class="kv">
+                <dt>Khách hàng</dt><dd>${P.esc(custName(b))}${b.customer_phone ? ' • ' + P.esc(b.customer_phone) : ''}</dd>
+                <dt>Phòng</dt><dd>${P.esc(b.room_name)} • ${P.esc(b.studio_name || '')}</dd>
+                <dt>Thời gian</dt><dd>${P.fmtRange(b.start_time, b.end_time)}</dd>
+                <dt>Ghi chú của khách</dt><dd>${P.esc(b.customer_note || 'Không có')}</dd>
+                <dt>Mã QR</dt><dd>${b.qr_code ? `<span class="qr-code">${P.esc(b.qr_code)}</span>` : '<span class="muted">Chưa có (sinh khi xác nhận đơn)</span>'}</dd>
+                ${b.session ? `<dt>Phiên sử dụng</dt><dd>Vào ${dt(b.session.checkin_time)} • Ra ${dt(b.session.checkout_time)}${b.session.actual_minutes != null ? ' • ' + b.session.actual_minutes + ' phút' : ''}</dd>` : ''}
+            </dl>
+            <div class="sect money-row">
+                <div><small>Tổng tiền</small><b>${P.money(b.total_amount)}</b></div>
+                <div><small>Đã thanh toán</small><b style="color:var(--ok)">${P.money(b.paid_amount)}</b></div>
+                <div><small>Còn lại</small>${b.status === 'CANCELLED' ? '<b>—</b>' : `<b style="color:${due > 0 ? 'var(--warn)' : 'var(--ok)'}">${P.money(due)}</b>`}</div>
+            </div>
+
+            <div class="sect"><h4>Thiết bị thuê thêm</h4>
+                ${eq.length ? `<table class="mini"><tr><th>Thiết bị</th><th class="num">SL</th><th class="num">Đơn giá</th></tr>${eq.map(e => `<tr><td>${P.esc(e.name)}</td><td class="num">${e.quantity}</td><td class="num">${P.money(e.unit_price)}</td></tr>`).join('')}</table>` : '<div class="muted small">Chưa thuê thiết bị nào.</div>'}
+                ${canAdd ? `<form class="inline-form" id="eqForm"><div class="field"><label for="addEq">Thiết bị</label><select class="select" id="addEq"></select></div><div class="field" style="max-width:90px"><label for="addEqQty">SL</label><input class="input" id="addEqQty" type="number" min="1" value="1"></div><button class="btn btn-ghost" type="submit">+ Thêm thiết bị</button></form>` : ''}
+            </div>
+
+            <div class="sect"><h4>Gói dịch vụ</h4>
+                ${pk.length ? `<table class="mini"><tr><th>Gói</th><th class="num">Giá</th></tr>${pk.map(p => `<tr><td>${P.esc(p.name)}${p.notes ? `<span class="muted small"> • ${P.esc(p.notes)}</span>` : ''}</td><td class="num">${P.money(p.price)}</td></tr>`).join('')}</table>` : '<div class="muted small">Chưa chọn gói nào.</div>'}
+                ${canAdd ? `<form class="inline-form" id="pkForm"><div class="field"><label for="addPk">Gói</label><select class="select" id="addPk"></select></div><button class="btn btn-ghost" type="submit">+ Thêm gói</button></form>` : ''}
+            </div>
+
+            <div class="sect"><h4>Thanh toán</h4>
+                ${pays.length ? `<table class="mini"><tr><th>Thời gian</th><th>Phương thức</th><th>Trạng thái</th><th class="num">Số tiền</th></tr>${pays.map(p => `<tr><td>${dt(p.paid_at || p.created_at)}</td><td>${P.esc(P.PAYMENT_METHOD[p.payment_method] || p.payment_method)}</td><td>${badge(P.PAYMENT_STATUS, p.status)}</td><td class="num">${P.money(p.amount)}</td></tr>`).join('')}</table>` : '<div class="muted small">Chưa có giao dịch.</div>'}
+                ${canPay ? `<form class="inline-form" id="payForm"><div class="field"><label for="payAmt">Số tiền thu (VNĐ)</label><input class="input" id="payAmt" type="number" min="1000" step="1000" max="${due}" value="${due}"></div><div class="field"><label for="payMethod">Phương thức</label><select class="select" id="payMethod">${Object.entries(P.PAYMENT_METHOD).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}</select></div><button class="btn btn-primary" type="submit">Ghi nhận thanh toán</button></form>` : ''}
+            </div>
+
+            <div class="sect"><h4>Lịch sử trạng thái</h4>
+                <ul class="timeline">${hist.map(h => `<li>${dt(h.changed_at)} — ${h.old_status ? P.esc((P.BOOKING_STATUS[h.old_status] || {}).label || h.old_status) + ' → ' : 'Tạo mới → '}<strong>${P.esc((P.BOOKING_STATUS[h.new_status] || {}).label || h.new_status)}</strong>${h.changed_by_name ? ' <span class="muted">(' + P.esc(h.changed_by_name) + ')</span>' : ''}</li>`).join('') || '<li class="muted">Chưa có lịch sử.</li>'}</ul>
+            </div>`;
+        open('detailModal');
+
+        if (canAdd) {
+            const [eqs, pks] = await Promise.all([P.data.equipment(b.studio_id), P.data.packages(b.studio_id)]);
+            const okEq = eqs.filter(e => !['BROKEN', 'RETIRED', 'UNDER_MAINTENANCE'].includes(e.status));
+            $('addEq').innerHTML = okEq.map(e => `<option value="${e.equipment_id}">${P.esc(e.name)} (${P.money(e.rental_price)}${e.equipment_type === 'CONSUMABLE' ? ', tiêu hao' : ''})</option>`).join('') || '<option value="">Không có thiết bị khả dụng</option>';
+            $('addPk').innerHTML = pks.filter(p => p.is_active).map(p => `<option value="${p.package_id}">${P.esc(p.name)} (${P.money(p.price)})</option>`).join('') || '<option value="">Không có gói khả dụng</option>';
+            $('eqForm').onsubmit = e => run(e, () => P.data.addBookingEquipment(id, { equipment_id: Number($('addEq').value), quantity: parseInt($('addEqQty').value, 10) }), 'Đã thêm thiết bị.');
+            $('pkForm').onsubmit = e => run(e, () => P.data.addBookingPackage(id, { package_id: Number($('addPk').value) }), 'Đã thêm gói dịch vụ.');
+        }
+        if (canPay) $('payForm').onsubmit = e => run(e, () => P.data.payBooking(id, { amount: parseFloat($('payAmt').value), payment_method: $('payMethod').value }), 'Đã ghi nhận thanh toán.');
+    }
+    async function run(e, fn, okMsg) {
+        e.preventDefault();
+        try { await fn(); P.toast(okMsg, 'ok'); await load(); await showDetail(openId); } catch (err) { fail(err); }
+    }
 
     $('rows').addEventListener('click', e => {
         const btn = e.target.closest('[data-act]'); if (!btn) return;
         const b = bookings.find(x => x.reservation_id === Number(btn.dataset.id));
-        const c = COPY[btn.dataset.act];
-        pendingAction = { id: b.reservation_id, status: btn.dataset.act };
-        $('mTitle').textContent = c.title; $('mTitle').style.color = c.color;
-        $('mConfirm').textContent = c.btn;
-        $('mConfirm').className = 'btn ' + (btn.dataset.act === 'CANCELLED' ? 'btn-bad' : 'btn-primary');
-        $('mDetails').innerHTML = `
-            <dt>Khách hàng</dt><dd>${P.esc(custName(b))}</dd>
-            <dt>Phòng</dt><dd>${P.esc(roomName(b.room_id))}</dd>
-            <dt>Thời gian</dt><dd>${P.fmtRange(b.start_time, b.end_time)}</dd>
-            <dt>Tổng tiền</dt><dd>${P.money(b.total_amount)}</dd>
-            <dt>Yêu cầu kèm theo</dt><dd>${P.esc(b.customer_note || 'Không có')}</dd>`;
-        lastFocus = btn; modal.classList.add('open'); $('mConfirm').focus();
-    });
-
-    $('mConfirm').addEventListener('click', async () => {
-        if (!pendingAction) return;
-        const btn = $('mConfirm'); btn.disabled = true;
-        try {
-            await P.data.setBookingStatus(pendingAction.id, pendingAction.status);
-            P.toast(COPY[pendingAction.status].toast, 'ok');
-            closeModal();
-            await load();
-        } catch (err) {
-            P.toast(err.status === 403 ? 'Không đủ quyền: ' + err.message : 'Thao tác thất bại: ' + err.message, 'bad');
-        } finally { btn.disabled = false; }
+        if (btn.dataset.act === 'DETAIL') showDetail(b.reservation_id); else openAction(btn.dataset.act, b);
     });
 
     await load();
