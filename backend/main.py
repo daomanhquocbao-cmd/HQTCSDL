@@ -8,6 +8,7 @@ from core.config import settings
 from core.exceptions import register_exception_handlers
 from core.logging_config import setup_logging
 from core.middleware import ProcessTimeMiddleware
+from provider.router import profile_router, router as provider_router
 from rooms.router import router as rooms_router
 from stats.router import router as stats_router
 from studios.router import router as studios_router
@@ -30,6 +31,8 @@ def create_app() -> FastAPI:
     register_exception_handlers(app)
 
     app.include_router(users_router)
+    app.include_router(profile_router)
+    app.include_router(provider_router)
     app.include_router(studios_router)
     app.include_router(rooms_router)
     app.include_router(booking_router)
