@@ -1,2 +1,1 @@
 
-"""Module đặt phòng (booking)."""
