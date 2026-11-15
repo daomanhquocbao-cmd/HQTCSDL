@@ -1,8 +1,11 @@
-from typing import Optional
+from typing import Literal, Optional
 from pydantic import BaseModel, Field
 
 EMAIL_PATTERN = r"^[^@\s]+@[^@\s]+\.[^@\s]+$"
 USERNAME_PATTERN = r"^[A-Za-z0-9_.]+$"
+
+PublicRole = Literal["CUSTOMER", "PROVIDER", "EXPERT"]
+
 
 class UserRegister(BaseModel):
     username: str = Field(..., min_length=3, max_length=50, pattern=USERNAME_PATTERN)
@@ -10,11 +13,13 @@ class UserRegister(BaseModel):
     password: str = Field(..., min_length=8, max_length=128)
     full_name: str = Field(..., min_length=2, max_length=100, description="Họ và tên người dùng")
     phone: Optional[str] = Field(default=None, max_length=20)
-    role: Optional[str] = Field(default="CUSTOMER", description="CUSTOMER, PROVIDER, EXPERT")
+    role: PublicRole = Field(default="CUSTOMER", description="CUSTOMER, PROVIDER hoặc EXPERT")
+
 
 class UserLogin(BaseModel):
     username: str = Field(..., min_length=1)
     password: str = Field(..., min_length=1)
+
 
 class UserOut(BaseModel):
     user_id: int
@@ -24,6 +29,7 @@ class UserOut(BaseModel):
     phone: Optional[str] = None
     role: str
     status: str
+
 
 class TokenOut(BaseModel):
     access_token: str
