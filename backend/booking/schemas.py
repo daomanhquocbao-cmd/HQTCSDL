@@ -13,6 +13,7 @@ LOCAL_TZ = timezone(timedelta(hours=7))
 class BookingStatus(str, Enum):
     PENDING = "PENDING"
     CONFIRMED = "CONFIRMED"
+    IN_USE = "IN_USE"
     CANCELLED = "CANCELLED"
     COMPLETED = "COMPLETED"
 

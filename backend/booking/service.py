@@ -146,14 +146,32 @@ def list_my_bookings(user_id: int, status: Optional[str] = None,
         conn.close()
 
 
-def _change_status(booking_id: int, new_status: str, changed_by: int) -> dict:
+# Mỗi trạng thái đích tương ứng một stored procedure (03_stored_procedures.sql).
+# Check-in (IN_USE) đi qua mã QR của đơn nên được xử lý riêng bên dưới.
+_STATUS_PROCEDURES = {
+    "CONFIRMED": "sp_ConfirmReservation",
+    "CANCELLED": "sp_CancelReservation",
+    "COMPLETED": "sp_CheckOut",
+}
+
+
+def _change_status(booking_id: int, new_status: str, actor_id: int) -> dict:
     conn = get_db_connection()
     try:
         cur = conn.cursor()
-        cur.execute(
-            "EXEC dbo.sp_UpdateReservationStatus @reservation_id = ?, @new_status = ?, @changed_by = ?",
-            booking_id, new_status, changed_by,
-        )
+        if new_status == "IN_USE":
+            cur.execute("SELECT qr_code FROM dbo.Reservations WHERE reservation_id = ?", booking_id)
+            found = cur.fetchone()
+            if found is None:
+                raise BookingNotFoundError("Không tìm thấy đơn đặt phòng")
+            if not found.qr_code:
+                raise InvalidStateError("Đơn chưa được xác nhận nên chưa có mã QR để check-in")
+            cur.execute("EXEC dbo.sp_CheckIn @qr_code = ?, @actor_id = ?", found.qr_code, actor_id)
+        elif new_status in _STATUS_PROCEDURES:
+            cur.execute(f"EXEC dbo.{_STATUS_PROCEDURES[new_status]} @reservation_id = ?, @actor_id = ?",
+                        booking_id, actor_id)
+        else:
+            raise InvalidStateError(f"Không thể chuyển đơn sang trạng thái {new_status}")
         _drain(cur)
         row = _fetch(cur, booking_id)
         conn.commit()
@@ -161,8 +179,11 @@ def _change_status(booking_id: int, new_status: str, changed_by: int) -> dict:
     except pyodbc.Error as exc:
         conn.rollback()
         msg = _extract_message(exc)
-        if "không tìm thấy đơn" in msg.lower():
+        low = msg.lower()
+        if "không tìm thấy" in low:
             raise BookingNotFoundError(msg) from exc
+        if "không có quyền" in low or "chỉ chủ studio" in low or "chỉ nhân viên" in low:
+            raise PermissionDeniedError(msg) from exc
         raise InvalidStateError(msg) from exc
     except Exception:
         conn.rollback()
