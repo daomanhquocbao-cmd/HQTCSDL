@@ -1,19 +1,28 @@
 """Entry point đầy đủ tính năng. Chạy: uvicorn app_full:app --reload
-(main.py gốc được giữ nguyên, file này không sửa gì main.py)."""
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
+(app_full.py chỉ import lại `app` từ file này)."""
+from pathlib import Path
 
-from booking.router import router as booking_router
-from core.config import settings
-from core.exceptions import register_exception_handlers
-from core.logging_config import setup_logging
-from core.middleware import ProcessTimeMiddleware
-from provider.router import profile_router, router as provider_router
-from rooms.router import router as rooms_router
-from stats.router import router as stats_router
-from studios.router import router as studios_router
-from users.router import router as users_router
-from workshops.router import router as workshops_router
+from dotenv import load_dotenv
+
+load_dotenv()  # phải chạy TRƯỚC khi import core.config / database (chúng đọc biến môi trường lúc import)
+
+from fastapi import FastAPI  # noqa: E402
+from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
+from fastapi.staticfiles import StaticFiles  # noqa: E402
+
+from booking.router import router as booking_router  # noqa: E402
+from core.config import settings  # noqa: E402
+from core.exceptions import register_exception_handlers  # noqa: E402
+from core.logging_config import setup_logging  # noqa: E402
+from core.middleware import ProcessTimeMiddleware  # noqa: E402
+from provider.router import profile_router, router as provider_router  # noqa: E402
+from rooms.router import router as rooms_router  # noqa: E402
+from stats.router import router as stats_router  # noqa: E402
+from studios.router import router as studios_router  # noqa: E402
+from users.router import router as users_router  # noqa: E402
+from workshops.router import router as workshops_router  # noqa: E402
+
+FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
 
 
 def create_app() -> FastAPI:
@@ -46,6 +55,10 @@ def create_app() -> FastAPI:
     @app.get("/health", tags=["Health"])
     def health():
         return {"status": "ok", "version": settings.app_version}
+
+    # Phục vụ giao diện tại /web (chỉ khi thư mục frontend tồn tại, vd. không có trong Docker)
+    if FRONTEND_DIR.is_dir():
+        app.mount("/web", StaticFiles(directory=FRONTEND_DIR, html=True), name="web")
 
     return app
 
