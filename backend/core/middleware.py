@@ -1,7 +1,6 @@
 """Middleware đo thời gian xử lý mỗi request."""
 import logging
 import time
-
 from starlette.middleware.base import BaseHTTPMiddleware
 
 logger = logging.getLogger("app.request")
