@@ -6,13 +6,21 @@ DB_NAME = os.getenv("DB_NAME", "FilmPhotographyPlatform")
 DB_USER = os.getenv("DB_USER", "sa")
 DB_PASSWORD = os.getenv("DB_PASSWORD", "YourStrongPassword123!")
 
-CONN_STR = (
-    f"DRIVER={{ODBC Driver 17 for SQL Server}};"
-    f"SERVER={DB_SERVER};"
-    f"DATABASE={DB_NAME};"
-    f"UID={DB_USER};"
-    f"PWD={DB_PASSWORD};"
-)
+if DB_USER:
+    CONN_STR = (
+        f"DRIVER={{ODBC Driver 17 for SQL Server}};"
+        f"SERVER={DB_SERVER};"
+        f"DATABASE={DB_NAME};"
+        f"UID={DB_USER};"
+        f"PWD={DB_PASSWORD};"
+    )
+else:
+    CONN_STR = (
+        f"DRIVER={{ODBC Driver 17 for SQL Server}};"
+        f"SERVER={DB_SERVER};"
+        f"DATABASE={DB_NAME};"
+        f"Trusted_Connection=yes;"
+    )
 
 def get_db_connection():
     try:
