@@ -40,6 +40,11 @@ Giao diện không còn đổi trạng thái tùy ý: đơn chỉ đi theo `PEND
 |---|---|
 | `GET /api/provider/overview` | `studio_count, room_count, equipment_count, total_bookings, pending_bookings, upcoming_bookings, revenue_total, revenue_this_month, avg_rating, review_count, revenue_by_month[{month 'YYYY-MM', revenue, bookings}], top_rooms[{room_id, room_name, studio_name, bookings, revenue}]`. Doanh thu chỉ tính `Payments.status = 'SUCCESS'` (khoản `REFUNDED` không tính). Điểm đánh giá lấy từ `vw_StudioRating`. |
 | `GET/POST /api/provider/studios`, `PATCH …/{id}` | Studio tạo mới ở trạng thái `PENDING` (admin tạo thì `APPROVED`). Trường: `name, address, city, phone, description, open_time, close_time`. |
+| `DELETE /api/provider/studios/{id}` | `204`. Xóa cơ sở cùng phòng / thiết bị / gói của nó. `409` nếu cơ sở đã có đơn đặt phòng hoặc workshop (khi đó chỉ nên ẩn phòng). `403` nếu không phải chủ cơ sở. |
+| `POST /api/provider/bookings/{id}/cancel` | Body tùy chọn `{"reason": "..."}` (≤ 500 ký tự). Lý do lưu vào `Reservations.cancel_reason` (cần chạy `database/06_provider_additions.sql`); chưa có cột thì vẫn hủy được nhưng phản hồi có `reason_saved: false`. Chi tiết đơn trả thêm `cancel_reason`. |
+| `GET /api/provider/disputes?status=` | Khiếu nại thuộc các cơ sở của provider (join Disputes → Reservations → Rooms → Studios). |
+| `PATCH /api/provider/disputes/{id}` | Body `{"status": "IN_REVIEW"\|"RESOLVED"\|"REJECTED", "resolution": "..."}`. `RESOLVED`/`REJECTED` bắt buộc có `resolution`; `REJECTED` chỉ admin; `409` nếu đã xử lý xong. |
+| `GET /api/provider/workshops?status=` | Workshop do chuyên gia tổ chức tại cơ sở của provider (chỉ xem), kèm `registered` / `capacity`. |
 | `GET/POST /api/provider/rooms`, `PATCH …/{id}` | Trả **mọi** trạng thái phòng (`AVAILABLE/MAINTENANCE/INACTIVE`). Trường: `studio_id, name, room_type, capacity, area_sqm, art_style, lighting, amenities, price_per_hour, description, status`. Ẩn phòng = `PATCH status=INACTIVE`. |
 | `GET/POST /api/provider/equipment`, `PATCH`, `DELETE …/{id}` | `DELETE` = đặt `status = 'RETIRED'`. |
 | `POST /api/provider/equipment/{id}/maintenance` | `{cost, description, status: SCHEDULED/DONE, next_maintenance_date}` ghi vào `EquipmentMaintenance`. |

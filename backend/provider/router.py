@@ -34,6 +34,12 @@ def update_studio(studio_id: int, data: schemas.StudioPatch, user: dict = User):
     return service.update_studio(user, studio_id, data)
 
 
+@router.delete("/studios/{studio_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_studio(studio_id: int, user: dict = User):
+    service.delete_studio(user, studio_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
 # --- rooms
 @router.get("/rooms")
 def list_rooms(studio_id: Optional[int] = Query(default=None, gt=0), user: dict = User):
@@ -91,6 +97,25 @@ def list_reviews(studio_id: Optional[int] = Query(default=None, gt=0),
 
 
 # --- bookings (luồng theo stored procedure). "checkin" phải khai báo trước "{id}".
+@router.get("/disputes")
+def list_disputes(status: Optional[str] = Query(default=None, pattern="^(OPEN|IN_REVIEW|RESOLVED|REJECTED)$"),
+                  limit: int = Query(default=100, ge=1, le=500), offset: int = Query(default=0, ge=0),
+                  user: dict = User):
+    return service.list_disputes(user, status, limit, offset)
+
+
+@router.patch("/disputes/{dispute_id}")
+def update_dispute(dispute_id: int, data: schemas.DisputePatch, user: dict = User):
+    return service.update_dispute(user, dispute_id, data)
+
+
+@router.get("/workshops")
+def list_workshops(status: Optional[str] = Query(default=None, pattern="^(OPEN|CLOSED|CANCELLED|COMPLETED)$"),
+                   limit: int = Query(default=100, ge=1, le=500), offset: int = Query(default=0, ge=0),
+                   user: dict = User):
+    return service.list_workshops(user, status, limit, offset)
+
+
 @router.get("/bookings")
 def list_bookings(status: Optional[str] = Query(default=None, pattern="^(PENDING|CONFIRMED|IN_USE|COMPLETED|CANCELLED)$"),
                   studio_id: Optional[int] = Query(default=None, gt=0),
@@ -116,8 +141,8 @@ def confirm(reservation_id: int, user: dict = User):
 
 
 @router.post("/bookings/{reservation_id}/cancel")
-def cancel(reservation_id: int, user: dict = User):
-    return service.cancel(user, reservation_id)
+def cancel(reservation_id: int, data: Optional[schemas.CancelIn] = None, user: dict = User):
+    return service.cancel(user, reservation_id, data.reason if data else None)
 
 
 @router.post("/bookings/{reservation_id}/checkout")

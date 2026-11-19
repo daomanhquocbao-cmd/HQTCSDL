@@ -190,6 +190,30 @@ def update_studio(user: dict, studio_id: int, data) -> dict:
         return _studio(cur, studio_id)
 
 
+def delete_studio(user: dict, studio_id: int) -> None:
+    """Xóa hẳn cơ sở cùng phòng / thiết bị / gói dịch vụ của nó.
+
+    Chỉ cho xóa khi cơ sở CHƯA có đơn đặt phòng hay workshop nào (các bảng đó giữ khóa ngoại và là
+    dữ liệu lịch sử / doanh thu). Nếu đã có, trả 409 để người dùng chuyển sang ẩn phòng.
+    """
+    with _db() as cur:
+        _assert_studio(cur, user, studio_id)
+        cur.execute(
+            "SELECT COUNT(*) FROM dbo.Reservations rs JOIN dbo.Rooms r ON r.room_id = rs.room_id "
+            "WHERE r.studio_id = ?", studio_id)
+        if cur.fetchone()[0]:
+            raise _err(409, "Cơ sở đã có đơn đặt phòng nên không thể xóa. "
+                            "Hãy ẩn các phòng của cơ sở này thay vì xóa.")
+        cur.execute("SELECT COUNT(*) FROM dbo.Workshops WHERE studio_id = ?", studio_id)
+        if cur.fetchone()[0]:
+            raise _err(409, "Cơ sở đang có workshop nên không thể xóa.")
+        # PackageEquipment / EquipmentMaintenance / StudioImages tự xóa theo (ON DELETE CASCADE)
+        cur.execute("DELETE FROM dbo.ServicePackages WHERE studio_id = ?", studio_id)
+        cur.execute("DELETE FROM dbo.Equipment WHERE studio_id = ?", studio_id)
+        cur.execute("DELETE FROM dbo.Rooms WHERE studio_id = ?", studio_id)
+        cur.execute("DELETE FROM dbo.Studios WHERE studio_id = ?", studio_id)
+
+
 # -------------------------------------------------------------------- rooms
 ROOM_SELECT = """
 SELECT r.room_id, r.studio_id, s.name AS studio_name, s.city, s.address, r.name, r.room_type,
@@ -360,6 +384,75 @@ def list_reviews(user: dict, studio_id: Optional[int], limit: int, offset: int) 
         return _rows(cur)
 
 
+# --------------------------------------------------------------- disputes
+DISPUTE_SELECT = (
+    "SELECT d.dispute_id, d.reservation_id, d.raised_by, u.full_name AS raised_by_name, d.reason, d.status, "
+    "d.resolution, d.created_at, d.resolved_at, rm.name AS room_name, s.studio_id, s.name AS studio_name "
+    "FROM dbo.Disputes d JOIN dbo.Reservations r ON r.reservation_id = d.reservation_id "
+    "JOIN dbo.Rooms rm ON rm.room_id = r.room_id JOIN dbo.Studios s ON s.studio_id = rm.studio_id "
+    "JOIN dbo.Users u ON u.user_id = d.raised_by WHERE 1 = 1")
+
+
+def list_disputes(user: dict, status_filter: Optional[str], limit: int, offset: int) -> List[dict]:
+    with _db() as cur:
+        clause, params = _scope(user, "s.provider_id")
+        if status_filter:
+            clause += " AND d.status = ?"
+            params.append(status_filter)
+        cur.execute(DISPUTE_SELECT + clause + " ORDER BY d.created_at DESC, d.dispute_id DESC "
+                    "OFFSET ? ROWS FETCH NEXT ? ROWS ONLY", *params, offset, limit)
+        return _rows(cur)
+
+
+def update_dispute(user: dict, dispute_id: int, data) -> dict:
+    """Provider tiếp nhận (IN_REVIEW) hoặc phản hồi/giải quyết (RESOLVED); từ chối (REJECTED) chỉ admin."""
+    with _db() as cur:
+        cur.execute("SELECT d.status, s.provider_id FROM dbo.Disputes d "
+                    "JOIN dbo.Reservations r ON r.reservation_id = d.reservation_id "
+                    "JOIN dbo.Rooms rm ON rm.room_id = r.room_id JOIN dbo.Studios s ON s.studio_id = rm.studio_id "
+                    "WHERE d.dispute_id = ?", dispute_id)
+        row = cur.fetchone()
+        if row is None:
+            raise _err(404, "Không tìm thấy khiếu nại")
+        if not _is_admin(user) and row.provider_id != user["user_id"]:
+            raise _err(403, "Khiếu nại này không thuộc studio của bạn")
+        if row.status in ("RESOLVED", "REJECTED"):
+            raise _err(409, "Khiếu nại đã được xử lý xong, không thể thay đổi.")
+        if data.status == "REJECTED" and not _is_admin(user):
+            raise _err(403, "Chỉ admin mới được bác bỏ khiếu nại.")
+        resolution = (data.resolution or "").strip() or None
+        if data.status in ("RESOLVED", "REJECTED"):
+            if not resolution or len(resolution) < 3:
+                raise _err(400, "Cần nhập nội dung phản hồi / hướng giải quyết.")
+            cur.execute("UPDATE dbo.Disputes SET status = ?, resolution = ?, resolved_by = ?, "
+                        "resolved_at = GETDATE() WHERE dispute_id = ?",
+                        data.status, resolution, user["user_id"], dispute_id)
+        else:
+            cur.execute("UPDATE dbo.Disputes SET status = ? WHERE dispute_id = ?", data.status, dispute_id)
+        cur.execute(DISPUTE_SELECT + " AND d.dispute_id = ?", dispute_id)
+        return _one(cur)
+
+
+# -------------------------------------------------------------- workshops
+def list_workshops(user: dict, status_filter: Optional[str], limit: int, offset: int) -> List[dict]:
+    """Workshop do chuyên gia tổ chức tại các cơ sở của provider (chỉ xem)."""
+    with _db() as cur:
+        clause, params = _scope(user, "s.provider_id")
+        if status_filter:
+            clause += " AND w.status = ?"
+            params.append(status_filter)
+        cur.execute(
+            "SELECT w.workshop_id, w.title, w.description, w.expert_id, e.full_name AS expert_name, "
+            "w.studio_id, s.name AS studio_name, w.capacity, "
+            "(SELECT COUNT(*) FROM dbo.WorkshopRegistrations wr WHERE wr.workshop_id = w.workshop_id) AS registered, "
+            "w.fee, w.start_time, w.end_time, w.status "
+            "FROM dbo.Workshops w JOIN dbo.Studios s ON s.studio_id = w.studio_id "
+            "JOIN dbo.Users e ON e.user_id = w.expert_id WHERE 1 = 1" + clause +
+            " ORDER BY w.start_time DESC, w.workshop_id DESC OFFSET ? ROWS FETCH NEXT ? ROWS ONLY",
+            *params, offset, limit)
+        return _rows(cur)
+
+
 # ----------------------------------------------------------------- bookings
 BOOKING_SELECT = """
 SELECT v.reservation_id, v.status, v.start_time, v.end_time, v.customer_id, v.customer,
@@ -415,7 +508,18 @@ def _booking_detail(cur, user: dict, reservation_id: int) -> dict:
     cur.execute("SELECT checkin_time, checkout_time, actual_minutes FROM dbo.ServiceSessions "
                 "WHERE reservation_id = ?", reservation_id)
     booking["session"] = _one(cur)
+    booking["cancel_reason"] = _cancel_reason(cur, reservation_id) if booking["status"] == "CANCELLED" else None
     return booking
+
+
+def _cancel_reason(cur, reservation_id: int) -> Optional[str]:
+    """Cột cancel_reason do database/06_provider_additions.sql thêm; chưa chạy script đó thì trả None."""
+    try:
+        cur.execute("SELECT cancel_reason FROM dbo.Reservations WHERE reservation_id = ?", reservation_id)
+        row = cur.fetchone()
+        return row[0] if row else None
+    except pyodbc.Error:
+        return None
 
 
 def get_booking(user: dict, reservation_id: int) -> dict:
@@ -437,9 +541,27 @@ def confirm(user: dict, reservation_id: int) -> dict:
                 reservation_id, user["user_id"])
 
 
-def cancel(user: dict, reservation_id: int) -> dict:
-    return _run(user, reservation_id, "EXEC dbo.sp_CancelReservation @reservation_id = ?, @actor_id = ?",
-                reservation_id, user["user_id"])
+def cancel(user: dict, reservation_id: int, reason: Optional[str] = None) -> dict:
+    """Hủy đơn; nếu có lý do thì lưu vào Reservations.cancel_reason (khách thấy lý do bị hủy)."""
+    reason = (reason or "").strip() or None
+    with _db() as cur:
+        _booking_detail(cur, user, reservation_id)          # 404 / 403 sớm
+        cur.execute("EXEC dbo.sp_CancelReservation @reservation_id = ?, @actor_id = ?",
+                    reservation_id, user["user_id"])
+        _drain(cur)
+        saved = False
+        if reason:
+            try:
+                cur.execute("UPDATE dbo.Reservations SET cancel_reason = ? "
+                            "WHERE reservation_id = ? AND status = 'CANCELLED'", reason, reservation_id)
+                saved = True
+            except pyodbc.Error:
+                saved = False                               # chưa chạy 06_provider_additions.sql
+        booking = _booking_detail(cur, user, reservation_id)
+        if reason:
+            booking["cancel_reason"] = reason if saved else None
+            booking["reason_saved"] = saved
+        return booking
 
 
 def checkout(user: dict, reservation_id: int) -> dict:

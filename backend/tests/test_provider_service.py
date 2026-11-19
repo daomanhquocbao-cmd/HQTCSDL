@@ -226,6 +226,43 @@ def test_studio_hours_validated(db):
         service.create_studio(PROVIDER, SimpleNamespace(**{**bad.__dict__, "open_time": "8h"}))
 
 
+def _studio_script(reservations=0, workshops=0, owner=5):
+    return [(r"SELECT provider_id FROM dbo.Studios", ["provider_id"], [(owner,)]),
+            (r"FROM dbo.Reservations rs", ["n"], [(reservations,)]),
+            (r"FROM dbo.Workshops", ["n"], [(workshops,)])]
+
+
+def test_delete_studio_removes_children_in_fk_order(db):
+    conn = db(_studio_script())
+    service.delete_studio(PROVIDER, 1)
+    order = [s.split("dbo.")[1].split()[0] for s, _ in conn.cur.log if s.startswith("DELETE")]
+    assert order == ["ServicePackages", "Equipment", "Rooms", "Studios"]
+    assert conn.commits == 1 and conn.rollbacks == 0
+
+
+@pytest.mark.parametrize("reservations,workshops", [(3, 0), (0, 1)])
+def test_delete_studio_with_history_is_409_and_deletes_nothing(db, reservations, workshops):
+    conn = db(_studio_script(reservations, workshops))
+    with pytest.raises(HTTPException) as e:
+        service.delete_studio(PROVIDER, 1)
+    assert e.value.status_code == 409
+    assert not conn.cur.sqls("DELETE")
+
+
+def test_delete_studio_of_other_provider_is_403(db):
+    conn = db(_studio_script(owner=99))
+    with pytest.raises(HTTPException) as e:
+        service.delete_studio(PROVIDER, 1)
+    assert e.value.status_code == 403 and not conn.cur.sqls("DELETE")
+
+
+def test_delete_missing_studio_is_404(db):
+    db([(r"SELECT provider_id FROM dbo.Studios", ["provider_id"], [])])
+    with pytest.raises(HTTPException) as e:
+        service.delete_studio(PROVIDER, 1)
+    assert e.value.status_code == 404
+
+
 def test_create_room_requires_own_studio(db):
     data = SimpleNamespace(studio_id=1, name="R", room_type="STUDIO", capacity=2, area_sqm=None, art_style=None,
                            lighting=None, amenities=None, price_per_hour=100000.0, description=None, status="AVAILABLE")
@@ -350,3 +387,103 @@ def test_update_profile_duplicate_email_is_409(db):
     with pytest.raises(HTTPException) as e:
         service.update_profile(PROVIDER, ProfilePatch(email="a@b.vn"))
     assert e.value.status_code == 409
+
+
+# ------------------------------------------------- lý do hủy đơn / khiếu nại / workshop
+def _cancel_script(reason_error=None):
+    script = detail_script(status="CANCELLED")
+    script.insert(0, (r"UPDATE dbo.Reservations SET cancel_reason", None, reason_error or []))
+    script.append((r"SELECT cancel_reason", ["cancel_reason"], [("Khách báo bận",)]))
+    return script
+
+
+def test_cancel_saves_reason_after_procedure(db):
+    conn = db(_cancel_script())
+    out = service.cancel(PROVIDER, 7, "  Khách báo bận ")
+    order = [s for s, _ in conn.cur.log if "sp_CancelReservation" in s or "SET cancel_reason" in s]
+    assert "sp_CancelReservation" in order[0] and "SET cancel_reason" in order[1]
+    assert conn.cur.sqls("SET cancel_reason")[0][1] == ("Khách báo bận", 7)
+    assert out["cancel_reason"] == "Khách báo bận" and out["reason_saved"] is True
+
+
+def test_cancel_without_reason_skips_update(db):
+    conn = db(_cancel_script())
+    service.cancel(PROVIDER, 7, None)
+    assert not conn.cur.sqls("SET cancel_reason")
+
+
+def test_cancel_still_succeeds_when_column_missing(db):
+    import pyodbc
+    conn = db(_cancel_script(reason_error=pyodbc.Error("Invalid column name 'cancel_reason'")))
+    out = service.cancel(PROVIDER, 7, "Bảo trì phòng")
+    assert out["status"] == "CANCELLED" and out["reason_saved"] is False and out["cancel_reason"] is None
+    assert conn.commits == 1
+
+
+DISPUTE_COLS = ["dispute_id", "status", "provider_id"]
+
+
+def _dispute_script(st="OPEN", owner=5):
+    return [(r"SELECT d\.status, s\.provider_id", DISPUTE_COLS, [(3, st, owner)]),
+            (r"d\.dispute_id, d\.reservation_id", ["dispute_id", "status"], [(3, "X")])]
+
+
+def _patch(status, resolution=None):
+    from provider.schemas import DisputePatch
+    return DisputePatch(status=status, resolution=resolution)
+
+
+def test_dispute_in_review_does_not_set_resolver(db):
+    conn = db(_dispute_script())
+    service.update_dispute(PROVIDER, 3, _patch("IN_REVIEW"))
+    sql, params = conn.cur.sqls("UPDATE dbo.Disputes")[0]
+    assert "resolved_by" not in sql and params == ("IN_REVIEW", 3)
+
+
+def test_dispute_resolve_requires_text_and_records_resolver(db):
+    conn = db(_dispute_script())
+    with pytest.raises(HTTPException) as e:
+        service.update_dispute(PROVIDER, 3, _patch("RESOLVED", "  "))
+    assert e.value.status_code == 400 and not conn.cur.sqls("UPDATE dbo.Disputes")
+    conn = db(_dispute_script())
+    service.update_dispute(PROVIDER, 3, _patch("RESOLVED", "Hoàn 50% tiền cho khách"))
+    assert conn.cur.sqls("UPDATE dbo.Disputes")[0][1] == ("RESOLVED", "Hoàn 50% tiền cho khách", 5, 3)
+
+
+@pytest.mark.parametrize("st,owner,patch,code", [
+    ("RESOLVED", 5, ("IN_REVIEW", None), 409),       # đã xử lý xong
+    ("OPEN", 99, ("IN_REVIEW", None), 403),          # của studio khác
+    ("OPEN", 5, ("REJECTED", "Không hợp lệ"), 403),  # chỉ admin được bác bỏ
+])
+def test_dispute_rules(db, st, owner, patch, code):
+    conn = db(_dispute_script(st, owner))
+    with pytest.raises(HTTPException) as e:
+        service.update_dispute(PROVIDER, 3, _patch(*patch))
+    assert e.value.status_code == code and not conn.cur.sqls("UPDATE dbo.Disputes")
+
+
+def test_admin_can_reject_dispute(db):
+    conn = db(_dispute_script(owner=99))
+    service.update_dispute(ADMIN, 3, _patch("REJECTED", "Không đủ căn cứ"))
+    assert conn.cur.sqls("UPDATE dbo.Disputes")[0][1][0] == "REJECTED"
+
+
+def test_dispute_missing_is_404(db):
+    db([(r"SELECT d\.status, s\.provider_id", DISPUTE_COLS, [])])
+    with pytest.raises(HTTPException) as e:
+        service.update_dispute(PROVIDER, 3, _patch("IN_REVIEW"))
+    assert e.value.status_code == 404
+
+
+def test_lists_of_disputes_and_workshops_are_scoped_and_filtered(db):
+    conn = db([(r"FROM dbo.Disputes", ["dispute_id"], [(1,)])])
+    assert service.list_disputes(PROVIDER, "OPEN", 50, 0) == [{"dispute_id": 1}]
+    sql, params = conn.cur.log[0]
+    assert "s.provider_id = ?" in sql and "d.status = ?" in sql and params == (5, "OPEN", 0, 50)
+    conn = db([(r"FROM dbo.Workshops", ["workshop_id"], [(2,)])])
+    assert service.list_workshops(PROVIDER, None, 50, 10) == [{"workshop_id": 2}]
+    sql, params = conn.cur.log[0]
+    assert "s.provider_id = ?" in sql and "JOIN dbo.Studios s" in sql and params == (5, 10, 50)
+    conn = db([(r"FROM dbo.Workshops", ["workshop_id"], [])])
+    service.list_workshops(ADMIN, None, 50, 0)
+    assert conn.cur.log[0][1] == (0, 50)

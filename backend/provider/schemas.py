@@ -117,3 +117,12 @@ class ProfilePatch(BaseModel):
 class ChangePasswordIn(BaseModel):
     current_password: str = Field(min_length=1)
     new_password: str = Field(min_length=8, max_length=128)
+
+
+class CancelIn(BaseModel):
+    reason: Optional[str] = Field(default=None, max_length=500, description="Lý do hủy đơn (khách sẽ thấy)")
+
+
+class DisputePatch(BaseModel):
+    status: Literal["IN_REVIEW", "RESOLVED", "REJECTED"]
+    resolution: Optional[str] = Field(default=None, max_length=4000, description="Nội dung phản hồi / hướng giải quyết")

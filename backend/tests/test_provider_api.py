@@ -12,6 +12,9 @@ PROTECTED = [
     ("get", "/api/provider/reviews"),
     ("get", "/api/provider/bookings"),
     ("get", "/api/provider/bookings/1"),
+    ("delete", "/api/provider/studios/1"),
+    ("get", "/api/provider/disputes"),
+    ("get", "/api/provider/workshops"),
 ]
 
 
