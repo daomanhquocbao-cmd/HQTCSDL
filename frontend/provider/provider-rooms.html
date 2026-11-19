@@ -2,729 +2,231 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quản Lý Studio - Provider Dashboard</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-        }
-
-        body {
-            background: #e2e8f0;
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-        }
-
-        .phone-frame {
-            width: 390px;
-            height: 800px;
-            background: #1e293b;
-            border-radius: 46px;
-            border: 10px solid #283548;
-            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
-            position: relative;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .app-screen {
-            flex: 1;
-            background: #eaf1f8;
-            color: #1e293b;
-            display: flex;
-            flex-direction: column;
-            overflow-y: auto;
-            position: relative;
-        }
-
-        .app-screen::-webkit-scrollbar {
-            display: none;
-        }
-
-        .top-bar {
-            padding: 15px 20px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            background: #ffffff;
-            border-bottom: 1px solid #e2e8f0;
-        }
-
-        .back-btn {
-            font-size: 1.2rem;
-            color: #0f172a;
-            text-decoration: none;
-            font-weight: bold;
-        }
-
-        .page-title {
-            font-size: 0.95rem;
-            font-weight: 700;
-            color: #0f172a;
-        }
-
-        .action-header {
-            padding: 15px 20px 10px 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .section-heading {
-            font-size: 0.95rem;
-            font-weight: 800;
-            color: #0f172a;
-        }
-
-        .add-btn {
-            background: #0284c7;
-            color: white;
-            border: none;
-            padding: 6px 12px;
-            border-radius: 8px;
-            font-size: 0.72rem;
-            font-weight: 700;
-            cursor: pointer;
-            text-decoration: none;
-        }
-
-        /* ----- THANH BỘ LỌC ----- */
-        .filter-toolbar {
-            padding: 0 20px 12px 20px;
-            display: flex;
-            gap: 8px;
-        }
-
-        .filter-trigger-btn {
-            flex: 1;
-            background: #ffffff;
-            border: 1px solid #cbd5e1;
-            padding: 8px 12px;
-            border-radius: 10px;
-            font-size: 0.72rem;
-            font-weight: 700;
-            color: #334155;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            cursor: pointer;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.03);
-        }
-
-        .filter-trigger-btn:hover {
-            background: #f8fafc;
-            border-color: #0284c7;
-            color: #0284c7;
-        }
-
-        /* ----- DANH SÁCH STUDIO ----- */
-        .rooms-list {
-            padding: 0 20px 20px 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-
-        .room-card {
-            background: #ffffff;
-            padding: 14px;
-            border-radius: 16px;
-            border: 1px solid #e2e8f0;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.02);
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            transition: all 0.25s ease;
-        }
-
-        .card-top {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .card-title {
-            font-size: 0.85rem;
-            font-weight: 800;
-            color: #0f172a;
-        }
-
-        .room-status {
-            font-size: 0.68rem;
-            font-weight: 700;
-            padding: 2px 8px;
-            border-radius: 10px;
-            background: #f0fdf4;
-            color: #16a34a;
-        }
-
-        .room-status.is-hidden {
-            background: #fef2f2;
-            color: #dc2626;
-        }
-
-        .room-info {
-            font-size: 0.72rem;
-            color: #475569;
-            display: flex;
-            gap: 12px;
-        }
-
-        .room-info strong {
-            color: #0284c7;
-        }
-
-        .card-actions {
-            display: flex;
-            gap: 8px;
-            margin-top: 4px;
-            border-top: 1px solid #f1f5f9;
-            padding-top: 8px;
-        }
-
-        .btn-edit {
-            flex: 1;
-            background: #f1f5f9;
-            border: 1px solid #cbd5e1;
-            color: #334155;
-            padding: 7px;
-            border-radius: 8px;
-            font-size: 0.72rem;
-            font-weight: 700;
-            cursor: pointer;
-            text-align: center;
-        }
-
-        .btn-hide {
-            flex: 1;
-            background: #fef2f2;
-            border: 1px solid #fecaca;
-            color: #dc2626;
-            padding: 7px;
-            border-radius: 8px;
-            font-size: 0.72rem;
-            font-weight: 700;
-            cursor: pointer;
-            text-align: center;
-        }
-
-        .btn-restore {
-            flex: 1;
-            background: #f0fdf4;
-            border: 1px solid #bbf7d0;
-            color: #16a34a;
-            padding: 7px;
-            border-radius: 8px;
-            font-size: 0.72rem;
-            font-weight: 700;
-            cursor: pointer;
-            text-align: center;
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: 30px 20px;
-            font-size: 0.8rem;
-            color: #64748b;
-            display: none;
-        }
-
-        /* ----- POPUP BỘ LỌC NÂNG CAO ----- */
-        .filter-modal-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(15, 23, 42, 0.6);
-            backdrop-filter: blur(2px);
-            display: flex;
-            justify-content: center;
-            align-items: flex-end;
-            z-index: 100;
-            opacity: 0;
-            pointer-events: none;
-            transition: all 0.25s ease-in-out;
-        }
-
-        .filter-modal-overlay.active {
-            opacity: 1;
-            pointer-events: auto;
-        }
-
-        .filter-modal-box {
-            background: #ffffff;
-            border-top-left-radius: 24px;
-            border-top-right-radius: 24px;
-            width: 100%;
-            max-height: 85%;
-            padding: 20px;
-            box-shadow: 0 -10px 25px rgba(0, 0, 0, 0.2);
-            display: flex;
-            flex-direction: column;
-            gap: 14px;
-            overflow-y: auto;
-            transform: translateY(100%);
-            transition: all 0.25s ease-in-out;
-        }
-
-        .filter-modal-overlay.active .filter-modal-box {
-            transform: translateY(0);
-        }
-
-        .filter-modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid #f1f5f9;
-            padding-bottom: 10px;
-        }
-
-        .filter-modal-title {
-            font-size: 0.95rem;
-            font-weight: 800;
-            color: #0f172a;
-        }
-
-        .close-filter-btn {
-            font-size: 1.2rem;
-            color: #64748b;
-            cursor: pointer;
-            border: none;
-            background: none;
-            font-weight: bold;
-        }
-
-        .filter-group {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .filter-group-title {
-            font-size: 0.75rem;
-            font-weight: 800;
-            color: #0284c7;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .filter-options-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 8px;
-        }
-
-        .filter-checkbox-label {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 0.72rem;
-            color: #334155;
-            background: #f8fafc;
-            padding: 8px 10px;
-            border-radius: 8px;
-            border: 1px solid #e2e8f0;
-            cursor: pointer;
-        }
-
-        .filter-checkbox-label input {
-            accent-color: #0284c7;
-        }
-
-        .apply-filter-btn {
-            background: #0284c7;
-            color: white;
-            border: none;
-            padding: 12px;
-            border-radius: 12px;
-            font-size: 0.8rem;
-            font-weight: 700;
-            cursor: pointer;
-            margin-top: 10px;
-            text-align: center;
-        }
-
-        .bottom-nav {
-            height: 60px;
-            background: #ffffff;
-            border-top: 1px solid #e2e8f0;
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
-            margin-top: auto;
-        }
-
-        .nav-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            font-size: 0.65rem;
-            color: #64748b;
-            gap: 2px;
-            cursor: pointer;
-            text-decoration: none;
-        }
-
-        .nav-item.active {
-            color: #0284c7;
-            font-weight: 700;
-        }
-
-        .nav-icon {
-            font-size: 1rem;
-        }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Phòng & Cơ sở - Provider Hub</title>
+    <link rel="stylesheet" href="../assets/css/provider-mobile.css">
 </head>
-<body>
+<body class="m">
+<div class="m-app">
+    <header class="m-top" id="mTop"></header>
+    <main class="m-main">
+        <div class="alert bad" id="pageError" role="alert" hidden></div>
 
-    <div class="phone-frame">
-        <div class="app-screen">
-            
-            <div class="top-bar">
-                <a href="provider-index.html" class="back-btn">←</a>
-                <span class="page-title">Quản lý Studio</span>
-                <span style="opacity: 0;">←</span>
-            </div>
-
-            <div class="action-header">
-                <span class="section-heading">Cơ sở của bạn</span>
-                <a href="provider-room-form.html" class="add-btn">+ Thêm studio</a>
-            </div>
-
-            <!-- Thanh điều hướng bộ lọc -->
-            <div class="filter-toolbar">
-                <button class="filter-trigger-btn" onclick="openFilterModal()">
-                    <span id="filterLabel">⚙️ Bộ lọc nâng cao</span>
-                    <span>∨</span>
-                </button>
-                <button class="filter-trigger-btn" style="flex: 0.7;" onclick="toggleSort()">
-                    <span id="sortLabel">⇅ Sắp xếp</span>
-                    <span>∨</span>
-                </button>
-            </div>
-
-            <!-- Danh sách Studio dạng dọc -->
-            <div class="rooms-list" id="roomsList">
-                
-                <!-- Studio 1 -->
-                <div class="room-card" id="room-1" data-status="active" data-district="Q1" data-type="darkroom" data-price="150000">
-                    <div class="card-top">
-                        <span class="card-title">DARKROOM Q1</span>
-                        <span class="room-status status-text">Hoạt động</span>
-                    </div>
-                    <div class="room-info">
-                        <span>Giá thuê: <strong>150.000 đ/h</strong></span>
-                        <span>Khu vực: Quận 1</span>
-                    </div>
-                    <div class="card-actions">
-                        <button class="btn-edit" onclick="window.location.href='provider-room-form.html'">Sửa thông tin</button>
-                        <button class="btn-hide action-btn-toggle" onclick="toggleHideRoom('room-1')">Ẩn Studio</button>
-                    </div>
-                </div>
-
-                <!-- Studio 2 -->
-                <div class="room-card" id="room-2" data-status="active" data-district="Q2" data-type="studio" data-price="250000">
-                    <div class="card-top">
-                        <span class="card-title">VINTAGE STUDIO THẢO ĐIỀN</span>
-                        <span class="room-status status-text">Hoạt động</span>
-                    </div>
-                    <div class="room-info">
-                        <span>Giá thuê: <strong>250.000 đ/h</strong></span>
-                        <span>Khu vực: Quận 2</span>
-                    </div>
-                    <div class="card-actions">
-                        <button class="btn-edit" onclick="window.location.href='provider-room-form.html'">Sửa thông tin</button>
-                        <button class="btn-hide action-btn-toggle" onclick="toggleHideRoom('room-2')">Ẩn Studio</button>
-                    </div>
-                </div>
-
-                <!-- Studio 3 -->
-                <div class="room-card" id="room-3" data-status="active" data-district="Q2" data-type="scan" data-price="180000">
-                    <div class="card-top">
-                        <span class="card-title">AN PHÚ LAB Q2</span>
-                        <span class="room-status status-text">Hoạt động</span>
-                    </div>
-                    <div class="room-info">
-                        <span>Giá thuê: <strong>180.000 đ/h</strong></span>
-                        <span>Khu vực: Quận 2</span>
-                    </div>
-                    <div class="card-actions">
-                        <button class="btn-edit" onclick="window.location.href='provider-room-form.html'">Sửa thông tin</button>
-                        <button class="btn-hide action-btn-toggle" onclick="toggleHideRoom('room-3')">Ẩn Studio</button>
-                    </div>
-                </div>
-
-                <div class="empty-state" id="emptyState">
-                    🚫 Không tìm thấy studio nào phù hợp với bộ lọc.
-                </div>
-
-            </div>
-
-            <!-- POPUP BẢNG BỘ LỌC NÂNG CAO -->
-            <div class="filter-modal-overlay" id="filterModal">
-                <div class="filter-modal-box">
-                    <div class="filter-modal-header">
-                        <span class="filter-modal-title">Bộ lọc nâng cao</span>
-                        <button class="close-filter-btn" onclick="closeFilterModal()">✕</button>
-                    </div>
-
-                    <!-- 1. Trạng thái -->
-                    <div class="filter-group">
-                        <div class="filter-group-title">Trạng thái Studio</div>
-                        <div class="filter-options-grid">
-                            <label class="filter-checkbox-label"><input type="checkbox" id="filterActive" checked> Đang hoạt động</label>
-                            <label class="filter-checkbox-label"><input type="checkbox" id="filterHidden"> Đã ẩn</label>
-                        </div>
-                    </div>
-
-                    <!-- 2. Quận/Huyện -->
-                    <div class="filter-group">
-                        <div class="filter-group-title">Khu vực (Quận / Huyện)</div>
-                        <div class="filter-options-grid">
-                            <label class="filter-checkbox-label"><input type="checkbox" value="Q1" class="chk-district" checked> Quận 1</label>
-                            <label class="filter-checkbox-label"><input type="checkbox" value="Q2" class="chk-district" checked> Quận 2 (Thủ Đức)</label>
-                            <label class="filter-checkbox-label"><input type="checkbox" value="Q3" class="chk-district" checked> Quận 3</label>
-                            <label class="filter-checkbox-label"><input type="checkbox" value="BinhThanh" class="chk-district" checked> Quận Bình Thạnh</label>
-                        </div>
-                    </div>
-
-                    <!-- 3. Loại hình -->
-                    <div class="filter-group">
-                        <div class="filter-group-title">Loại hình cơ sở</div>
-                        <div class="filter-options-grid">
-                            <label class="filter-checkbox-label"><input type="checkbox" value="darkroom" class="chk-type" checked> Phòng Tối (Darkroom)</label>
-                            <label class="filter-checkbox-label"><input type="checkbox" value="studio" class="chk-type" checked> Studio Chụp Ảnh</label>
-                            <label class="filter-checkbox-label"><input type="checkbox" value="scan" class="chk-type" checked> Trạm Scan Phim</label>
-                        </div>
-                    </div>
-
-                    <!-- 4. Giá thuê -->
-                    <div class="filter-group">
-                        <div class="filter-group-title">Mức giá thuê / giờ</div>
-                        <div class="filter-options-grid">
-                            <label class="filter-checkbox-label"><input type="radio" name="priceRange" value="all" checked> Tất cả mức giá</label>
-                            <label class="filter-checkbox-label"><input type="radio" name="priceRange" value="under150"> &lt; 150.000 đ</label>
-                            <label class="filter-checkbox-label"><input type="radio" name="priceRange" value="150to250"> 150k - 250k đ</label>
-                            <label class="filter-checkbox-label"><input type="radio" name="priceRange" value="above250"> &gt; 250.000 đ</label>
-                        </div>
-                    </div>
-
-                    <button class="apply-filter-btn" onclick="applyFilter()">ÁP DỤNG BỘ LỌC</button>
-                </div>
-            </div>
-
-            <!-- Bottom Navigation Bar -->
-            <div class="bottom-nav">
-                <a href="provider-index.html" class="nav-item">
-                    <span class="nav-icon">🧭</span>
-                    <span>Khám phá</span>
-                </a>
-                <a href="provider-bookings.html" class="nav-item">
-                    <span class="nav-icon">📅</span>
-                    <span>Lịch hẹn</span>
-                </a>
-                <a href="provider-rooms.html" class="nav-item active">
-                    <span class="nav-icon">🧪</span>
-                    <span>Lab</span>
-                </a>
-                <a href="provider-dashboard.html" class="nav-item">
-                    <span class="nav-icon">👤</span>
-                    <span>Hồ sơ</span>
-                </a>
-            </div>
-
+        <div class="tabs" id="seg" role="tablist" aria-label="Chọn danh sách">
+            <button class="tab active" role="tab" data-seg="rooms" aria-selected="true">Phòng<span class="count" id="cRooms">0</span></button>
+            <button class="tab" role="tab" data-seg="studios" aria-selected="false">Cơ sở<span class="count" id="cStudios">0</span></button>
         </div>
-    </div>
 
-    <!-- LOGIC BỘ LỌC THỰC TẾ (JAVASCRIPT) -->
-    <script>
-        function openFilterModal() {
-            document.getElementById('filterModal').classList.add('active');
-        }
+        <section id="paneRooms" class="m-main" style="padding:0">
+            <div class="m-filters">
+                <input class="input" id="search" type="search" placeholder="Tìm theo tên phòng..." aria-label="Tìm phòng">
+                <select class="select" id="fStudio" aria-label="Lọc theo cơ sở"><option value="">Tất cả cơ sở</option></select>
+                <select class="select" id="fStatus" aria-label="Lọc theo trạng thái"><option value="">Mọi trạng thái</option><option value="AVAILABLE" selected>Đang hoạt động</option><option value="MAINTENANCE">Bảo trì</option><option value="INACTIVE">Đã ẩn</option></select>
+            </div>
+            <div class="m-list" id="roomList"></div>
+            <div class="muted small" id="summary"></div>
+        </section>
 
-        function closeFilterModal() {
-            document.getElementById('filterModal').classList.remove('active');
-        }
-
-        // 1. Chức năng Ẩn / Hiện Studio
-        function toggleHideRoom(roomId) {
-            const card = document.getElementById(roomId);
-            if (!card) return;
-
-            const currentStatus = card.getAttribute('data-status');
-            const statusBadge = card.querySelector('.status-text');
-            const toggleBtn = card.querySelector('.action-btn-toggle');
-
-            if (currentStatus === 'active') {
-                card.setAttribute('data-status', 'hidden');
-                statusBadge.innerText = 'Đã ẩn';
-                statusBadge.classList.add('is-hidden');
-                toggleBtn.innerText = 'Hiện Studio';
-                toggleBtn.className = 'btn-restore action-btn-toggle';
-            } else {
-                card.setAttribute('data-status', 'active');
-                statusBadge.innerText = 'Hoạt động';
-                statusBadge.classList.remove('is-hidden');
-                toggleBtn.innerText = 'Ẩn Studio';
-                toggleBtn.className = 'btn-hide action-btn-toggle';
-            }
-
-            // Chạy lại bộ lọc hiện tại để ẩn/hiện card ngay trên màn hình
-            applyFilter();
-        }
-
-        // 2. Chức năng Áp Dụng Bộ Lọc Động
-        function applyFilter() {
-            closeFilterModal();
-
-            const showActive = document.getElementById('filterActive').checked;
-            const showHidden = document.getElementById('filterHidden').checked;
-
-            const selectedDistricts = Array.from(document.querySelectorAll('.chk-district:checked')).map(el => el.value);
-            const selectedTypes = Array.from(document.querySelectorAll('.chk-type:checked')).map(el => el.value);
-            const priceRange = document.querySelector('input[name="priceRange"]:checked').value;
-
-            const cards = document.querySelectorAll('.room-card');
-            let visibleCount = 0;
-
-            cards.forEach(card => {
-                const cardStatus = card.getAttribute('data-status');
-                const cardDistrict = card.getAttribute('data-district');
-                const cardType = card.getAttribute('data-type');
-                const cardPrice = parseInt(card.getAttribute('data-price'));
-
-                // Kiểm tra điều kiện 1: Trạng thái (Hoạt động / Ẩn)
-                let matchStatus = (cardStatus === 'active' && showActive) || (cardStatus === 'hidden' && showHidden);
-
-                // Kiểm tra điều kiện 2: Quận
-                let matchDistrict = selectedDistricts.includes(cardDistrict) || !['Q1','Q2','Q3','BinhThanh'].includes(cardDistrict);
-
-                // Kiểm tra điều kiện 3: Loại hình
-                let matchType = selectedTypes.includes(cardType);
-
-                // Kiểm tra điều kiện 4: Giá tiền
-                let matchPrice = false;
-                if (priceRange === 'all') matchPrice = true;
-                else if (priceRange === 'under150' && cardPrice < 150000) matchPrice = true;
-                else if (priceRange === '150to250' && cardPrice >= 150000 && cardPrice <= 250000) matchPrice = true;
-                else if (priceRange === 'above250' && cardPrice > 250000) matchPrice = true;
-
-                // Nếu thỏa mãn TẤT CẢ tiêu chí -> Hiển thị
-                if (matchStatus && matchDistrict && matchType && matchPrice) {
-                    card.style.display = 'flex';
-                    visibleCount++;
-                } else {
-                    card.style.display = 'none';
-                }
-            });
-
-            // Hiện thông báo nếu không có studio nào thỏa mãn
-            const emptyState = document.getElementById('emptyState');
-            if (visibleCount === 0) {
-                emptyState.style.display = 'block';
-            } else {
-                emptyState.style.display = 'none';
-            }
-        }
-
-        // 3. Đảo chiều sắp xếp theo giá
-        let isAscending = true;
-        function toggleSort() {
-            const list = document.getElementById('roomsList');
-            const cards = Array.from(document.querySelectorAll('.room-card'));
-
-            cards.sort((a, b) => {
-                const priceA = parseInt(a.getAttribute('data-price'));
-                const priceB = parseInt(b.getAttribute('data-price'));
-                return isAscending ? priceB - priceA : priceA - priceB;
-            });
-
-            cards.forEach(card => list.appendChild(card));
-            isAscending = !isAscending;
-            document.getElementById('sortLabel').innerText = isAscending ? '⇅ Giá: Thấp -> Cao' : '⇅ Giá: Cao -> Thấp';
-        }
-
-        // Chạy lọc ban đầu khi vừa tải trang
-        applyFilter();
-    </script>
-
+        <section id="paneStudios" class="m-main" style="padding:0" hidden>
+            <div class="alert warn" id="pendingHint" hidden>⏳ Cơ sở <b>Chờ duyệt</b> cần quản trị viên phê duyệt trước khi khách nhìn thấy cơ sở và phòng.</div>
+            <div class="m-list" id="studioList"></div>
+        </section>
+        <button class="m-fab" id="fab" aria-label="Thêm phòng">+</button>
+    </main>
+</div>
+<div class="modal-overlay" id="roomModal" role="dialog" aria-modal="true" aria-labelledby="roomModalTitle">
+    <form class="modal" id="roomForm" novalidate>
+        <div class="modal-head"><span id="roomModalTitle">Thêm phòng</span><button type="button" class="icon-btn" data-close aria-label="Đóng">✕</button></div>
+        <div class="form-grid">
+            <div class="field full"><label for="rName">Tên phòng</label><input class="input" id="rName" maxlength="100" required><div class="err" data-err="name"></div></div>
+            <div class="field"><label for="rStudio">Cơ sở</label><select class="select" id="rStudio" required></select><div class="err" data-err="studio_id"></div></div>
+            <div class="field"><label for="rType">Loại hình</label><select class="select" id="rType"><option value="DARKROOM">Phòng tối (Darkroom)</option><option value="STUDIO">Studio chụp ảnh</option></select></div>
+            <div class="field"><label for="rPrice">Giá thuê (VNĐ / giờ)</label><input class="input" id="rPrice" type="number" inputmode="numeric" min="0" step="1000" required><div class="err" data-err="price_per_hour"></div></div>
+            <div class="field"><label for="rCap">Sức chứa (người)</label><input class="input" id="rCap" type="number" inputmode="numeric" min="1" step="1" required><div class="err" data-err="capacity"></div></div>
+            <div class="field"><label for="rArea">Diện tích (m²)</label><input class="input" id="rArea" type="number" inputmode="decimal" min="0" step="0.5"></div>
+            <div class="field"><label for="rStatus">Trạng thái</label><select class="select" id="rStatus"><option value="AVAILABLE">Đang hoạt động</option><option value="MAINTENANCE">Bảo trì</option><option value="INACTIVE">Đã ẩn</option></select></div>
+            <div class="field"><label for="rStyle">Phong cách</label><input class="input" id="rStyle" maxlength="100" placeholder="Vintage, tối giản..."></div>
+            <div class="field"><label for="rLight">Ánh sáng</label><input class="input" id="rLight" maxlength="200" placeholder="Đèn đỏ an toàn, Godox..."></div>
+            <div class="field full"><label for="rAmen">Tiện ích đi kèm</label><input class="input" id="rAmen" maxlength="500" placeholder="Bồn rửa, kệ phơi, máy lạnh..."></div>
+            <div class="field full"><label for="rDesc">Mô tả</label><textarea class="textarea" id="rDesc" maxlength="2000"></textarea></div>
+        </div>
+        <div class="modal-foot"><button type="button" class="btn btn-ghost" data-close>Hủy</button><button type="submit" class="btn btn-primary" id="roomSave">Lưu phòng</button></div>
+    </form>
+</div>
+<div class="modal-overlay" id="studioModal" role="dialog" aria-modal="true" aria-labelledby="studioModalTitle">
+    <form class="modal" id="studioForm" novalidate>
+        <div class="modal-head"><span id="studioModalTitle">Thêm cơ sở mới</span><button type="button" class="icon-btn" data-close aria-label="Đóng">✕</button></div>
+        <div class="form-grid">
+            <div class="field full"><label for="sName">Tên cơ sở</label><input class="input" id="sName" maxlength="100" required><div class="err" data-err="name"></div></div>
+            <div class="field full"><label for="sAddr">Địa chỉ</label><input class="input" id="sAddr" maxlength="255" required><div class="err" data-err="address"></div></div>
+            <div class="field"><label for="sCity">Thành phố</label><input class="input" id="sCity" maxlength="100" required><div class="err" data-err="city"></div></div>
+            <div class="field"><label for="sPhone">Số điện thoại</label><input class="input" id="sPhone" type="tel" maxlength="20"></div>
+            <div class="field"><label for="sOpen">Giờ mở cửa</label><input class="input" id="sOpen" type="time" value="08:00" required></div>
+            <div class="field"><label for="sClose">Giờ đóng cửa</label><input class="input" id="sClose" type="time" value="21:00" required><div class="err" data-err="hours"></div></div>
+            <div class="field full"><label for="sDesc">Mô tả</label><textarea class="textarea" id="sDesc" maxlength="4000"></textarea></div>
+        </div>
+        <div class="modal-foot"><button type="button" class="btn btn-ghost" data-close>Hủy</button><button type="submit" class="btn btn-primary" id="studioSave">Lưu cơ sở</button></div>
+    </form>
+</div>
+<nav class="m-nav" id="mNav" aria-label="Điều hướng chính"></nav>
 <script src="../assets/js/provider-common.js"></script>
-    <script>Provider.addPcShortcut('provider-pc-rooms.html');</script>
-    <script>
-        // ---- Nối API thật khi đã đăng nhập; chưa đăng nhập / offline thì giữ dữ liệu demo ở trên ----
-        (async function () {
-            const P = Provider;
-            if (!P.token()) return;
-            let studios, rooms;
-            try { studios = await P.data.studios(); rooms = await P.data.rooms(studios); } catch (e) { P.toast(e.message, 'bad'); return; }
-            if (!P.isLive()) return;
+<script>
+(async function () {
+    const P = Provider, $ = id => document.getElementById(id);
+    await P.mountMobile('rooms', 'Phòng & Cơ sở');
+    let studios = [], rooms = [], editingId = null, editingStudioId = null, seg = 'rooms';
+    const S = P.bindSheets();
 
-            const districtOf = addr => {
-                const a = (addr || '').toLowerCase();
-                if (/quận 1\b|q\.?1\b/.test(a)) return 'Q1';
-                if (/quận 2\b|thủ đức|q\.?2\b/.test(a)) return 'Q2';
-                if (/quận 3\b|q\.?3\b/.test(a)) return 'Q3';
-                if (/bình thạnh/.test(a)) return 'BinhThanh';
-                return 'other';
-            };
-            const studioOf = id => studios.find(s => s.studio_id === id) || {};
-            const list = document.getElementById('roomsList');
-            const empty = document.getElementById('emptyState');
-            const byId = {};
-
-            function render() {
-                list.querySelectorAll('.room-card').forEach(c => c.remove());
-                rooms.forEach(r => {
-                    byId['room-' + r.room_id] = r;
-                    const st = studioOf(r.studio_id);
-                    const hidden = r.status === 'INACTIVE';
-                    const card = document.createElement('div');
-                    card.className = 'room-card';
-                    card.id = 'room-' + r.room_id;
-                    card.dataset.status = hidden ? 'hidden' : 'active';
-                    card.dataset.district = districtOf(st.address);
-                    card.dataset.type = String(r.room_type).toLowerCase();
-                    card.dataset.price = Math.round(r.price_per_hour);
-                    card.innerHTML = `
-                        <div class="card-top">
-                            <span class="card-title">${P.esc(r.name)}</span>
-                            <span class="room-status status-text${hidden ? ' is-hidden' : ''}">${hidden ? 'Đã ẩn' : 'Hoạt động'}</span>
-                        </div>
-                        <div class="room-info">
-                            <span>Giá thuê: <strong>${P.money(r.price_per_hour)}/h</strong></span>
-                            <span>Cơ sở: ${P.esc(st.name || '—')}</span>
-                        </div>
-                        <div class="card-actions">
-                            <button class="btn-edit" onclick="window.location.href='provider-room-form.html?id=${r.room_id}'">Sửa thông tin</button>
-                            <button class="${hidden ? 'btn-restore' : 'btn-hide'} action-btn-toggle" onclick="toggleHideRoom('room-${r.room_id}')">${hidden ? 'Hiện Studio' : 'Ẩn Studio'}</button>
-                        </div>`;
-                    list.insertBefore(card, empty);
-                });
-                applyFilter();
-            }
-
-            // Ghi đè hàm ẩn / hiện của bản demo: gọi API rồi vẽ lại
-            window.toggleHideRoom = async function (cardId) {
-                const room = byId[cardId]; if (!room) return;
-                const next = room.status === 'INACTIVE' ? 'AVAILABLE' : 'INACTIVE';
-                try {
-                    await P.data.setRoomStatus(room, next);
-                    room.status = next;
-                    P.toast(next === 'INACTIVE' ? 'Đã ẩn phòng' : 'Đã hiện lại phòng', 'ok');
-                    render();
-                } catch (e) { P.toast('Thao tác thất bại: ' + e.message, 'bad'); }
-            };
-
+    async function load() {
+        try {
+            [studios, rooms] = await Promise.all([P.data.studios(), P.data.rooms()]);
+            P.refreshChrome();
+            const keep = $('fStudio').value, opts = studios.map(s => `<option value="${s.studio_id}">${P.esc(s.name)}</option>`).join('');
+            $('fStudio').innerHTML = '<option value="">Tất cả cơ sở</option>' + opts; $('fStudio').value = keep;
+            $('rStudio').innerHTML = opts;
             render();
-        })();
-    </script>
+        } catch (err) { const b = $('pageError'); b.hidden = false; b.textContent = 'Không tải được dữ liệu: ' + err.message; }
+    }
+    const studioName = id => (studios.find(s => s.studio_id === id) || {}).name || '—';
+
+    function render() {
+        $('cRooms').textContent = rooms.length; $('cStudios').textContent = studios.length;
+        const q = $('search').value.trim().toLowerCase();
+        const list = rooms.filter(r => (!q || r.name.toLowerCase().includes(q)) && (!$('fStudio').value || String(r.studio_id) === $('fStudio').value) && (!$('fStatus').value || r.status === $('fStatus').value))
+            .sort((a, b) => a.name.localeCompare(b.name, 'vi'));
+        $('roomList').innerHTML = list.map(r => {
+            const st = P.ROOM_STATUS[r.status] || { label: r.status, cls: 'muted' }, hidden = r.status === 'INACTIVE';
+            return `<div class="m-item">
+                <div class="m-item-head"><div><strong>${P.esc(r.name)}</strong><span class="sub">${P.esc(studioName(r.studio_id))} • ${P.esc(P.ROOM_TYPES[r.room_type] || r.room_type)}</span></div><span class="badge ${st.cls}">${st.label}</span></div>
+                <div class="row"><span>👥 ${r.capacity} người${r.area_sqm ? ' • ' + r.area_sqm + ' m²' : ''}${r.art_style ? ' • ' + P.esc(r.art_style) : ''}</span><b>${P.money(r.price_per_hour)}/giờ</b></div>
+                ${r.description ? `<span class="sub">${P.esc(r.description.slice(0, 90))}${r.description.length > 90 ? '…' : ''}</span>` : ''}
+                <div class="m-actions">
+                    <button class="btn btn-ghost btn-sm" data-edit="${r.room_id}">Sửa</button>
+                    <button class="btn ${hidden ? 'btn-ok' : 'btn-bad'} btn-sm" data-toggle="${r.room_id}">${hidden ? 'Hiện lại' : 'Ẩn phòng'}</button>
+                </div></div>`;
+        }).join('') || `<div class="card empty">${rooms.length ? 'Không có phòng nào khớp bộ lọc.' : 'Chưa có phòng nào. Bấm nút + để thêm.'}</div>`;
+        $('summary').textContent = `Hiển thị ${list.length} / ${rooms.length} phòng`;
+
+        $('pendingHint').hidden = !studios.some(x => x.status === 'PENDING');
+        $('studioList').innerHTML = studios.map(s => {
+            const st = P.STUDIO_STATUS[s.status] || { label: s.status, cls: 'muted' }, n = rooms.filter(r => r.studio_id === s.studio_id).length;
+            return `<div class="m-item">
+                <div class="m-item-head"><div><strong>${P.esc(s.name)}</strong><span class="sub">${P.esc(s.address)}, ${P.esc(s.city)}</span></div><span class="badge ${st.cls}">${st.label}</span></div>
+                <div class="row"><span>🕘 ${P.esc(String(s.open_time || '').slice(0, 5))} – ${P.esc(String(s.close_time || '').slice(0, 5))}${s.phone ? ' • ' + P.esc(s.phone) : ''}</span><b>${n} phòng</b></div>
+                <div class="m-actions">
+                    <button class="btn btn-ghost btn-sm" data-sedit="${s.studio_id}">Sửa</button>
+                    <button class="btn btn-bad btn-sm" data-sdel="${s.studio_id}">Xóa</button>
+                </div></div>`;
+        }).join('') || '<div class="card empty">Chưa có cơ sở nào. Bấm nút + để thêm.</div>';
+    }
+    ['search', 'fStudio', 'fStatus'].forEach(id => $(id).addEventListener(id === 'search' ? 'input' : 'change', render));
+
+    function setSeg(k) {
+        seg = k;
+        document.querySelectorAll('[data-seg]').forEach(b => { const on = b.dataset.seg === k; b.classList.toggle('active', on); b.setAttribute('aria-selected', on); });
+        $('paneRooms').hidden = k !== 'rooms'; $('paneStudios').hidden = k !== 'studios';
+        $('fab').setAttribute('aria-label', k === 'rooms' ? 'Thêm phòng' : 'Thêm cơ sở');
+    }
+    $('seg').addEventListener('click', e => { const b = e.target.closest('[data-seg]'); if (b) setSeg(b.dataset.seg); });
+    $('fab').onclick = () => seg === 'rooms' ? openRoomForm(null) : openStudioForm(null);
+
+    const clearErrors = f => { f.querySelectorAll('[data-err]').forEach(e => e.textContent = ''); f.querySelectorAll('.invalid').forEach(e => e.classList.remove('invalid')); };
+    const setErr = (f, key, msg, inputId) => { const e = f.querySelector(`[data-err="${key}"]`); if (e) e.textContent = msg; if (inputId) $(inputId).classList.add('invalid'); };
+
+    function openRoomForm(room) {
+        if (!studios.length) { P.toast('Bạn cần tạo cơ sở (Studio) trước khi thêm phòng.', 'warn'); setSeg('studios'); openStudioForm(null); return; }
+        editingId = room ? room.room_id : null; clearErrors($('roomForm'));
+        $('roomModalTitle').textContent = room ? 'Sửa thông tin phòng' : 'Thêm phòng';
+        $('rName').value = room ? room.name : '';
+        $('rStudio').value = room ? room.studio_id : studios[0].studio_id; $('rStudio').disabled = !!room;
+        $('rType').value = room ? room.room_type : 'DARKROOM';
+        $('rPrice').value = room ? room.price_per_hour : ''; $('rCap').value = room ? room.capacity : '';
+        $('rDesc').value = room ? (room.description || '') : '';
+        $('rArea').value = room && room.area_sqm != null ? room.area_sqm : '';
+        $('rStyle').value = room ? (room.art_style || '') : ''; $('rLight').value = room ? (room.lighting || '') : ''; $('rAmen').value = room ? (room.amenities || '') : '';
+        $('rStatus').value = room ? room.status : 'AVAILABLE';
+        S.open('roomModal');
+    }
+    function openStudioForm(studio) {
+        studio = studio && studio.studio_id ? studio : null;
+        editingStudioId = studio ? studio.studio_id : null;
+        clearErrors($('studioForm')); $('studioForm').reset();
+        $('studioModalTitle').textContent = studio ? 'Sửa thông tin cơ sở' : 'Thêm cơ sở mới';
+        if (studio) {
+            $('sName').value = studio.name || ''; $('sAddr').value = studio.address || ''; $('sCity').value = studio.city || '';
+            $('sPhone').value = studio.phone || ''; $('sDesc').value = studio.description || '';
+            $('sOpen').value = String(studio.open_time || '08:00').slice(0, 5); $('sClose').value = String(studio.close_time || '21:00').slice(0, 5);
+        }
+        S.open('studioModal');
+    }
+
+    $('roomForm').addEventListener('submit', async e => {
+        e.preventDefault(); const f = $('roomForm'); clearErrors(f);
+        const payload = {
+            studio_id: Number($('rStudio').value), name: $('rName').value.trim(), room_type: $('rType').value,
+            capacity: parseInt($('rCap').value, 10), price_per_hour: parseFloat($('rPrice').value),
+            description: $('rDesc').value.trim() || null, area_sqm: $('rArea').value === '' ? null : parseFloat($('rArea').value),
+            art_style: $('rStyle').value.trim() || null, lighting: $('rLight').value.trim() || null, amenities: $('rAmen').value.trim() || null, status: $('rStatus').value
+        };
+        let bad = false;
+        if (payload.name.length < 2) { setErr(f, 'name', 'Tên phòng tối thiểu 2 ký tự.', 'rName'); bad = true; }
+        if (!(payload.price_per_hour >= 0)) { setErr(f, 'price_per_hour', 'Nhập giá thuê hợp lệ (≥ 0).', 'rPrice'); bad = true; }
+        if (!(payload.capacity >= 1)) { setErr(f, 'capacity', 'Sức chứa phải từ 1 người.', 'rCap'); bad = true; }
+        if (payload.area_sqm !== null && !(payload.area_sqm > 0)) { P.toast('Diện tích phải lớn hơn 0.', 'warn'); bad = true; }
+        if (!payload.studio_id) { setErr(f, 'studio_id', 'Chọn cơ sở.', 'rStudio'); bad = true; }
+        if (bad) return;
+        const btn = $('roomSave'); btn.disabled = true; btn.textContent = 'Đang lưu...';
+        try { await P.data.saveRoom(editingId, payload); S.close($('roomModal')); P.toast(editingId ? 'Đã cập nhật phòng.' : 'Đã thêm phòng mới.', 'ok'); await load(); }
+        catch (err) { P.toast((err.status === 401 || err.status === 403 ? 'Phiên đăng nhập không hợp lệ hoặc không đủ quyền: ' : 'Lưu thất bại: ') + err.message, 'bad'); }
+        finally { btn.disabled = false; btn.textContent = 'Lưu phòng'; }
+    });
+
+    $('studioForm').addEventListener('submit', async e => {
+        e.preventDefault(); const f = $('studioForm'); clearErrors(f);
+        const payload = { name: $('sName').value.trim(), address: $('sAddr').value.trim(), city: $('sCity').value.trim(), open_time: $('sOpen').value, close_time: $('sClose').value, phone: $('sPhone').value.trim() || null, description: $('sDesc').value.trim() || null };
+        let bad = false;
+        if (payload.name.length < 2) { setErr(f, 'name', 'Tên cơ sở tối thiểu 2 ký tự.', 'sName'); bad = true; }
+        if (payload.address.length < 3) { setErr(f, 'address', 'Địa chỉ tối thiểu 3 ký tự.', 'sAddr'); bad = true; }
+        if (payload.city.length < 2) { setErr(f, 'city', 'Nhập thành phố.', 'sCity'); bad = true; }
+        if (!payload.open_time || !payload.close_time || payload.close_time <= payload.open_time) { setErr(f, 'hours', 'Giờ đóng cửa phải sau giờ mở cửa.', 'sClose'); bad = true; }
+        if (bad) return;
+        const btn = $('studioSave'); btn.disabled = true;
+        try {
+            const wasEdit = editingStudioId !== null;
+            await P.data.saveStudio(editingStudioId, payload);
+            S.close($('studioModal'));
+            P.toast(wasEdit ? 'Đã cập nhật cơ sở.' : (P.currentUser() && P.currentUser().role === 'ADMIN' ? 'Đã thêm cơ sở mới.' : 'Đã gửi cơ sở mới, chờ admin duyệt.'), 'ok');
+            await load();
+        } catch (err) { P.toast('Lưu thất bại: ' + err.message, 'bad'); }
+        finally { btn.disabled = false; }
+    });
+
+    $('studioList').addEventListener('click', async e => {
+        const ed = e.target.closest('[data-sedit]'), del = e.target.closest('[data-sdel]');
+        if (ed) openStudioForm(studios.find(s => s.studio_id === Number(ed.dataset.sedit)));
+        if (del) {
+            const st = studios.find(s => s.studio_id === Number(del.dataset.sdel));
+            const n = rooms.filter(r => r.studio_id === st.studio_id).length;
+            const warn = n ? `\nCơ sở có ${n} phòng — các phòng, thiết bị và gói dịch vụ của cơ sở cũng bị xóa.` : '';
+            if (!confirm(`Xóa cơ sở "${st.name}"?${warn}\nThao tác này không thể hoàn tác.`)) return;
+            del.disabled = true;
+            try { await P.data.deleteStudio(st.studio_id); P.toast('Đã xóa cơ sở.', 'ok'); await load(); }
+            catch (err) { del.disabled = false; P.toast(err.message, 'bad'); }
+        }
+    });
+    $('roomList').addEventListener('click', async e => {
+        const edit = e.target.closest('[data-edit]'), tog = e.target.closest('[data-toggle]');
+        if (edit) openRoomForm(rooms.find(r => r.room_id === Number(edit.dataset.edit)));
+        if (tog) {
+            const room = rooms.find(r => r.room_id === Number(tog.dataset.toggle)), next = room.status === 'INACTIVE' ? 'AVAILABLE' : 'INACTIVE';
+            if (next === 'INACTIVE' && !confirm('Ẩn phòng "' + room.name + '"? Khách sẽ không thấy phòng này để đặt.')) return;
+            try { await P.data.setRoomStatus(room, next); P.toast(next === 'INACTIVE' ? 'Đã ẩn phòng.' : 'Đã hiện lại phòng.', 'ok'); await load(); }
+            catch (err) { P.toast('Thao tác thất bại: ' + err.message, 'bad'); }
+        }
+    });
+    await load();
+
+})();
+</script>
 </body>
 </html>

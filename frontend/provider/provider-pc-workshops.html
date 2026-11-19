@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Workshop - Provider Hub (PC)</title>
+    <link rel="stylesheet" href="../assets/css/provider-pc.css">
+</head>
+<body>
+<div class="pc-shell">
+    <aside class="pc-sidebar" id="pcSidebar"></aside>
+    <div class="pc-main">
+        <header class="pc-topbar" id="pcTopbar"></header>
+        <main class="pc-content">
+            <div class="alert bad" id="pageError" role="alert" hidden></div>
+            <div class="alert warn">ℹ️ Workshop do chuyên gia (Expert) tạo và tổ chức tại cơ sở của bạn. Trang này chỉ để theo dõi lịch &amp; số người đăng ký, giúp bạn chuẩn bị không gian.</div>
+            <div class="card">
+                <div class="toolbar"><div class="tabs" id="tabs" role="tablist" aria-label="Lọc workshop"></div></div>
+            </div>
+            <div class="card">
+                <div class="table-wrap">
+                    <table class="data">
+                        <thead><tr><th>Workshop</th><th>Chuyên gia</th><th>Cơ sở</th><th>Thời gian</th><th class="num">Đăng ký</th><th class="num">Phí</th><th>Trạng thái</th></tr></thead>
+                        <tbody id="rows"></tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+<script src="../assets/js/provider-common.js"></script>
+<script>
+(async function () {
+    const P = Provider, $ = id => document.getElementById(id);
+    await P.mountPC('workshops', 'Workshop tại cơ sở của bạn');
+    let list = [], tab = 'ALL';
+    function render() {
+        const keys = [['ALL', 'Tất cả'], ['OPEN', 'Đang mở'], ['CLOSED', 'Đã đóng ĐK'], ['COMPLETED', 'Đã diễn ra'], ['CANCELLED', 'Đã hủy']];
+        $('tabs').innerHTML = keys.map(([k, l]) => `<button class="tab${tab === k ? ' active' : ''}" data-t="${k}">${l}<span class="count">${k === 'ALL' ? list.length : list.filter(w => w.status === k).length}</span></button>`).join('');
+        $('rows').innerHTML = list.filter(w => tab === 'ALL' || w.status === tab).map(w => {
+            const st = P.WORKSHOP_STATUS[w.status] || { label: w.status, cls: 'muted' };
+            return `<tr><td><strong>${P.esc(w.title)}</strong>${w.description ? `<span class="sub">${P.esc(w.description)}</span>` : ''}</td>
+                <td>${P.esc(w.expert_name || '—')}</td><td>${P.esc(w.studio_name || '—')}</td>
+                <td>${P.fmtRange(w.start_time, w.end_time)}</td>
+                <td class="num">${w.registered || 0}/${w.capacity}</td>
+                <td class="num">${w.fee ? P.money(w.fee) : 'Miễn phí'}</td>
+                <td><span class="badge ${st.cls}">${st.label}</span></td></tr>`;
+        }).join('') || '<tr><td colspan="7" class="empty">Chưa có workshop nào tại cơ sở của bạn.</td></tr>';
+    }
+    $('tabs').addEventListener('click', e => { const b = e.target.closest('[data-t]'); if (b) { tab = b.dataset.t; render(); } });
+    try { list = await P.data.workshops(); render(); }
+    catch (err) { const b = $('pageError'); b.hidden = false; b.textContent = 'Không tải được dữ liệu: ' + err.message; }
+})();
+</script>
+</body>
+</html>

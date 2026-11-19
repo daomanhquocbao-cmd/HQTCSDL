@@ -23,7 +23,8 @@
         login: '/api/users/login', me: '/api/users/me', changePassword: '/api/users/change-password',
         overview: '/api/provider/overview', studios: '/api/provider/studios', rooms: '/api/provider/rooms',
         bookings: '/api/provider/bookings', checkin: '/api/provider/bookings/checkin',
-        equipment: '/api/provider/equipment', packages: '/api/provider/packages', reviews: '/api/provider/reviews'
+        equipment: '/api/provider/equipment', packages: '/api/provider/packages', reviews: '/api/provider/reviews',
+        disputes: '/api/provider/disputes', workshops: '/api/provider/workshops'
     };
 
     const KEY = {
@@ -31,6 +32,7 @@
         user: 'provider_user',
         theme: 'provider_theme',
         api: 'provider_api_base',
+        avatar: 'provider_avatar_', // + user_id: ảnh đại diện (data URL) lưu theo từng tài khoản trên trình duyệt này
         hidden: 'provider_hidden_rooms' // không còn dùng (API trả cả phòng đã ẩn)
     };
 
@@ -75,6 +77,14 @@
         UNDER_MAINTENANCE: { label: 'Đang bảo trì', cls: 'warn' },
         BROKEN: { label: 'Hỏng', cls: 'bad' },
         RETIRED: { label: 'Đã thanh lý', cls: 'muted' }
+    };
+    const DISPUTE_STATUS = {
+        OPEN: { label: 'Mới', cls: 'warn' }, IN_REVIEW: { label: 'Đang xem xét', cls: 'info' },
+        RESOLVED: { label: 'Đã giải quyết', cls: 'ok' }, REJECTED: { label: 'Bị bác bỏ', cls: 'muted' }
+    };
+    const WORKSHOP_STATUS = {
+        OPEN: { label: 'Đang mở đăng ký', cls: 'ok' }, CLOSED: { label: 'Đã đóng đăng ký', cls: 'warn' },
+        CANCELLED: { label: 'Đã hủy', cls: 'bad' }, COMPLETED: { label: 'Đã diễn ra', cls: 'muted' }
     };
     const STUDIO_STATUS = {
         PENDING: { label: 'Chờ duyệt', cls: 'warn' },
@@ -123,7 +133,23 @@
             { package_id: 3, ...SG, name: 'Gói Tráng phim & In ảnh', price: 450000, duration_hours: 3, room_type: 'DARKROOM', instructor_name: 'Lê Quốc Bảo', description: 'Hướng dẫn tráng phim, in ảnh đen trắng trong phòng tối.', is_active: true,
               equipment: [{ equipment_id: 5, name: 'Máy phóng ảnh (enlarger)', quantity_included: 1 }, { equipment_id: 7, name: 'Hóa chất tráng phim B&W', quantity_included: 2 }, { equipment_id: 8, name: 'Giấy in ảnh 8x10', quantity_included: 10 }] }
         ],
-        reviews: []
+        reviews: [
+            { review_id: 1, reservation_id: 105, studio_id: 1, studio_name: 'Silver Grain Studio', customer_id: 29, customer_name: 'Khách hàng số 9', rating: 5, comment: 'Phòng sạch, ánh sáng đẹp, chủ studio hỗ trợ nhiệt tình. Sẽ quay lại!', created_at: iso(-4, 9) },
+            { review_id: 2, reservation_id: 90, studio_id: 1, studio_name: 'Silver Grain Studio', customer_id: 24, customer_name: 'Khách hàng số 4', rating: 4, comment: 'Thiết bị đầy đủ, chỉ hơi chật khi đi nhóm 6 người.', created_at: iso(-12, 15) },
+            { review_id: 3, reservation_id: 84, studio_id: 1, studio_name: 'Silver Grain Studio', customer_id: 31, customer_name: 'Khách hàng số 11', rating: 3, comment: 'Đèn flash bị yếu, mong studio kiểm tra lại.', created_at: iso(-20, 11) },
+            { review_id: 4, reservation_id: 77, studio_id: 1, studio_name: 'Silver Grain Studio', customer_id: 27, customer_name: 'Khách hàng số 7', rating: 5, comment: null, created_at: iso(-31, 18) }
+        ],
+        // Khiếu nại gắn với đơn đặt (bảng Disputes); provider tiếp nhận / phản hồi
+        disputes: [
+            { dispute_id: 1, reservation_id: 106, raised_by: 36, raised_by_name: 'Khách hàng số 16', reason: 'Đơn bị hủy sát giờ nhưng tôi chưa nhận được tiền hoàn.', status: 'OPEN', resolution: null, created_at: iso(-6, 10), resolved_at: null, room_name: 'Phòng tối B&W', studio_id: 1, studio_name: 'Silver Grain Studio' },
+            { dispute_id: 2, reservation_id: 105, raised_by: 29, raised_by_name: 'Khách hàng số 9', reason: 'Tôi bị tính thêm 1 giờ dù check-out đúng giờ.', status: 'IN_REVIEW', resolution: null, created_at: iso(-3, 14), resolved_at: null, room_name: 'Phòng chụp Minimal', studio_id: 1, studio_name: 'Silver Grain Studio' }
+        ],
+        // Workshop do chuyên gia tổ chức tại cơ sở của provider (chỉ xem)
+        workshops: [
+            { workshop_id: 1, title: 'In ảnh phòng tối cho người mới', description: 'Học tráng phim và in ảnh đen trắng từ đầu.', expert_id: 3, expert_name: 'Lê Quốc Bảo', studio_id: 1, studio_name: 'Silver Grain Studio', capacity: 12, registered: 8, fee: 250000, start_time: iso(4, 14), end_time: iso(4, 17), status: 'OPEN' },
+            { workshop_id: 2, title: 'Chân dung ánh sáng tự nhiên với phim', description: null, expert_id: 4, expert_name: 'Nguyễn Minh Khoa', studio_id: 1, studio_name: 'Silver Grain Studio', capacity: 10, registered: 10, fee: 300000, start_time: iso(11, 9), end_time: iso(11, 12), status: 'CLOSED' },
+            { workshop_id: 3, title: 'Review máy ảnh phim cũ', description: null, expert_id: 3, expert_name: 'Lê Quốc Bảo', studio_id: 1, studio_name: 'Silver Grain Studio', capacity: 15, registered: 15, fee: 0, start_time: iso(-9, 15), end_time: iso(-9, 17), status: 'COMPLETED' }
+        ]
     };
 
     /* ---------- Trạng thái chế độ dữ liệu ---------- */
@@ -150,9 +176,13 @@
     const fmtTime = s => { const d = parseDate(s); return `${p2(d.getHours())}:${p2(d.getMinutes())}`; };
     const fmtRange = (a, b) => `${fmtDate(a)} • ${fmtTime(a)} - ${fmtTime(b)}`;
     const hoursBetween = (a, b) => Math.max(0, (parseDate(b) - parseDate(a)) / 36e5);
+    // Tên hiển thị: ưu tiên họ tên, chưa có thì dùng username
+    const displayName = me => String((me && (me.full_name || me.username)) || '').trim() || 'Người dùng';
+    // Chữ cái trên avatar: "An" -> "A", "Phạm Gia Huy" -> "PH"
     const initials = name => {
-        const parts = String(name || '?').trim().split(/\s+/);
-        return ((parts[0][0] || '') + (parts.length > 1 ? parts[parts.length - 1][0] : '')).toUpperCase();
+        const parts = String(name || '?').trim().split(/\s+/).filter(Boolean);
+        if (!parts.length) return '?';
+        return Array.from((parts[0][0] || '') + (parts.length > 1 ? parts[parts.length - 1][0] : '')).join('').toUpperCase();
     };
 
     /* ---------- Toast ---------- */
@@ -358,9 +388,9 @@
             }, () => DEMO.user);
         },
         async updateProfile(payload) {
-            if (!isLive()) { Object.assign(DEMO.user, payload); return DEMO.user; }
+            if (!isLive()) { Object.assign(DEMO.user, payload); announceUser(DEMO.user); return DEMO.user; }
             const u = await api(EP.me, { method: 'PATCH', body: payload });
-            store.set(KEY.user, JSON.stringify(u)); return u;
+            store.set(KEY.user, JSON.stringify(u)); announceUser(u); return u;
         },
         async changePassword(current_password, new_password) {
             if (!isLive()) return null;
@@ -381,6 +411,21 @@
                       : api(EP.studios, { method: 'POST', body: payload });
         },
         createStudio(payload) { return data.saveStudio(null, payload); },
+        // Xóa cơ sở: backend từ chối (409) nếu đã có đơn đặt phòng / workshop
+        async deleteStudio(id) {
+            if (!isLive()) {
+                id = Number(id);
+                const roomIds = DEMO.rooms.filter(r => r.studio_id === id).map(r => r.room_id);
+                if (DEMO.bookings.some(b => roomIds.includes(b.room_id)))
+                    throw new ApiError('Cơ sở đã có đơn đặt phòng nên không thể xóa. Hãy ẩn các phòng của cơ sở này thay vì xóa.', 409);
+                DEMO.rooms = DEMO.rooms.filter(r => r.studio_id !== id);
+                DEMO.equipment = DEMO.equipment.filter(e => e.studio_id !== id);
+                DEMO.packages = DEMO.packages.filter(p => p.studio_id !== id);
+                DEMO.studios = DEMO.studios.filter(s => s.studio_id !== id);
+                return null;
+            }
+            return api(EP.studios + '/' + id, { method: 'DELETE' });
+        },
 
         // Phòng: API provider trả mọi trạng thái (AVAILABLE / MAINTENANCE / INACTIVE)
         async rooms() {
@@ -428,15 +473,16 @@
             return api(`${EP.bookings}/${id}/confirm`, { method: 'POST' });
         },
         // sp_CancelReservation: chủ studio hủy thì luôn hoàn tiền các khoản đã thanh toán
-        async cancelBooking(id) {
+        async cancelBooking(id, reason) {
+            reason = String(reason || '').trim() || null;
             if (!isLive()) {
                 const b = demoFind(id);
                 if (!['PENDING', 'CONFIRMED'].includes(b.status)) throw new ApiError('Chỉ hủy được đơn PENDING hoặc CONFIRMED.', 409);
-                demoHist(b, 'CANCELLED'); b.status = 'CANCELLED';
+                demoHist(b, 'CANCELLED'); b.status = 'CANCELLED'; b.cancel_reason = reason;
                 b.payments.forEach(p => { if (p.status === 'SUCCESS') p.status = 'REFUNDED'; else if (p.status === 'PENDING') p.status = 'FAILED'; });
                 return demoCopy(b);
             }
-            return api(`${EP.bookings}/${id}/cancel`, { method: 'POST' });
+            return api(`${EP.bookings}/${id}/cancel`, { method: 'POST', body: reason ? { reason } : undefined });
         },
         // sp_CheckIn: quét/nhập mã QR; cho vào sớm tối đa 30 phút, không quá giờ kết thúc
         async checkIn(qr_code) {
@@ -554,10 +600,184 @@
         async reviews(studioId) {
             return withFallback(() => api(EP.reviews + qs({ studio_id: studioId, limit: 50 })), () => DEMO.reviews);
         },
+        async disputes(status) {
+            return withFallback(() => api(EP.disputes + qs({ status, limit: 100 })),
+                () => DEMO.disputes.filter(d => !status || d.status === status).map(d => Object.assign({}, d)));
+        },
+        // Provider: IN_REVIEW (tiếp nhận) hoặc RESOLVED kèm nội dung phản hồi
+        async updateDispute(id, status, resolution) {
+            resolution = String(resolution || '').trim() || null;
+            if (!isLive()) {
+                const d = DEMO.disputes.find(x => x.dispute_id === Number(id));
+                if (!d) throw new ApiError('Không tìm thấy khiếu nại', 404);
+                if (['RESOLVED', 'REJECTED'].includes(d.status)) throw new ApiError('Khiếu nại đã được xử lý xong, không thể thay đổi.', 409);
+                if (status !== 'IN_REVIEW' && (!resolution || resolution.length < 3)) throw new ApiError('Cần nhập nội dung phản hồi / hướng giải quyết.', 400);
+                d.status = status;
+                if (status !== 'IN_REVIEW') { d.resolution = resolution; d.resolved_at = new Date().toISOString(); }
+                return Object.assign({}, d);
+            }
+            return api(`${EP.disputes}/${id}`, { method: 'PATCH', body: { status, resolution } });
+        },
+        async workshops(status) {
+            return withFallback(() => api(EP.workshops + qs({ status, limit: 100 })),
+                () => DEMO.workshops.filter(w => !status || w.status === status).map(w => Object.assign({}, w)));
+        },
 
         // Giữ lại cho các trang cũ: dữ liệu biểu đồ doanh thu theo tháng
         revenueByMonth() { return demoOverview().revenue_by_month.map(m => ({ label: 'T' + Number(m.month.slice(-2)), value: m.revenue })); }
     };
+
+    /* ---------- Avatar: chữ cái theo tên + ảnh tự tải lên (cắt kiểu Facebook) ---------- */
+    // Ảnh lưu ở localStorage của trình duyệt (theo user_id), chưa lưu lên server vì bảng Users chưa có cột ảnh.
+    let uiUser = null;                                   // người dùng đang hiển thị trên giao diện
+    const avatarKey = me => KEY.avatar + (me && me.user_id != null ? me.user_id : 'demo');
+    const Avatar = {
+        get: me => me ? store.get(avatarKey(me)) : null,
+        set(me, url) { store.set(avatarKey(me), url); announceUser(me); },
+        remove(me) { store.del(avatarKey(me)); announceUser(me); }
+    };
+    // Vẽ lại mọi thành phần hiển thị người dùng trên trang: [data-avatar], [data-user-name], [data-user-role]
+    function paintUser(me) {
+        if (!me) return;
+        injectCropCss();                                  // chứa cả kiểu .avatar.has-img
+        uiUser = me;
+        const img = Avatar.get(me), letters = initials(displayName(me));
+        document.querySelectorAll('[data-avatar]').forEach(el => {
+            el.classList.toggle('has-img', !!img);
+            el.style.backgroundImage = img ? `url("${img}")` : '';
+            el.textContent = img ? '' : letters;
+            el.setAttribute('aria-label', 'Ảnh đại diện của ' + displayName(me));
+        });
+        document.querySelectorAll('[data-user-name]').forEach(el => { el.textContent = displayName(me); });
+        document.querySelectorAll('[data-user-role]').forEach(el => { el.textContent = me.role || ''; });
+    }
+    // Báo cho mọi nơi trên trang biết tên / ảnh vừa đổi
+    function announceUser(me) {
+        paintUser(me);
+        document.dispatchEvent(new CustomEvent('provider:user', { detail: { user: me } }));
+    }
+    const avatarHTML = (extra, cls) => `<div class="avatar ${cls || ''}" data-avatar${extra ? ' style="' + extra + '"' : ''}>--</div>`;
+
+    /* Hộp thoại cắt ảnh: kéo để chọn vùng, thanh trượt / lăn chuột để phóng to, xem trước khung tròn */
+    const CROP_VIEW = 280, CROP_OUT = 320, CROP_MAX_BYTES = 10 * 1024 * 1024;
+    function injectCropCss() {
+        if (document.getElementById('pvCropCss')) return;
+        const st = document.createElement('style'); st.id = 'pvCropCss';
+        st.textContent = `
+.avatar.has-img{background-size:cover;background-position:center;background-repeat:no-repeat;color:transparent}
+.pv-crop-ov{position:fixed;inset:0;z-index:10000;background:rgba(15,23,42,.65);display:flex;align-items:center;justify-content:center;padding:16px;font-family:-apple-system,'Segoe UI',Roboto,sans-serif}
+.pv-crop{background:var(--bg-card,#fff);color:var(--text-main,#0f172a);border-radius:18px;width:100%;max-width:380px;padding:20px;display:flex;flex-direction:column;gap:14px;box-shadow:0 20px 40px rgba(0,0,0,.35)}
+.pv-crop h3{font-size:1rem;font-weight:800}
+.pv-crop p{font-size:.75rem;color:var(--text-muted,#475569)}
+.pv-crop-stage{position:relative;width:${CROP_VIEW}px;height:${CROP_VIEW}px;max-width:100%;margin:0 auto;overflow:hidden;border-radius:12px;background:#0f172a;touch-action:none;cursor:grab;user-select:none}
+.pv-crop-stage.drag{cursor:grabbing}
+.pv-crop-stage canvas{display:block;width:100%;height:100%}
+.pv-crop-mask{position:absolute;inset:0;border-radius:50%;box-shadow:0 0 0 400px rgba(15,23,42,.58);border:2px solid rgba(255,255,255,.9);pointer-events:none}
+.pv-crop-zoom{display:flex;align-items:center;gap:10px;font-size:.9rem}
+.pv-crop-zoom input{flex:1;accent-color:var(--primary-color,#0284c7)}
+.pv-crop-btns{display:flex;gap:10px;justify-content:flex-end}
+.pv-crop-btns button{border:1px solid var(--border-color,#e2e8f0);background:transparent;color:inherit;border-radius:10px;padding:9px 16px;font-weight:700;font-size:.8rem;cursor:pointer}
+.pv-crop-btns button.pv-ok{background:var(--primary-color,#0284c7);border-color:transparent;color:#fff}
+.pv-crop-btns button:disabled{opacity:.5;cursor:not-allowed}`;
+        document.head.appendChild(st);
+    }
+
+    function openCropper(file, onSave) {
+        injectCropCss();
+        const ov = document.createElement('div');
+        ov.className = 'pv-crop-ov'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-modal', 'true'); ov.setAttribute('aria-label', 'Cắt ảnh đại diện');
+        ov.innerHTML = `<div class="pv-crop">
+            <h3>Cắt ảnh đại diện</h3>
+            <p>Kéo ảnh để chọn vùng hiển thị, dùng thanh trượt (hoặc lăn chuột) để phóng to / thu nhỏ.</p>
+            <div class="pv-crop-stage" id="pvCropStage"><canvas width="${CROP_VIEW}" height="${CROP_VIEW}"></canvas><div class="pv-crop-mask"></div></div>
+            <div class="pv-crop-zoom"><span aria-hidden="true">🖼️</span><input type="range" min="1" max="4" step="0.01" value="1" aria-label="Phóng to"><span aria-hidden="true" style="font-size:1.25rem">🖼️</span></div>
+            <div class="pv-crop-btns"><button type="button" data-cancel>Hủy</button><button type="button" class="pv-ok" data-ok disabled>Dùng ảnh này</button></div>
+        </div>`;
+        document.body.appendChild(ov);
+        const stage = ov.querySelector('#pvCropStage'), canvas = ov.querySelector('canvas'), ctx = canvas.getContext('2d');
+        const slider = ov.querySelector('input[type=range]'), okBtn = ov.querySelector('[data-ok]');
+        const V = CROP_VIEW;
+        let img = null, minScale = 1, zoom = 1, ox = 0, oy = 0;
+
+        const scale = () => minScale * zoom;
+        const clamp = () => {                       // ảnh luôn phải phủ kín khung tròn
+            const w = img.width * scale(), h = img.height * scale();
+            ox = Math.min(0, Math.max(V - w, ox)); oy = Math.min(0, Math.max(V - h, oy));
+        };
+        const draw = () => {
+            ctx.clearRect(0, 0, V, V);
+            if (img) ctx.drawImage(img, ox, oy, img.width * scale(), img.height * scale());
+        };
+        const setZoom = z => {                       // phóng to quanh tâm khung
+            const cx = (V / 2 - ox) / scale(), cy = (V / 2 - oy) / scale();
+            zoom = Math.min(4, Math.max(1, z));
+            ox = V / 2 - cx * scale(); oy = V / 2 - cy * scale();
+            clamp(); draw(); slider.value = zoom;
+        };
+
+        const close = () => { document.removeEventListener('keydown', onKey); ov.remove(); };
+        const onKey = e => { if (e.key === 'Escape') close(); };
+        document.addEventListener('keydown', onKey);
+        ov.querySelector('[data-cancel]').onclick = close;
+        ov.addEventListener('mousedown', e => { if (e.target === ov) close(); });
+
+        // Kéo bằng chuột / cảm ứng (Pointer Events)
+        let drag = null;
+        stage.addEventListener('pointerdown', e => {
+            if (!img) return;
+            drag = { x: e.clientX, y: e.clientY, ox, oy };
+            stage.setPointerCapture(e.pointerId); stage.classList.add('drag');
+        });
+        stage.addEventListener('pointermove', e => {
+            if (!drag) return;
+            const k = V / stage.getBoundingClientRect().width;     // khung có thể bị co trên màn hình hẹp
+            ox = drag.ox + (e.clientX - drag.x) * k; oy = drag.oy + (e.clientY - drag.y) * k;
+            clamp(); draw();
+        });
+        const endDrag = () => { drag = null; stage.classList.remove('drag'); };
+        stage.addEventListener('pointerup', endDrag); stage.addEventListener('pointercancel', endDrag);
+        stage.addEventListener('wheel', e => { e.preventDefault(); setZoom(zoom * (e.deltaY < 0 ? 1.08 : 1 / 1.08)); }, { passive: false });
+        slider.addEventListener('input', () => setZoom(Number(slider.value)));
+
+        okBtn.onclick = () => {
+            const out = document.createElement('canvas'); out.width = out.height = CROP_OUT;
+            const k = CROP_OUT / V, o = out.getContext('2d');
+            o.fillStyle = '#fff'; o.fillRect(0, 0, CROP_OUT, CROP_OUT);
+            o.drawImage(img, ox * k, oy * k, img.width * scale() * k, img.height * scale() * k);
+            onSave(out.toDataURL('image/jpeg', 0.88)); close();
+        };
+
+        // Đọc ảnh
+        const reader = new FileReader();
+        reader.onerror = () => { toast('Không đọc được tệp ảnh.', 'bad'); close(); };
+        reader.onload = () => {
+            const im = new Image();
+            im.onerror = () => { toast('Tệp này không phải ảnh hợp lệ.', 'bad'); close(); };
+            im.onload = () => {
+                img = im; minScale = Math.max(V / im.width, V / im.height);
+                zoom = 1; ox = (V - im.width * minScale) / 2; oy = (V - im.height * minScale) / 2;
+                clamp(); draw(); okBtn.disabled = false;
+            };
+            im.src = reader.result;
+        };
+        reader.readAsDataURL(file);
+        return { close };
+    }
+
+    // Mở hộp chọn tệp -> cắt -> lưu cho người dùng hiện tại
+    function pickAvatar(me) {
+        me = me || uiUser || currentUser() || DEMO.user;
+        const inp = document.createElement('input');
+        inp.type = 'file'; inp.accept = 'image/png,image/jpeg,image/webp,image/gif'; inp.style.display = 'none';
+        inp.onchange = () => {
+            const f = inp.files && inp.files[0]; inp.remove();
+            if (!f) return;
+            if (!/^image\//.test(f.type)) return toast('Vui lòng chọn một tệp ảnh.', 'warn');
+            if (f.size > CROP_MAX_BYTES) return toast('Ảnh quá lớn (tối đa 10 MB).', 'warn');
+            openCropper(f, url => { Avatar.set(me, url); toast('Đã cập nhật ảnh đại diện.', 'ok'); });
+        };
+        document.body.appendChild(inp); inp.click();
+    }
 
     /* ---------- Giao diện PC: sidebar + topbar ---------- */
     const PC_NAV = [
@@ -565,6 +785,8 @@
         { key: 'bookings', icon: '📅', label: 'Lịch đặt', href: 'provider-pc-bookings.html' },
         { key: 'rooms', icon: '🧪', label: 'Phòng & Studio', href: 'provider-pc-rooms.html' },
         { key: 'equipment', icon: '🎛️', label: 'Thiết bị', href: 'provider-pc-equipment.html' },
+        { key: 'feedback', icon: '💬', label: 'Đánh giá & Khiếu nại', href: 'provider-pc-feedback.html' },
+        { key: 'workshops', icon: '🎓', label: 'Workshop', href: 'provider-pc-workshops.html' },
         { key: 'profile', icon: '👤', label: 'Hồ sơ & Bảo mật', href: 'provider-pc-profile.html' }
     ];
 
@@ -577,10 +799,7 @@
                 <div class="pc-brand"><span class="pc-brand-logo">🎞️</span><div><strong>Provider Hub</strong><small>Film Photography</small></div></div>
                 <nav class="pc-nav" aria-label="Điều hướng chính">
                     ${PC_NAV.map(n => `<a href="${n.href}" class="pc-nav-item${n.key === activeKey ? ' active' : ''}"${n.key === activeKey ? ' aria-current="page"' : ''}><span>${n.icon}</span>${n.label}</a>`).join('')}
-                </nav>
-                <div class="pc-side-foot">
-                    <a href="provider-index.html" class="pc-nav-item"><span>📱</span>Bản mobile</a>
-                </div>`;
+                </nav>`;
         }
         if (top) {
             top.innerHTML = `
@@ -588,7 +807,7 @@
                 <div class="pc-top-right">
                     <span class="mode-badge" id="modeBadge"></span>
                     <button class="icon-btn" id="themeBtn" title="Đổi giao diện sáng / tối" aria-label="Đổi giao diện sáng hoặc tối">🌓</button>
-                    <div class="pc-user" id="pcUser"><div class="avatar">--</div><div><strong>...</strong><small>...</small></div></div>
+                    <div class="pc-user" id="pcUser"><div class="avatar" data-avatar>--</div><div><strong data-user-name>...</strong><small data-user-role>...</small></div></div>
                     <a class="btn btn-ghost" id="authBtn" href="#">Đăng nhập</a>
                 </div>`;
             document.getElementById('themeBtn').onclick = toggleTheme;
@@ -602,13 +821,68 @@
     function refreshChrome(me) {
         const badge = document.getElementById('modeBadge');
         if (badge) { const m = MODE_TEXT[state.mode]; badge.className = 'mode-badge ' + m.cls; badge.textContent = '● ' + m.text; }
-        const u = document.getElementById('pcUser');
-        if (u && me) u.innerHTML = `<div class="avatar">${esc(initials(me.username))}</div><div><strong>${esc(me.username)}</strong><small>${esc(me.role)}</small></div>`;
+        paintUser(me || uiUser || currentUser());
         const btn = document.getElementById('authBtn');
         if (btn) {
             if (token()) { btn.textContent = 'Đăng xuất'; btn.href = '#'; btn.onclick = e => { e.preventDefault(); logout(); }; }
             else { btn.textContent = 'Đăng nhập'; btn.href = loginUrl(); btn.onclick = null; }
         }
+    }
+
+    /* ---------- Giao diện mobile: thanh trên + thanh điều hướng dưới ---------- */
+    const M_NAV = [
+        { key: 'dashboard', icon: '📊', label: 'Tổng quan', href: 'provider-index.html' },
+        { key: 'bookings', icon: '📅', label: 'Lịch đặt', href: 'provider-bookings.html' },
+        { key: 'rooms', icon: '🧪', label: 'Phòng', href: 'provider-rooms.html' },
+        { key: 'equipment', icon: '🎛️', label: 'Thiết bị', href: 'provider-equipment.html' },
+        { key: 'profile', icon: '👤', label: 'Hồ sơ', href: 'provider-profile.html' }
+    ];
+
+    async function mountMobile(activeKey, title) {
+        applyTheme();
+        document.body.classList.add('m');
+        const top = document.getElementById('mTop'), nav = document.getElementById('mNav');
+        if (top) {
+            top.innerHTML = `
+                <div class="m-top-row">
+                    <h1 class="m-title">${esc(title)}</h1>
+                    <button class="icon-btn" id="themeBtn" title="Đổi giao diện sáng / tối" aria-label="Đổi giao diện sáng hoặc tối">🌓</button>
+                    <a class="m-avatar-link" href="provider-profile.html" aria-label="Hồ sơ cá nhân"><div class="avatar" data-avatar>--</div></a>
+                </div>
+                <span class="mode-badge" id="modeBadge"></span>`;
+            document.getElementById('themeBtn').onclick = toggleTheme;
+        }
+        if (nav) {
+            nav.innerHTML = '<div class="m-nav-inner">' + M_NAV.map(n =>
+                `<a href="${n.href}" class="${n.key === activeKey ? 'active' : ''}"${n.key === activeKey ? ' aria-current="page"' : ''}><span>${n.icon}</span>${n.label}</a>`).join('') + '</div>';
+        }
+        const me = await data.me().catch(() => DEMO.user);
+        refreshChrome(me);
+        paintPendingDot();
+        return me;
+    }
+
+    // Chấm đỏ số đơn chờ duyệt trên thẻ "Lịch đặt" (gọi lại sau khi duyệt/hủy đơn để cập nhật)
+    async function paintPendingDot() {
+        const a = document.querySelector('.m-nav a[href="provider-bookings.html"]');
+        if (!a) return;
+        let n = 0;
+        try { n = Number((await data.overview()).pending_bookings) || 0; } catch (e) { n = 0; }
+        let d = a.querySelector('.dot');
+        if (!n) { if (d) d.remove(); return; }
+        if (!d) { d = document.createElement('i'); d.className = 'dot'; d.style.fontStyle = 'normal'; a.appendChild(d); }
+        d.textContent = n > 9 ? '9+' : n;
+        a.setAttribute('aria-label', 'Lịch đặt, ' + n + ' đơn chờ duyệt');
+    }
+
+    // Bottom sheet: bấm nền tối, nút [data-close] hoặc phím Esc để đóng. Trả về { open(id), close(el) }.
+    function bindSheets(onClose) {
+        let lastFocus = null;
+        const open = id => { lastFocus = document.activeElement; document.getElementById(id).classList.add('open'); };
+        const close = el => { el.classList.remove('open'); if (onClose) onClose(el); if (lastFocus && lastFocus.focus) lastFocus.focus(); };
+        document.querySelectorAll('.modal-overlay').forEach(ov => ov.addEventListener('click', e => { if (e.target === ov || e.target.closest('[data-close]')) close(ov); }));
+        document.addEventListener('keydown', e => { if (e.key === 'Escape') document.querySelectorAll('.modal-overlay.open').forEach(close); });
+        return { open, close };
     }
 
     /* ---------- Nút chuyển sang bản PC trên các trang mobile ---------- */
@@ -624,10 +898,11 @@
     }
 
     global.Provider = {
-        KEY, DEMO, ROOM_TYPES, BOOKING_STATUS, ROOM_STATUS, EQUIPMENT_CATEGORY, EQUIPMENT_STATUS, STUDIO_STATUS, PAYMENT_STATUS, PAYMENT_METHOD, EP, state, isLive,
+        KEY, DEMO, ROOM_TYPES, BOOKING_STATUS, ROOM_STATUS, EQUIPMENT_CATEGORY, EQUIPMENT_STATUS, STUDIO_STATUS, DISPUTE_STATUS, WORKSHOP_STATUS, PAYMENT_STATUS, PAYMENT_METHOD, EP, state, isLive,
         store, esc, money, moneyShort, fmtDate, fmtTime, fmtRange, hoursBetween, initials,
         toast, applyTheme, toggleTheme,
         apiBase, token, currentUser, login, logout, loginUrl, requireLogin, api, ApiError,
-        data, mountPC, refreshChrome, addPcShortcut
+        displayName, Avatar, avatarHTML, paintUser, pickAvatar,
+        data, mountPC, mountMobile, paintPendingDot, bindSheets, refreshChrome, addPcShortcut
     };
 })(window);

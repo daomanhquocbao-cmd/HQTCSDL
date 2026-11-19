@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Workshop - Provider Hub</title>
+    <link rel="stylesheet" href="../assets/css/provider-mobile.css">
+</head>
+<body class="m">
+<div class="m-app">
+    <header class="m-top" id="mTop"></header>
+    <main class="m-main">
+        <div class="alert bad" id="pageError" role="alert" hidden></div>
+        <div class="alert warn">ℹ️ Workshop do chuyên gia tổ chức tại cơ sở của bạn — chỉ để theo dõi lịch và số người đăng ký.</div>
+        <div class="m-list" id="list"></div>
+    </main>
+</div>
+<nav class="m-nav" id="mNav" aria-label="Điều hướng chính"></nav>
+<script src="../assets/js/provider-common.js"></script>
+<script>
+(async function () {
+    const P = Provider, $ = id => document.getElementById(id);
+    await P.mountMobile('profile', 'Workshop');
+    try {
+        const list = await P.data.workshops();
+        $('list').innerHTML = list.map(w => {
+            const st = P.WORKSHOP_STATUS[w.status] || { label: w.status, cls: 'muted' };
+            return `<div class="m-item">
+                <div class="m-item-head"><div><strong>${P.esc(w.title)}</strong><span class="sub">${P.esc(w.expert_name || '—')} • ${P.esc(w.studio_name || '')}</span></div><span class="badge ${st.cls}">${st.label}</span></div>
+                <div class="row"><span>${P.fmtRange(w.start_time, w.end_time)}</span></div>
+                <div class="row"><span>Đăng ký</span><b>${w.registered || 0}/${w.capacity}</b></div>
+                <div class="row"><span>Phí</span><b>${w.fee ? P.money(w.fee) : 'Miễn phí'}</b></div></div>`;
+        }).join('') || '<div class="empty">Chưa có workshop nào tại cơ sở của bạn.</div>';
+    } catch (err) { const b = $('pageError'); b.hidden = false; b.textContent = err.message; }
+})();
+</script>
+</body>
+</html>

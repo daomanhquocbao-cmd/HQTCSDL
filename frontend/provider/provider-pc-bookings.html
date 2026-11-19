@@ -51,6 +51,10 @@
     <div class="modal">
         <div class="modal-head"><span id="mTitle">Xác nhận</span><button class="icon-btn" data-close aria-label="Đóng">✕</button></div>
         <dl class="kv" id="mDetails"></dl>
+        <div class="field" id="mReasonWrap" style="margin-top:12px;" hidden>
+            <label for="mReason">Lý do hủy (khách sẽ thấy, không bắt buộc)</label>
+            <textarea class="input" id="mReason" rows="3" maxlength="500" placeholder="VD: Phòng đang bảo trì đột xuất, xin lỗi bạn vì sự bất tiện."></textarea>
+        </div>
         <p class="muted small" id="mHint" style="margin-top:12px;"></p>
         <div class="modal-foot">
             <button class="btn btn-ghost" data-close>Quay lại</button>
@@ -135,7 +139,7 @@
             run: b => P.data.confirmBooking(b.reservation_id), done: r => 'Đã xác nhận. Mã QR: ' + (r && r.qr_code ? r.qr_code : '—') },
         CANCEL: { title: 'Hủy đơn đặt', btn: 'Hủy đơn', cls: 'btn-bad', color: 'var(--bad)',
             hint: 'Chủ studio hủy thì mọi khoản khách đã thanh toán đều được hoàn tiền (khách tự hủy sát giờ < 24h mới không được hoàn).',
-            run: b => P.data.cancelBooking(b.reservation_id), done: () => 'Đã hủy đơn và hoàn tiền các khoản đã thanh toán.' },
+            run: b => P.data.cancelBooking(b.reservation_id, $('mReason').value), done: () => 'Đã hủy đơn và hoàn tiền các khoản đã thanh toán.' },
         CHECKIN: { title: 'Check-in cho khách', btn: 'Check-in', cls: 'btn-primary', color: 'var(--primary-color)',
             hint: 'Chỉ check-in được từ 30 phút trước giờ bắt đầu đến hết giờ kết thúc. Hệ thống mở phiên sử dụng.',
             run: b => P.data.checkIn(b.qr_code), done: () => 'Check-in thành công. Đơn đang được sử dụng.' },
@@ -148,6 +152,7 @@
         $('mTitle').textContent = c.title; $('mTitle').style.color = c.color;
         $('mConfirm').textContent = c.btn; $('mConfirm').className = 'btn ' + c.cls;
         $('mHint').textContent = c.hint;
+        $('mReasonWrap').hidden = act !== 'CANCEL'; $('mReason').value = '';
         $('mDetails').innerHTML = `
             <dt>Khách hàng</dt><dd>${P.esc(custName(b))}</dd>
             <dt>Phòng</dt><dd>${P.esc(b.room_name)}</dd>
@@ -193,6 +198,7 @@
                 <dt>Phòng</dt><dd>${P.esc(b.room_name)} • ${P.esc(b.studio_name || '')}</dd>
                 <dt>Thời gian</dt><dd>${P.fmtRange(b.start_time, b.end_time)}</dd>
                 <dt>Ghi chú của khách</dt><dd>${P.esc(b.customer_note || 'Không có')}</dd>
+                ${b.status === 'CANCELLED' ? `<dt>Lý do hủy</dt><dd>${b.cancel_reason ? P.esc(b.cancel_reason) : '<span class="muted">Không ghi lý do</span>'}</dd>` : ''}
                 <dt>Mã QR</dt><dd>${b.qr_code ? `<span class="qr-code">${P.esc(b.qr_code)}</span>` : '<span class="muted">Chưa có (sinh khi xác nhận đơn)</span>'}</dd>
                 ${b.session ? `<dt>Phiên sử dụng</dt><dd>Vào ${dt(b.session.checkin_time)} • Ra ${dt(b.session.checkout_time)}${b.session.actual_minutes != null ? ' • ' + b.session.actual_minutes + ' phút' : ''}</dd>` : ''}
             </dl>

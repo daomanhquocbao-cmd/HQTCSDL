@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Đánh giá &amp; Khiếu nại - Provider Hub (PC)</title>
+    <link rel="stylesheet" href="../assets/css/provider-pc.css">
+</head>
+<body>
+<div class="pc-shell">
+    <aside class="pc-sidebar" id="pcSidebar"></aside>
+    <div class="pc-main">
+        <header class="pc-topbar" id="pcTopbar"></header>
+        <main class="pc-content">
+            <div class="alert bad" id="pageError" role="alert" hidden></div>
+
+            <div class="card">
+                <div class="toolbar">
+                    <div class="tabs" id="mainTabs" role="tablist">
+                        <button class="tab active" data-tab="reviews" role="tab">⭐ Đánh giá<span class="count" id="cReviews">0</span></button>
+                        <button class="tab" data-tab="disputes" role="tab">⚠️ Khiếu nại<span class="count" id="cDisputes">0</span></button>
+                    </div>
+                    <span class="spacer"></span>
+                    <select class="input" id="studioFilter" aria-label="Lọc theo cơ sở" style="max-width:240px;"></select>
+                </div>
+            </div>
+
+            <section id="paneReviews">
+                <div class="card" id="ratingSummary" style="margin-bottom:16px;"></div>
+                <div class="card"><div id="reviewList"></div></div>
+            </section>
+
+            <section id="paneDisputes" hidden>
+                <div class="card">
+                    <div class="toolbar"><div class="tabs" id="dTabs" role="tablist" aria-label="Lọc khiếu nại"></div></div>
+                </div>
+                <div class="card">
+                    <div class="table-wrap">
+                        <table class="data">
+                            <thead><tr><th>Mã</th><th>Khách hàng</th><th>Đơn / Phòng</th><th>Nội dung khiếu nại</th><th>Trạng thái</th><th></th></tr></thead>
+                            <tbody id="dRows"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+</div>
+
+<div class="modal-overlay" id="dModal" role="dialog" aria-modal="true" aria-labelledby="dmTitle">
+    <form class="modal" id="dForm" novalidate>
+        <div class="modal-head"><span id="dmTitle">Khiếu nại</span><button type="button" class="icon-btn" data-close aria-label="Đóng">✕</button></div>
+        <dl class="kv" id="dmInfo"></dl>
+        <div class="field" id="dmResWrap" style="margin-top:12px;">
+            <label for="dmRes">Phản hồi / hướng giải quyết (khách sẽ thấy)</label>
+            <textarea class="input" id="dmRes" rows="4" maxlength="4000" placeholder="VD: Studio đã kiểm tra và hoàn lại 1 giờ phí cho bạn."></textarea>
+        </div>
+        <div class="alert bad" id="dmErr" role="alert" hidden></div>
+        <p class="muted small" id="dmHint" style="margin-top:10px;"></p>
+        <div class="modal-foot">
+            <button type="button" class="btn btn-ghost" data-close>Đóng</button>
+            <button type="button" class="btn btn-ghost" id="dmReview">Tiếp nhận xử lý</button>
+            <button type="submit" class="btn btn-primary" id="dmResolve">Gửi phản hồi &amp; đóng khiếu nại</button>
+        </div>
+    </form>
+</div>
+
+<script src="../assets/js/provider-common.js"></script>
+<script>
+(async function () {
+    const P = Provider, $ = id => document.getElementById(id);
+    await P.mountPC('feedback', 'Đánh giá & Khiếu nại');
+
+    let studios = [], reviews = [], disputes = [], dTab = 'ALL', cur = null;
+    const stars = n => '★'.repeat(n) + '☆'.repeat(5 - n);
+    const dt = s => s ? P.fmtDate(s) + ' ' + P.fmtTime(s) : '—';
+    const dBadge = st => { const x = P.DISPUTE_STATUS[st] || { label: st, cls: 'muted' }; return `<span class="badge ${x.cls}">${x.label}</span>`; };
+    const fail = err => { const b = $('pageError'); b.hidden = false; b.textContent = err.message; };
+    const open = id => $(id).classList.add('open'), close = el => el.classList.remove('open');
+    const sid = () => $('studioFilter').value ? Number($('studioFilter').value) : null;
+
+    document.querySelectorAll('.modal-overlay').forEach(ov => ov.addEventListener('click', e => { if (e.target === ov || e.target.hasAttribute('data-close')) close(ov); }));
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') document.querySelectorAll('.modal-overlay.open').forEach(close); });
+
+    /* ---------- Đánh giá ---------- */
+    function renderReviews() {
+        const list = reviews.filter(r => !sid() || r.studio_id === sid());
+        $('cReviews').textContent = list.length;
+        const avg = list.length ? list.reduce((s, r) => s + r.rating, 0) / list.length : null;
+        const dist = [5, 4, 3, 2, 1].map(n => ({ n, c: list.filter(r => r.rating === n).length }));
+        $('ratingSummary').innerHTML = avg == null ? '<div class="empty">Chưa có đánh giá nào.</div>' : `
+            <div style="display:flex;gap:28px;align-items:center;flex-wrap:wrap;">
+                <div style="text-align:center;"><div style="font-size:2.4rem;font-weight:800;">${avg.toFixed(1)}</div>
+                    <div style="color:var(--warn);letter-spacing:2px;">${stars(Math.round(avg))}</div>
+                    <div class="muted small">${list.length} đánh giá</div></div>
+                <div style="flex:1;min-width:220px;">${dist.map(d => `<div class="stat-row"><div><strong>${d.n} ★</strong><span>${d.c}</span></div><div class="progress"><div style="width:${list.length ? d.c / list.length * 100 : 0}%;background:var(--warn)"></div></div></div>`).join('')}</div>
+            </div>`;
+        $('reviewList').innerHTML = list.map(r => `
+            <div class="list-item">
+                <div><strong>${P.esc(r.customer_name || 'Khách #' + r.customer_id)} <span style="color:var(--warn)">${stars(r.rating)}</span></strong>
+                    <span class="muted small">${P.esc(r.studio_name || '')} • ${dt(r.created_at)} • Đơn #${r.reservation_id}</span>
+                    <span>${r.comment ? P.esc(r.comment) : '<i class="muted">(Không có nhận xét)</i>'}</span></div>
+            </div>`).join('') || '<div class="empty">Chưa có đánh giá nào.</div>';
+    }
+
+    /* ---------- Khiếu nại ---------- */
+    function renderDisputes() {
+        const base = disputes.filter(d => !sid() || d.studio_id === sid());
+        $('cDisputes').textContent = base.filter(d => ['OPEN', 'IN_REVIEW'].includes(d.status)).length;
+        const keys = [['ALL', 'Tất cả'], ['OPEN', 'Mới'], ['IN_REVIEW', 'Đang xem xét'], ['RESOLVED', 'Đã giải quyết'], ['REJECTED', 'Bị bác bỏ']];
+        $('dTabs').innerHTML = keys.map(([k, l]) => `<button class="tab${dTab === k ? ' active' : ''}" data-dtab="${k}">${l}<span class="count">${k === 'ALL' ? base.length : base.filter(d => d.status === k).length}</span></button>`).join('');
+        const list = base.filter(d => dTab === 'ALL' || d.status === dTab);
+        $('dRows').innerHTML = list.map(d => `<tr>
+            <td>#${d.dispute_id}</td>
+            <td>${P.esc(d.raised_by_name || 'Khách #' + d.raised_by)}<span class="sub">${dt(d.created_at)}</span></td>
+            <td>Đơn #${d.reservation_id}<span class="sub">${P.esc(d.room_name || '')}</span></td>
+            <td style="max-width:320px;">${P.esc(d.reason)}</td>
+            <td>${dBadge(d.status)}</td>
+            <td><div class="row-actions"><button class="btn btn-ghost btn-sm" data-open="${d.dispute_id}">${['OPEN', 'IN_REVIEW'].includes(d.status) ? 'Xử lý' : 'Xem'}</button></div></td></tr>`).join('')
+            || '<tr><td colspan="6" class="empty">Không có khiếu nại nào.</td></tr>';
+    }
+    $('dTabs').addEventListener('click', e => { const b = e.target.closest('[data-dtab]'); if (b) { dTab = b.dataset.dtab; renderDisputes(); } });
+    $('mainTabs').addEventListener('click', e => {
+        const b = e.target.closest('[data-tab]'); if (!b) return;
+        document.querySelectorAll('#mainTabs .tab').forEach(t => t.classList.toggle('active', t === b));
+        $('paneReviews').hidden = b.dataset.tab !== 'reviews'; $('paneDisputes').hidden = b.dataset.tab !== 'disputes';
+    });
+    $('studioFilter').addEventListener('change', () => { renderReviews(); renderDisputes(); });
+
+    function openDispute(d) {
+        cur = d; const live = ['OPEN', 'IN_REVIEW'].includes(d.status);
+        $('dmTitle').innerHTML = `Khiếu nại #${d.dispute_id} ${dBadge(d.status)}`;
+        $('dmInfo').innerHTML = `
+            <dt>Khách hàng</dt><dd>${P.esc(d.raised_by_name || 'Khách #' + d.raised_by)}</dd>
+            <dt>Đơn đặt</dt><dd>#${d.reservation_id} • ${P.esc(d.room_name || '')}</dd>
+            <dt>Gửi lúc</dt><dd>${dt(d.created_at)}</dd>
+            <dt>Nội dung</dt><dd>${P.esc(d.reason)}</dd>
+            ${d.resolution && !live ? `<dt>Phản hồi</dt><dd>${P.esc(d.resolution)}</dd><dt>Xử lý lúc</dt><dd>${dt(d.resolved_at)}</dd>` : ''}`;
+        $('dmResWrap').hidden = !live; $('dmResolve').hidden = !live; $('dmReview').hidden = d.status !== 'OPEN';
+        $('dmRes').value = d.resolution || ''; $('dmErr').hidden = true;
+        $('dmHint').textContent = live ? 'Bạn có thể tiếp nhận để báo khách biết đang xử lý, hoặc phản hồi và đóng luôn. Việc bác bỏ khiếu nại do quản trị viên quyết định.' : '';
+        open('dModal');
+    }
+    $('dRows').addEventListener('click', e => { const b = e.target.closest('[data-open]'); if (b) openDispute(disputes.find(x => x.dispute_id === Number(b.dataset.open))); });
+
+    async function submit(status) {
+        $('dmErr').hidden = true;
+        const text = $('dmRes').value.trim();
+        if (status === 'RESOLVED' && text.length < 3) { $('dmErr').hidden = false; $('dmErr').textContent = 'Hãy nhập nội dung phản hồi / hướng giải quyết.'; return; }
+        try {
+            await P.data.updateDispute(cur.dispute_id, status, status === 'RESOLVED' ? text : null);
+            P.toast(status === 'RESOLVED' ? 'Đã phản hồi và đóng khiếu nại.' : 'Đã tiếp nhận khiếu nại.', 'ok');
+            close($('dModal')); disputes = await P.data.disputes(); renderDisputes();
+        } catch (err) { $('dmErr').hidden = false; $('dmErr').textContent = err.message; }
+    }
+    $('dmReview').onclick = () => submit('IN_REVIEW');
+    $('dForm').addEventListener('submit', e => { e.preventDefault(); submit('RESOLVED'); });
+
+    try {
+        [studios, reviews, disputes] = await Promise.all([P.data.studios(), P.data.reviews(), P.data.disputes()]);
+        $('studioFilter').innerHTML = '<option value="">Tất cả cơ sở</option>' + studios.map(s => `<option value="${s.studio_id}">${P.esc(s.name)}</option>`).join('');
+        renderReviews(); renderDisputes();
+    } catch (err) { fail(err); }
+})();
+</script>
+</body>
+</html>

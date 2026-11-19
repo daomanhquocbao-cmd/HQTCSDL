@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Hồ sơ - Provider Hub</title>
+    <link rel="stylesheet" href="../assets/css/provider-mobile.css">
+</head>
+<body class="m">
+<div class="m-app">
+    <header class="m-top" id="mTop"></header>
+    <main class="m-main">
+        <div class="alert bad" id="pageError" role="alert" hidden></div>
+
+        <section class="card">
+            <div class="m-profile-head">
+                <div class="avatar-edit"><div class="avatar" id="bigAvatar" data-avatar>--</div><button type="button" class="cam" id="camBtn" title="Đổi ảnh đại diện" aria-label="Đổi ảnh đại diện">📷</button></div>
+                <div>
+                    <div style="font-size:1.1rem;font-weight:800;" data-user-name>—</div>
+                    <span class="badge warn" id="pRole">—</span>
+                    <div class="avatar-actions">
+                        <button type="button" class="btn btn-ghost btn-sm" id="avatarBtn">Đổi ảnh</button>
+                        <button type="button" class="btn btn-ghost btn-sm" id="avatarDel" hidden>Xóa ảnh</button>
+                    </div>
+                </div>
+            </div>
+            <dl class="kv" style="margin-top:16px">
+                <dt>Email</dt><dd id="pEmail">—</dd>
+                <dt>Điện thoại</dt><dd id="pPhone">—</dd>
+                <dt>Cơ sở</dt><dd id="pStudios">—</dd>
+                <dt>Trạng thái</dt><dd id="pStatus" style="color:var(--ok)">—</dd>
+                <dt>Phiên</dt><dd id="sState">—</dd>
+            </dl>
+        </section>
+        <section class="card">
+            <div class="card-head"><span class="card-title">Tiện ích khác</span></div>
+            <div class="m-list">
+                <a class="m-item" href="provider-feedback.html" style="text-decoration:none;color:inherit"><div class="m-item-head"><strong>💬 Đánh giá &amp; Khiếu nại</strong><span>›</span></div></a>
+                <a class="m-item" href="provider-workshops.html" style="text-decoration:none;color:inherit"><div class="m-item-head"><strong>🎓 Workshop tại cơ sở</strong><span>›</span></div></a>
+            </div>
+        </section>
+        <form class="card" id="profileForm" novalidate>
+            <div class="card-head"><span class="card-title">✏️ Cập nhật thông tin</span></div>
+            <div class="field"><label for="fName">Họ và tên</label><input class="input" id="fName" maxlength="100" required></div>
+            <div class="field"><label for="fEmail">Email</label><input class="input" id="fEmail" type="email" maxlength="100" required></div>
+            <div class="field"><label for="fPhone">Số điện thoại</label><input class="input" id="fPhone" maxlength="20"></div>
+            <div class="alert bad" id="profileErr" role="alert" hidden></div>
+            <button class="btn btn-primary" type="submit">Lưu thông tin</button>
+        </form>
+        <form class="card" id="pwForm" novalidate>
+            <div class="card-head"><span class="card-title">🔑 Đổi mật khẩu</span></div>
+            <div class="field"><label for="pwOld">Mật khẩu hiện tại</label><input class="input" id="pwOld" type="password" autocomplete="current-password"></div>
+            <div class="field"><label for="pwNew">Mật khẩu mới (tối thiểu 8 ký tự)</label><input class="input" id="pwNew" type="password" autocomplete="new-password"></div>
+            <div class="field"><label for="pwNew2">Nhập lại mật khẩu mới</label><input class="input" id="pwNew2" type="password" autocomplete="new-password"></div>
+            <div class="alert bad" id="pwErr" role="alert" hidden></div>
+            <button class="btn btn-primary" type="submit">Đổi mật khẩu</button>
+        </form>
+        <section class="card" style="display:flex;flex-direction:column;gap:10px">
+            <button class="btn btn-ghost" id="themeBtn2">🌓 Đổi giao diện sáng / tối</button>
+            <a class="btn btn-ghost" href="provider-pc-dashboard.html" style="text-align:center">🖥️ Mở bản PC</a>
+            <button class="btn btn-bad" id="authBtn2">Đăng xuất</button>
+        </section>
+    </main>
+</div>
+<nav class="m-nav" id="mNav" aria-label="Điều hướng chính"></nav>
+<script src="../assets/js/provider-common.js"></script>
+<script>
+(async function () {
+    const P = Provider, $ = id => document.getElementById(id);
+    await P.mountMobile('profile', 'Hồ sơ');
+    try {
+        const me = await P.data.me(), studios = await P.data.studios();
+        P.refreshChrome(me);
+        const syncAvatarBtns = () => { $('avatarDel').hidden = !P.Avatar.get(me); };
+        $('avatarBtn').onclick = $('camBtn').onclick = () => P.pickAvatar(me);
+        $('avatarDel').onclick = () => { P.Avatar.remove(me); P.toast('Đã xóa ảnh đại diện.', 'ok'); };
+        document.addEventListener('provider:user', syncAvatarBtns); syncAvatarBtns();
+        $('pRole').textContent = 'QUYỀN: ' + String(me.role).toUpperCase();
+        $('pStatus').textContent = me.status === 'ACTIVE' || !me.status ? '● Đang hoạt động' : '○ ' + me.status;
+        $('fName').value = me.full_name || ''; $('fEmail').value = me.email || ''; $('fPhone').value = me.phone || '';
+        $('pEmail').textContent = me.email || '—'; $('pPhone').textContent = me.phone || 'Chưa cập nhật';
+        $('pStudios').textContent = studios.length + ' cơ sở';
+        $('sState').textContent = P.isLive() ? '● Đã đăng nhập' : '○ Chế độ demo';
+    } catch (err) { const b = $('pageError'); b.hidden = false; b.textContent = 'Không tải được dữ liệu: ' + err.message; }
+
+    const showErr = (id, msg) => { const b = $(id); b.hidden = !msg; b.textContent = msg || ''; };
+    $('profileForm').addEventListener('submit', async e => {
+        e.preventDefault(); showErr('profileErr', '');
+        const body = { full_name: $('fName').value.trim(), email: $('fEmail').value.trim(), phone: $('fPhone').value.trim() || null };
+        if (body.full_name.length < 2) return showErr('profileErr', 'Họ tên tối thiểu 2 ký tự.');
+        if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(body.email)) return showErr('profileErr', 'Email không hợp lệ.');
+        try {
+            const u = await P.data.updateProfile(body);
+            P.refreshChrome(u); $('pEmail').textContent = u.email; $('pPhone').textContent = u.phone || 'Chưa cập nhật';
+            P.toast('Đã lưu thông tin.', 'ok');
+        } catch (err) { showErr('profileErr', err.status === 404 || err.status === 405 ? 'Backend chưa có endpoint cập nhật hồ sơ (PATCH /api/users/me).' : err.message); }
+    });
+    $('pwForm').addEventListener('submit', async e => {
+        e.preventDefault(); showErr('pwErr', '');
+        const o = $('pwOld').value, n = $('pwNew').value;
+        if (!P.isLive()) return showErr('pwErr', 'Cần đăng nhập thật (không phải chế độ demo) để đổi mật khẩu.');
+        if (!o || n.length < 8) return showErr('pwErr', 'Nhập mật khẩu hiện tại và mật khẩu mới tối thiểu 8 ký tự.');
+        if (n !== $('pwNew2').value) return showErr('pwErr', 'Hai mật khẩu mới không khớp.');
+        try { await P.data.changePassword(o, n); e.target.reset(); P.toast('Đã đổi mật khẩu.', 'ok'); }
+        catch (err) { showErr('pwErr', err.status === 404 || err.status === 405 ? 'Backend chưa có endpoint đổi mật khẩu (POST /api/users/change-password).' : err.message); }
+    });
+    $('themeBtn2').onclick = P.toggleTheme;
+    const au = $('authBtn2');
+    if (P.token()) au.onclick = () => { if (confirm('Bạn có chắc chắn muốn đăng xuất?')) P.logout(); };
+    else { au.textContent = 'Đăng nhập'; au.className = 'btn btn-primary'; au.onclick = () => { location.href = P.loginUrl(); }; }
+
+})();
+</script>
+</body>
+</html>

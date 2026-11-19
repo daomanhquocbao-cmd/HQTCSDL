@@ -35,12 +35,23 @@
                         <option value="priceDesc">Giá giảm dần</option>
                     </select>
                     <span class="spacer"></span>
-                    <button class="btn btn-ghost" id="addStudioBtn">+ Thêm cơ sở</button>
                     <button class="btn btn-primary" id="addRoomBtn">+ Thêm phòng</button>
                 </div>
             </div>
 
             <div class="card">
+                <div class="card-head"><span class="card-title">Cơ sở của bạn <span class="muted small" id="studioSummary" style="text-transform:none;font-weight:600"></span></span><button class="btn btn-primary btn-sm" id="addStudioBtn">+ Thêm cơ sở</button></div>
+                <div class="alert warn" id="pendingHint" hidden style="margin-bottom:12px;">⏳ Cơ sở có trạng thái <b>Chờ duyệt</b> cần được quản trị viên phê duyệt trước khi khách hàng nhìn thấy cơ sở và phòng của nó.</div>
+                <div class="table-wrap">
+                    <table class="data">
+                        <thead><tr><th>Cơ sở</th><th>Địa chỉ</th><th>Giờ mở cửa</th><th class="num">Số phòng</th><th>Trạng thái</th><th></th></tr></thead>
+                        <tbody id="studioRows"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-head"><span class="card-title">Danh sách phòng</span></div>
                 <div class="table-wrap">
                     <table class="data">
                         <thead>
@@ -132,7 +143,7 @@
         </div>
         <div class="modal-foot">
             <button type="button" class="btn btn-ghost" data-close>Hủy</button>
-            <button type="submit" class="btn btn-primary">Lưu cơ sở</button>
+            <button type="submit" class="btn btn-primary" id="studioSave">Lưu cơ sở</button>
         </div>
     </form>
 </div>
@@ -164,8 +175,29 @@
     }
     const studioName = id => (studios.find(s => s.studio_id === id) || {}).name || '—';
 
-    /* ---------- Hiển thị bảng ---------- */
+    /* ---------- Bảng cơ sở ---------- */
+    function renderStudios() {
+        $('studioRows').innerHTML = studios.map(s => {
+            const st = P.STUDIO_STATUS[s.status] || { label: s.status, cls: 'muted' };
+            const n = rooms.filter(r => r.studio_id === s.studio_id).length;
+            return `<tr>
+                <td><strong>${P.esc(s.name)}</strong>${s.phone ? `<span class="sub">${P.esc(s.phone)}</span>` : ''}</td>
+                <td>${P.esc(s.address)}<span class="sub">${P.esc(s.city)}</span></td>
+                <td>${P.esc(String(s.open_time || '').slice(0, 5))} – ${P.esc(String(s.close_time || '').slice(0, 5))}</td>
+                <td class="num">${n}</td>
+                <td><span class="badge ${st.cls}">${st.label}</span></td>
+                <td><div class="row-actions">
+                    <button class="btn btn-ghost btn-sm" data-sedit="${s.studio_id}">Sửa</button>
+                    <button class="btn btn-bad btn-sm" data-sdel="${s.studio_id}">Xóa</button>
+                </div></td></tr>`;
+        }).join('') || '<tr><td colspan="6" class="empty">Chưa có cơ sở nào. Hãy bấm “+ Thêm cơ sở”.</td></tr>';
+        $('studioSummary').textContent = '(' + studios.length + ')';
+        $('pendingHint').hidden = !studios.some(x => x.status === 'PENDING');
+    }
+
+    /* ---------- Hiển thị bảng phòng ---------- */
     function render() {
+        renderStudios();
         const q = $('search').value.trim().toLowerCase();
         let list = rooms.filter(r =>
             (!q || r.name.toLowerCase().includes(q)) &&
@@ -208,7 +240,7 @@
     function setErr(form, key, msg, inputId) { const e = form.querySelector(`[data-err="${key}"]`); if (e) e.textContent = msg; if (inputId) $(inputId).classList.add('invalid'); }
 
     function openRoomForm(room) {
-        if (!studios.length) { P.toast('Bạn cần tạo cơ sở (Studio) trước khi thêm phòng.', 'warn'); openStudioForm(); return; }
+        if (!studios.length) { P.toast('Bạn cần tạo cơ sở (Studio) trước khi thêm phòng.', 'warn'); openStudioForm(null); return; }
         editingId = room ? room.room_id : null;
         clearErrors($('roomForm'));
         $('roomModalTitle').textContent = room ? 'Sửa thông tin phòng' : 'Thêm phòng';
@@ -226,10 +258,22 @@
         $('rStatus').value = room ? room.status : 'AVAILABLE';
         openModal('roomModal');
     }
-    function openStudioForm() { clearErrors($('studioForm')); $('studioForm').reset(); openModal('studioModal'); }
+    let editingStudioId = null;
+    function openStudioForm(studio) {
+        studio = studio && studio.studio_id ? studio : null;       // onclick truyền vào MouseEvent
+        editingStudioId = studio ? studio.studio_id : null;
+        clearErrors($('studioForm')); $('studioForm').reset();
+        $('studioModalTitle').textContent = studio ? 'Sửa thông tin cơ sở' : 'Thêm cơ sở mới';
+        if (studio) {
+            $('sName').value = studio.name || ''; $('sAddr').value = studio.address || ''; $('sCity').value = studio.city || '';
+            $('sPhone').value = studio.phone || ''; $('sDesc').value = studio.description || '';
+            $('sOpen').value = String(studio.open_time || '08:00').slice(0, 5); $('sClose').value = String(studio.close_time || '21:00').slice(0, 5);
+        }
+        openModal('studioModal');
+    }
 
     $('addRoomBtn').onclick = () => openRoomForm(null);
-    $('addStudioBtn').onclick = openStudioForm;
+    $('addStudioBtn').onclick = () => openStudioForm(null);
 
     /* ---------- Lưu phòng ---------- */
     $('roomForm').addEventListener('submit', async e => {
@@ -279,15 +323,36 @@
         if (payload.city.length < 2) { setErr(f, 'city', 'Nhập thành phố.', 'sCity'); bad = true; }
         if (!payload.open_time || !payload.close_time || payload.close_time <= payload.open_time) { setErr(f, 'hours', 'Giờ đóng cửa phải sau giờ mở cửa.', 'sClose'); bad = true; }
         if (bad) return;
+        const btn = $('studioSave'); btn.disabled = true;
         try {
-            await P.data.createStudio(payload);
+            const wasEdit = editingStudioId !== null;
+            await P.data.saveStudio(editingStudioId, payload);
             closeModal($('studioModal'));
-            P.toast(P.currentUser() && P.currentUser().role === 'ADMIN' ? 'Đã thêm cơ sở mới.' : 'Đã gửi cơ sở mới, chờ admin duyệt.', 'ok');
+            P.toast(wasEdit ? 'Đã cập nhật cơ sở.' : (P.currentUser() && P.currentUser().role === 'ADMIN' ? 'Đã thêm cơ sở mới.' : 'Đã gửi cơ sở mới, chờ admin duyệt.'), 'ok');
             await load();
         } catch (err) { P.toast('Lưu thất bại: ' + err.message, 'bad'); }
+        finally { btn.disabled = false; }
     });
 
-    /* ---------- Sửa / ẩn / hiện ---------- */
+    /* ---------- Sửa / xóa cơ sở ---------- */
+    $('studioRows').addEventListener('click', async e => {
+        const ed = e.target.closest('[data-sedit]'), del = e.target.closest('[data-sdel]');
+        if (ed) openStudioForm(studios.find(s => s.studio_id === Number(ed.dataset.sedit)));
+        if (del) {
+            const st = studios.find(s => s.studio_id === Number(del.dataset.sdel));
+            const n = rooms.filter(r => r.studio_id === st.studio_id).length;
+            const warn = n ? `\nCơ sở có ${n} phòng — các phòng, thiết bị và gói dịch vụ của cơ sở cũng bị xóa.` : '';
+            if (!confirm(`Xóa cơ sở "${st.name}"?${warn}\nThao tác này không thể hoàn tác.`)) return;
+            del.disabled = true;
+            try {
+                await P.data.deleteStudio(st.studio_id);
+                P.toast('Đã xóa cơ sở.', 'ok');
+                await load();
+            } catch (err) { del.disabled = false; P.toast(err.message, 'bad'); }
+        }
+    });
+
+    /* ---------- Sửa / ẩn / hiện phòng ---------- */
     $('rows').addEventListener('click', async e => {
         const edit = e.target.closest('[data-edit]'), tog = e.target.closest('[data-toggle]');
         if (edit) { openRoomForm(rooms.find(r => r.room_id === Number(edit.dataset.edit))); }
