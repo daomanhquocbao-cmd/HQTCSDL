@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Thiết bị - Provider Hub</title>
+    <link rel="stylesheet" href="../assets/css/provider-mobile.css">
+</head>
+<body class="m">
+<div class="m-app">
+    <header class="m-top" id="mTop"></header>
+    <main class="m-main">
+        <div class="alert bad" id="pageError" role="alert" hidden></div>
+
+        <div class="alert warn" role="note">Thiết bị <b>Hỏng / Bảo trì / Thanh lý</b> không cho khách thuê. Thiết bị <b>tiêu hao</b> bị trừ kho khi khách check-out.</div>
+        <div class="m-filters">
+            <input class="input" id="search" type="search" placeholder="Tìm theo tên thiết bị..." aria-label="Tìm thiết bị">
+            <select class="select" id="fStudio" aria-label="Lọc theo cơ sở"><option value="">Tất cả cơ sở</option></select>
+            <select class="select" id="fStatus" aria-label="Lọc theo trạng thái"><option value="">Mọi trạng thái</option></select>
+        </div>
+        <div class="m-list" id="list"></div>
+        <div class="muted small" id="summary"></div>
+        <button class="m-fab" id="addBtn" aria-label="Thêm thiết bị">+</button>
+    </main>
+</div>
+<div class="modal-overlay" id="eqModal" role="dialog" aria-modal="true" aria-labelledby="eqTitle">
+    <form class="modal" id="eqForm" novalidate>
+        <div class="modal-head"><span id="eqTitle">Thêm thiết bị</span><button type="button" class="icon-btn" data-close aria-label="Đóng">✕</button></div>
+        <div class="form-grid">
+            <div class="field full"><label for="eName">Tên thiết bị</label><input class="input" id="eName" maxlength="100" required><div class="err" data-err="name"></div></div>
+            <div class="field"><label for="eStudio">Cơ sở</label><select class="select" id="eStudio"></select></div>
+            <div class="field"><label for="eCat">Danh mục</label><select class="select" id="eCat"></select></div>
+            <div class="field"><label for="eType">Hình thức</label><select class="select" id="eType"><option value="REUSABLE">Cho thuê lại nhiều lần</option><option value="CONSUMABLE">Tiêu hao (dùng hết)</option></select></div>
+            <div class="field"><label for="eStatus">Trạng thái</label><select class="select" id="eStatus"></select></div>
+            <div class="field"><label for="eQty">Số lượng</label><input class="input" id="eQty" type="number" inputmode="numeric" min="0" step="1" required><div class="err" data-err="quantity"></div></div>
+            <div class="field"><label for="ePrice">Giá thuê / lượt (VNĐ)</label><input class="input" id="ePrice" type="number" inputmode="numeric" min="0" step="1000" required><div class="err" data-err="rental_price"></div></div>
+            <div class="field"><label for="eNext">Bảo trì kế tiếp</label><input class="input" id="eNext" type="date"></div>
+        </div>
+        <div class="modal-foot"><button type="button" class="btn btn-ghost" data-close>Hủy</button><button type="submit" class="btn btn-primary" id="eSave">Lưu</button></div>
+    </form>
+</div>
+<div class="modal-overlay" id="mtModal" role="dialog" aria-modal="true" aria-labelledby="mtTitle">
+    <form class="modal" id="mtForm" novalidate>
+        <div class="modal-head"><span id="mtTitle">Ghi nhận bảo trì</span><button type="button" class="icon-btn" data-close aria-label="Đóng">✕</button></div>
+        <div class="form-grid">
+            <div class="field"><label for="mCost">Chi phí (VNĐ)</label><input class="input" id="mCost" type="number" inputmode="numeric" min="0" step="1000" value="0"><div class="err" data-err="cost"></div></div>
+            <div class="field"><label for="mStatus">Tình trạng</label><select class="select" id="mStatus"><option value="DONE">Đã bảo trì xong</option><option value="SCHEDULED">Đã đặt lịch (đang bảo trì)</option></select></div>
+            <div class="field"><label for="mNext">Lịch bảo trì kế tiếp</label><input class="input" id="mNext" type="date"></div>
+            <div class="field full"><label for="mDesc">Ghi chú</label><textarea class="textarea" id="mDesc" maxlength="2000"></textarea></div>
+        </div>
+        <div class="modal-foot"><button type="button" class="btn btn-ghost" data-close>Hủy</button><button type="submit" class="btn btn-primary">Lưu</button></div>
+    </form>
+</div>
+<nav class="m-nav" id="mNav" aria-label="Điều hướng chính"></nav>
+<script src="../assets/js/provider-common.js"></script>
+<script>
+(async function () {
+    const P = Provider, $ = id => document.getElementById(id);
+    await P.mountMobile('equipment', 'Thiết bị');
+    let studios = [], items = [], editingId = null, mtId = null;
+    const S = P.bindSheets();
+
+    $('eCat').innerHTML = Object.entries(P.EQUIPMENT_CATEGORY).map(([k, v]) => `<option value="${k}">${v}</option>`).join('');
+    const statusOpts = Object.entries(P.EQUIPMENT_STATUS).map(([k, v]) => `<option value="${k}">${v.label}</option>`).join('');
+    $('eStatus').innerHTML = statusOpts;
+    $('fStatus').innerHTML = '<option value="">Mọi trạng thái</option>' + statusOpts;
+
+    async function load() {
+        try {
+            [studios, items] = await Promise.all([P.data.studios(), P.data.equipment()]);
+            P.refreshChrome();
+            const keep = $('fStudio').value, opts = studios.map(s => `<option value="${s.studio_id}">${P.esc(s.name)}</option>`).join('');
+            $('fStudio').innerHTML = '<option value="">Tất cả cơ sở</option>' + opts; $('fStudio').value = keep;
+            $('eStudio').innerHTML = opts;
+            render();
+        } catch (err) { const b = $('pageError'); b.hidden = false; b.textContent = 'Không tải được dữ liệu: ' + err.message; }
+    }
+    function render() {
+        const q = $('search').value.trim().toLowerCase();
+        const list = items.filter(e => (!q || e.name.toLowerCase().includes(q)) && (!$('fStudio').value || String(e.studio_id) === $('fStudio').value) && (!$('fStatus').value || e.status === $('fStatus').value));
+        $('list').innerHTML = list.map(e => {
+            const st = P.EQUIPMENT_STATUS[e.status] || { label: e.status, cls: 'muted' };
+            return `<div class="m-item">
+                <div class="m-item-head"><div><strong>${P.esc(e.name)}</strong><span class="sub">${P.esc(e.studio_name || '')} • ${P.esc(P.EQUIPMENT_CATEGORY[e.category] || e.category)}</span></div><span class="badge ${st.cls}">${st.label}</span></div>
+                <div class="row"><span>${e.equipment_type === 'CONSUMABLE' ? 'Tiêu hao' : 'Cho thuê lại'} • SL: <b>${e.quantity}</b></span><b>${P.money(e.rental_price)}</b></div>
+                ${e.next_maintenance_date ? `<span class="sub">Bảo trì kế tiếp: ${P.fmtDate(e.next_maintenance_date)}</span>` : ''}
+                <div class="m-actions">
+                    <button class="btn btn-ghost btn-sm" data-edit="${e.equipment_id}">Sửa</button>
+                    <button class="btn btn-ghost btn-sm" data-mt="${e.equipment_id}">Bảo trì</button>
+                    ${e.status === 'RETIRED' ? '' : `<button class="btn btn-bad btn-sm" data-retire="${e.equipment_id}">Thanh lý</button>`}
+                </div></div>`;
+        }).join('') || `<div class="card empty">${items.length ? 'Không có thiết bị nào khớp bộ lọc.' : 'Chưa có thiết bị nào.'}</div>`;
+        $('summary').textContent = `Hiển thị ${list.length} / ${items.length} thiết bị`;
+    }
+    ['search', 'fStudio', 'fStatus'].forEach(id => $(id).addEventListener(id === 'search' ? 'input' : 'change', render));
+
+    const clearErr = f => f.querySelectorAll('[data-err]').forEach(e => e.textContent = '');
+    const setErr = (f, k, m) => { const e = f.querySelector(`[data-err="${k}"]`); if (e) e.textContent = m; };
+
+    function openForm(item) {
+        if (!studios.length) { P.toast('Bạn cần có cơ sở (Studio) trước khi thêm thiết bị.', 'warn'); return; }
+        editingId = item ? item.equipment_id : null; clearErr($('eqForm'));
+        $('eqTitle').textContent = item ? 'Sửa thiết bị' : 'Thêm thiết bị';
+        $('eName').value = item ? item.name : '';
+        $('eStudio').value = item ? item.studio_id : studios[0].studio_id; $('eStudio').disabled = !!item;
+        $('eCat').value = item ? item.category : 'OTHER';
+        $('eType').value = item ? item.equipment_type : 'REUSABLE';
+        $('eStatus').value = item ? item.status : 'GOOD';
+        $('eQty').value = item ? item.quantity : '';
+        $('ePrice').value = item ? item.rental_price : '';
+        $('eNext').value = item && item.next_maintenance_date ? String(item.next_maintenance_date).slice(0, 10) : '';
+        S.open('eqModal');
+    }
+    $('addBtn').onclick = () => openForm(null);
+
+    $('eqForm').addEventListener('submit', async ev => {
+        ev.preventDefault(); const f = $('eqForm'); clearErr(f);
+        const payload = { studio_id: Number($('eStudio').value), name: $('eName').value.trim(), category: $('eCat').value, equipment_type: $('eType').value, status: $('eStatus').value, quantity: parseInt($('eQty').value, 10), rental_price: parseFloat($('ePrice').value), next_maintenance_date: $('eNext').value || null };
+        let bad = false;
+        if (payload.name.length < 2) { setErr(f, 'name', 'Tên tối thiểu 2 ký tự.'); bad = true; }
+        if (!(payload.quantity >= 0)) { setErr(f, 'quantity', 'Số lượng không hợp lệ.'); bad = true; }
+        if (!(payload.rental_price >= 0)) { setErr(f, 'rental_price', 'Giá không hợp lệ.'); bad = true; }
+        if (bad) return;
+        const btn = $('eSave'); btn.disabled = true;
+        try { await P.data.saveEquipment(editingId, payload); S.close($('eqModal')); P.toast('Đã lưu thiết bị.', 'ok'); await load(); }
+        catch (err) { P.toast('Lưu thất bại: ' + err.message, 'bad'); }
+        finally { btn.disabled = false; }
+    });
+
+    $('list').addEventListener('click', async ev => {
+        const ed = ev.target.closest('[data-edit]'), mt = ev.target.closest('[data-mt]'), rt = ev.target.closest('[data-retire]');
+        if (ed) openForm(items.find(x => x.equipment_id === Number(ed.dataset.edit)));
+        if (mt) { mtId = Number(mt.dataset.mt); clearErr($('mtForm')); $('mtForm').reset(); S.open('mtModal'); }
+        if (rt) {
+            const it = items.find(x => x.equipment_id === Number(rt.dataset.retire));
+            if (!confirm('Thanh lý "' + it.name + '"? Thiết bị sẽ không cho khách thuê nữa.')) return;
+            try { await P.data.retireEquipment(it.equipment_id); P.toast('Đã thanh lý thiết bị.', 'ok'); await load(); }
+            catch (err) { P.toast('Thao tác thất bại: ' + err.message, 'bad'); }
+        }
+    });
+    $('mtForm').addEventListener('submit', async ev => {
+        ev.preventDefault(); const f = $('mtForm'); clearErr(f);
+        const cost = parseFloat($('mCost').value);
+        if (!(cost >= 0)) return setErr(f, 'cost', 'Chi phí không hợp lệ.');
+        try {
+            await P.data.addMaintenance(mtId, { cost, status: $('mStatus').value, description: $('mDesc').value.trim() || null, next_maintenance_date: $('mNext').value || null });
+            S.close($('mtModal')); P.toast('Đã ghi nhận bảo trì.', 'ok'); await load();
+        } catch (err) { P.toast('Lưu thất bại: ' + err.message, 'bad'); }
+    });
+    await load();
+
+})();
+</script>
+</body>
+</html>

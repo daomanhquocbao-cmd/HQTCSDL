@@ -18,10 +18,17 @@
                 <div class="card">
                     <div class="card-head"><span class="card-title">Thông tin tài khoản</span></div>
                     <div style="display:flex;align-items:center;gap:16px;margin-bottom:18px;">
-                        <div class="avatar" id="bigAvatar" style="width:64px;height:64px;font-size:1.4rem;">--</div>
+                        <div class="avatar-edit">
+                            <div class="avatar" id="bigAvatar" data-avatar>--</div>
+                            <button type="button" class="cam" id="camBtn" title="Đổi ảnh đại diện" aria-label="Đổi ảnh đại diện">📷</button>
+                        </div>
                         <div>
-                            <div style="font-size:1.1rem;font-weight:800;" id="pName">—</div>
+                            <div style="font-size:1.1rem;font-weight:800;" id="pName" data-user-name>—</div>
                             <span class="badge warn" id="pRole">—</span>
+                            <div class="avatar-actions">
+                                <button type="button" class="btn btn-ghost btn-sm" id="avatarBtn">Đổi ảnh đại diện</button>
+                                <button type="button" class="btn btn-ghost btn-sm" id="avatarDel" hidden>Xóa ảnh</button>
+                            </div>
                         </div>
                     </div>
                     <dl class="kv">
@@ -105,8 +112,11 @@
         paintId();
         $('idToggle').onclick = () => { shown = !shown; paintId(); };
 
-        $('bigAvatar').textContent = P.initials(me.username);
-        $('pName').textContent = me.full_name || me.username;
+        const syncAvatarBtns = () => { $('avatarDel').hidden = !P.Avatar.get(me); };
+        $('avatarBtn').onclick = $('camBtn').onclick = () => P.pickAvatar(me);
+        $('avatarDel').onclick = () => { P.Avatar.remove(me); P.toast('Đã xóa ảnh đại diện.', 'ok'); };
+        document.addEventListener('provider:user', syncAvatarBtns);
+        syncAvatarBtns();
         $('pStatus').textContent = me.status === 'ACTIVE' || !me.status ? '● Đang hoạt động' : '○ ' + me.status;
         $('fName').value = me.full_name || ''; $('fEmail').value = me.email || ''; $('fPhone').value = me.phone || '';
         $('pRole').textContent = 'QUYỀN: ' + String(me.role).toUpperCase();
@@ -134,7 +144,7 @@
         if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(body.email)) return showErr('profileErr', 'Email không hợp lệ.');
         try {
             const u = await P.data.updateProfile(body);
-            P.refreshChrome(u); $('pName').textContent = u.full_name || u.username;
+            P.refreshChrome(u);
             $('pEmail').textContent = u.email; $('pPhone').textContent = u.phone || 'Chưa cập nhật';
             P.toast('Đã lưu thông tin.', 'ok');
         } catch (err) { showErr('profileErr', err.status === 404 || err.status === 405 ? 'Backend chưa có endpoint cập nhật hồ sơ (PATCH /api/users/me).' : err.message); }
