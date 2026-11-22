@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phân tích &amp; AI - Provider Hub (PC)</title>
+    <link rel="stylesheet" href="../assets/css/provider-pc.css">
+    <style>
+        .heat { border-collapse: separate; border-spacing: 3px; font-size: .68rem; width: 100%; }
+        .heat th { color: var(--text-muted); font-weight: 700; padding: 2px 4px; text-align: center; white-space: nowrap; }
+        .heat th.row { text-align: left; }
+        .heat td { text-align: center; padding: 8px 0; border-radius: 6px; min-width: 34px; font-weight: 700; color: #0b1b2b; }
+        .heat td.none { background: var(--muted-bg); color: var(--text-muted); }
+        .legend { display: flex; gap: 6px; align-items: center; font-size: .7rem; color: var(--text-muted); margin-top: 10px; }
+        .legend i { width: 22px; height: 10px; border-radius: 3px; display: inline-block; }
+        .bar-cell { display: flex; align-items: center; gap: 10px; min-width: 170px; }
+        .bar-cell .progress { flex: 1; }
+        .progress.warn > div { background: var(--warn); } .progress.bad > div { background: var(--bad); }
+        .fc-day { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border-color); font-size: .82rem; }
+        .fc-day:last-child { border: none; } .fc-day .progress { flex: 1; }
+        .fc-day .d { width: 112px; font-weight: 700; } .fc-day .v { width: 92px; text-align: right; font-variant-numeric: tabular-nums; }
+        .note { font-size: .72rem; color: var(--text-muted); margin-top: 8px; }
+    </style>
+</head>
+<body>
+<div class="pc-shell">
+    <aside class="pc-sidebar" id="pcSidebar"></aside>
+    <div class="pc-main">
+        <header class="pc-topbar" id="pcTopbar"></header>
+        <main class="pc-content">
+            <div class="alert bad" id="pageError" role="alert" hidden></div>
+            <div class="card">
+                <div class="toolbar">
+                    <select class="select" id="fStudio" aria-label="Cơ sở"></select>
+                    <select class="select" id="fDays" aria-label="Khoảng thời gian">
+                        <option value="30">30 ngày qua</option><option value="56" selected>8 tuần qua</option><option value="90">90 ngày qua</option>
+                    </select>
+                    <span class="spacer"></span>
+                    <span class="small muted">Số liệu tính từ đơn CONFIRMED / IN_USE / COMPLETED đã diễn ra.</span>
+                </div>
+            </div>
+
+            <section class="kpi-grid" aria-label="Chỉ số chính">
+                <div class="card kpi banner"><span class="kpi-label">Tỉ lệ lấp đầy phòng</span><span class="kpi-value" id="kOcc">—</span><span class="kpi-sub" id="kOccSub">&nbsp;</span></div>
+                <div class="card kpi"><span class="kpi-label">Hiệu suất thiết bị TB</span><span class="kpi-value" id="kEq">—</span><span class="kpi-sub" id="kEqSub">&nbsp;</span></div>
+                <div class="card kpi"><span class="kpi-label">Thiết bị cần chú ý</span><span class="kpi-value" id="kAlert">—</span><span class="kpi-sub">hỏng, quá hạn bảo trì, ít/quá tải</span></div>
+                <div class="card kpi"><span class="kpi-label">Ngày đông nhất tuần tới</span><span class="kpi-value" id="kPeak">—</span><span class="kpi-sub" id="kPeakSub">&nbsp;</span></div>
+            </section>
+
+            <div class="grid-2">
+                <div class="card">
+                    <div class="card-head"><span class="card-title">Tỉ lệ lấp đầy theo phòng</span></div>
+                    <div class="table-wrap"><table class="data">
+                        <thead><tr><th>Phòng</th><th class="num">Số đơn</th><th class="num">Giờ đã đặt</th><th>Lấp đầy</th></tr></thead>
+                        <tbody id="occRows"></tbody></table></div>
+                </div>
+                <div class="card">
+                    <div class="card-head"><span class="card-title">🤖 Dự báo nhu cầu 7 ngày tới</span></div>
+                    <div id="forecast"></div>
+                    <div class="note" id="fcNote"></div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-head"><span class="card-title">Bản đồ nhiệt: khung giờ đông / vắng</span></div>
+                <div class="table-wrap"><table class="heat" id="heat"></table></div>
+                <div class="legend"><span>Vắng</span><i style="background:#dbeafe"></i><i style="background:#93c5fd"></i><i style="background:#fcd34d"></i><i style="background:#fb923c"></i><i style="background:#f87171"></i><span>Rất đông</span></div>
+            </div>
+
+            <div class="card">
+                <div class="card-head"><span class="card-title">🤖 Gợi ý điều chỉnh giá</span></div>
+                <div class="table-wrap"><table class="data">
+                    <thead><tr><th>Khung giờ</th><th class="num">Lấp đầy</th><th class="num">Hệ số gợi ý</th><th>Lý do</th><th></th></tr></thead>
+                    <tbody id="sugRows"></tbody></table></div>
+                <div class="note" id="sugNote"></div>
+            </div>
+
+            <div class="card">
+                <div class="card-head"><span class="card-title">Hiệu suất thiết bị</span></div>
+                <div class="table-wrap"><table class="data">
+                    <thead><tr><th>Thiết bị</th><th class="num">Lượt thuê</th><th class="num">Giờ-thiết bị</th><th>Hiệu suất</th><th class="num">Doanh thu thuê</th><th>Cảnh báo</th></tr></thead>
+                    <tbody id="eqRows"></tbody></table></div>
+                <div class="note">Hiệu suất = số giờ thiết bị được thuê / (số lượng × giờ mở cửa). Vật tư tiêu hao không có chỉ số này, hãy xem số lượng tồn.</div>
+            </div>
+        </main>
+    </div>
+</div>
+<script src="../assets/js/provider-common.js"></script>
+<script>
+(async function () {
+    const P = Provider, $ = id => document.getElementById(id);
+    await P.mountPC('analytics', 'Phân tích & AI');
+    const DAY = { WEEKDAY: 'Ngày thường', WEEKEND: 'Cuối tuần', ALL: 'Mọi ngày' };
+    const fail = err => { const b = $('pageError'); b.hidden = false; b.textContent = 'Không tải được dữ liệu: ' + err.message; };
+    const tone = p => p >= 85 ? 'bad' : p >= 50 ? '' : p < 15 ? 'warn' : '';
+    const bar = (p, cls) => `<div class="bar-cell"><div class="progress ${cls || ''}"><div style="width:${Math.min(100, p || 0)}%"></div></div><strong>${p == null ? '—' : p + '%'}</strong></div>`;
+    const heatColor = p => p >= 80 ? '#f87171' : p >= 60 ? '#fb923c' : p >= 40 ? '#fcd34d' : p >= 20 ? '#93c5fd' : '#dbeafe';
+    let studios = [];
+
+    function renderOcc(o) {
+        $('kOcc').textContent = o.summary.occupancy_pct + '%';
+        $('kOccSub').textContent = o.summary.booked_hours + ' / ' + o.summary.available_hours + ' giờ';
+        $('occRows').innerHTML = o.rooms.map(r => `<tr><td><strong>${P.esc(r.room_name)}</strong><span class="sub">${P.esc(r.studio_name)}</span></td>
+            <td class="num">${r.bookings}</td><td class="num">${r.booked_hours}/${r.available_hours}</td><td>${bar(r.occupancy_pct, r.occupancy_pct < 20 ? 'warn' : '')}</td></tr>`).join('')
+            || '<tr><td colspan="4" class="empty">Chưa có phòng.</td></tr>';
+    }
+    function renderHeat(h) {
+        const hours = [...new Set(h.cells.map(c => c.hour))].sort((a, b) => a - b);
+        const days = ['Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy', 'Chủ Nhật'];
+        const get = (wd, hr) => h.cells.find(c => c.weekday_index === wd && c.hour === hr);
+        $('heat').innerHTML = '<thead><tr><th></th>' + hours.map(x => `<th>${x}h</th>`).join('') + '</tr></thead><tbody>' +
+            days.map((d, wd) => `<tr><th class="row">${d}</th>` + hours.map(hr => {
+                const c = get(wd, hr);
+                return c ? `<td style="background:${heatColor(c.occupancy_pct)}" title="${d} ${hr}h: ${c.occupancy_pct}% (${c.booked_hours}/${c.available_hours} giờ)">${Math.round(c.occupancy_pct)}</td>` : '<td class="none">·</td>';
+            }).join('') + '</tr>').join('') + '</tbody>';
+    }
+    function renderForecast(f) {
+        const max = Math.max(1, ...f.forecast.map(r => r.expected_bookings));
+        const lv = { HIGH: ['bad', 'Đông'], LOW: ['muted', 'Vắng'], NORMAL: ['info', 'Vừa'] };
+        $('forecast').innerHTML = f.forecast.map(r => `<div class="fc-day"><span class="d">${P.esc(r.weekday)}<br><small class="muted">${P.esc(String(r.forecast_date).slice(5))}</small></span>
+            <div class="progress"><div style="width:${r.expected_bookings / max * 100}%"></div></div>
+            <span class="v">~${r.expected_bookings.toFixed(1)} đơn <span class="badge ${lv[r.level][0]}">${lv[r.level][1]}</span></span></div>`).join('') || '<div class="empty">Chưa có dữ liệu.</div>';
+        $('fcNote').textContent = (f.reliable ? '' : '⚠️ Lịch sử còn ít nên dự báo chưa đáng tin. ') + f.method;
+        const top = f.forecast.slice().sort((a, b) => b.expected_bookings - a.expected_bookings)[0];
+        $('kPeak').textContent = top ? top.weekday : '—'; $('kPeakSub').textContent = top ? '~' + top.expected_bookings.toFixed(1) + ' đơn dự kiến' : '';
+    }
+    function renderSug(s) {
+        $('sugRows').innerHTML = s.suggestions.map((x, i) => `<tr><td><strong>${DAY[x.day_type]}</strong><span class="sub">${x.band} (${x.start_hour}h–${x.end_hour}h)</span></td>
+            <td class="num">${x.occupancy_pct}%</td><td class="num"><span class="badge ${x.suggested_multiplier > 1 ? 'warn' : 'info'}">×${x.suggested_multiplier.toFixed(2)}</span></td>
+            <td>${P.esc(x.reason)}</td>
+            <td class="row-actions">${x.already_has_rule ? '<span class="badge muted">Đã có quy tắc</span>' : `<button class="btn btn-sm btn-primary" data-apply="${i}">Tạo quy tắc</button>`}</td></tr>`).join('')
+            || `<tr><td colspan="5" class="empty">${s.insufficient_data ? 'Chưa đủ dữ liệu đặt phòng để gợi ý (cần vài tuần lịch sử).' : 'Mức giá hiện tại đang hợp lý, chưa có gợi ý.'}</td></tr>`;
+        $('sugNote').textContent = s.method;
+        $('sugRows').onclick = async e => {
+            const b = e.target.closest('[data-apply]'); if (!b) return;
+            const x = s.suggestions[b.dataset.apply];
+            try {
+                await P.data.saveRule(null, { studio_id: Number($('fStudio').value), name: `Gợi ý AI: ${DAY[x.day_type]} ${x.band.toLowerCase()}`, day_type: x.day_type, start_hour: x.start_hour, end_hour: x.end_hour, multiplier: x.suggested_multiplier, status: 'ACTIVE' });
+                P.toast('Đã tạo quy tắc giá. Xem tại trang Giá & Khuyến mãi.', 'ok'); b.outerHTML = '<span class="badge ok">Đã tạo</span>';
+            } catch (err) { P.toast(err.message, 'bad'); }
+        };
+    }
+    function renderEq(u) {
+        $('kEq').textContent = u.summary.avg_utilization_pct == null ? '—' : u.summary.avg_utilization_pct + '%';
+        $('kEqSub').textContent = 'Doanh thu thuê ' + P.moneyShort(u.summary.rental_revenue);
+        $('kAlert').textContent = u.summary.with_alerts;
+        $('eqRows').innerHTML = u.items.map(e => `<tr><td><strong>${P.esc(e.name)}</strong><span class="sub">${P.esc(P.EQUIPMENT_CATEGORY[e.category] || e.category)} · SL ${e.quantity}</span></td>
+            <td class="num">${e.rentals}</td><td class="num">${e.unit_hours}</td>
+            <td>${e.utilization_pct == null ? '<span class="muted small">Vật tư tiêu hao</span>' : bar(e.utilization_pct, tone(e.utilization_pct))}</td>
+            <td class="num">${P.money(e.rental_revenue)}</td>
+            <td>${e.alerts.map(a => `<span class="badge ${/hỏng|quá hạn/i.test(a) ? 'bad' : 'warn'}">${P.esc(a)}</span>`).join(' ') || '<span class="muted small">—</span>'}</td></tr>`).join('')
+            || '<tr><td colspan="6" class="empty">Chưa có thiết bị.</td></tr>';
+    }
+    async function load() {
+        const days = Number($('fDays').value), sid = $('fStudio').value || undefined;
+        try {
+            const [o, h, f, s, u] = await Promise.all([P.data.occupancy(days, sid), P.data.heatmap(days, sid), P.data.forecast(sid), P.data.priceSuggestions(sid), P.data.equipmentUtil(days, sid)]);
+            $('pageError').hidden = true; renderOcc(o); renderHeat(h); renderForecast(f); renderSug(s); renderEq(u);
+        } catch (err) { fail(err); }
+    }
+    try {
+        studios = await P.data.studios();
+        $('fStudio').innerHTML = studios.map(s => `<option value="${s.studio_id}">${P.esc(s.name)}</option>`).join('') || '<option value="">Chưa có cơ sở</option>';
+    } catch (err) { return fail(err); }
+    $('fStudio').onchange = $('fDays').onchange = load;
+    load();
+})();
+</script>
+</body>
+</html>

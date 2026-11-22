@@ -59,3 +59,33 @@ def test_sql_errors_mapped(conn, message, exc):
     with pytest.raises(exc) as e:
         service._change_status(7, "CONFIRMED", 5)
     assert str(e.value) == message and c.rollbacks == 1
+
+
+def _create_data(promo=None):
+    from datetime import datetime
+    from types import SimpleNamespace
+    return SimpleNamespace(room_id=3, start_time=datetime(2026, 11, 30, 9), end_time=datetime(2026, 11, 30, 11),
+                           customer_note=None, promo_code=promo)
+
+
+def test_create_booking_recalculates_price_in_same_transaction(conn):
+    c = conn([(r"SELECT TOP 1", ROW_COLS, ROW)])
+    service.create_booking(9, _create_data())
+    sqls = [s for s, _ in c.cur.log]
+    assert any("sp_CreateReservation" in s for s in sqls)
+    assert c.cur.sqls("sp_RecalculateReservationTotal")[0][1] == (7,)
+    assert not c.cur.sqls("sp_ApplyPromotion") and c.commits == 1
+
+
+def test_create_booking_with_promo_applies_code_uppercased(conn):
+    c = conn([(r"SELECT TOP 1", ROW_COLS, ROW)])
+    service.create_booking(9, _create_data(" welcome10 "))
+    assert c.cur.sqls("sp_ApplyPromotion")[0][1] == (7, "WELCOME10", 9) and c.commits == 1
+
+
+def test_create_booking_bad_promo_rolls_back_whole_booking(conn):
+    c = conn([(r"SELECT TOP 1", ROW_COLS, ROW),
+              (r"sp_ApplyPromotion", None, sql_error("Không tìm thấy mã khuyến mãi ở studio này.", 51005))])
+    with pytest.raises(service.BookingError):
+        service.create_booking(9, _create_data("NOPE"))
+    assert c.commits == 0 and c.rollbacks == 1

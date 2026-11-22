@@ -49,6 +49,9 @@ def register_user(
     if role not in ("CUSTOMER", "PROVIDER", "EXPERT"):
         role = "CUSTOMER"
 
+    # Nhà cung cấp mới phải được quản trị viên duyệt (PENDING -> ACTIVE) mới tạo được cơ sở
+    initial_status = "PENDING" if role == "PROVIDER" else "ACTIVE"
+
     conn = get_db_connection()
     try:
         cur = conn.cursor()
@@ -60,7 +63,7 @@ def register_user(
             """
             INSERT INTO dbo.Users (username, password_hash, email, phone, full_name, role, status)
             OUTPUT INSERTED.user_id, INSERTED.status
-            VALUES (?, ?, ?, ?, ?, ?, 'ACTIVE')
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
             username,
             hash_password(password),
@@ -68,6 +71,7 @@ def register_user(
             phone,
             full_name,
             role,
+            initial_status,
         )
         inserted = cur.fetchone()
         user_id = int(inserted[0])

@@ -2,7 +2,7 @@
 from datetime import date
 from typing import Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 RoomType = Literal["STUDIO", "DARKROOM"]
 RoomStatus = Literal["AVAILABLE", "MAINTENANCE", "INACTIVE"]
@@ -126,3 +126,70 @@ class CancelIn(BaseModel):
 class DisputePatch(BaseModel):
     status: Literal["IN_REVIEW", "RESOLVED", "REJECTED"]
     resolution: Optional[str] = Field(default=None, max_length=4000, description="Nội dung phản hồi / hướng giải quyết")
+
+
+# ---- chính sách giá & khuyến mãi (database/07_pricing_promotions_ai.sql)
+DayType = Literal["ALL", "WEEKDAY", "WEEKEND"]
+ActiveState = Literal["ACTIVE", "INACTIVE"]
+
+
+class PricingRuleIn(BaseModel):
+    studio_id: int = Field(gt=0)
+    room_id: Optional[int] = Field(default=None, gt=0, description="Bỏ trống = áp dụng cho cả cơ sở")
+    name: str = Field(min_length=1, max_length=100)
+    day_type: DayType = "ALL"
+    start_hour: int = Field(ge=0, le=23)
+    end_hour: int = Field(ge=1, le=24)
+    multiplier: float = Field(ge=0.5, le=3.0, description="1.0 = giá gốc, 1.2 = tăng 20%")
+    status: ActiveState = "ACTIVE"
+
+    @model_validator(mode="after")
+    def _hours(self):
+        if self.end_hour <= self.start_hour:
+            raise ValueError("end_hour phải lớn hơn start_hour")
+        return self
+
+
+class PricingRulePatch(BaseModel):
+    room_id: Optional[int] = Field(default=None, gt=0)
+    name: Optional[str] = Field(default=None, min_length=1, max_length=100)
+    day_type: Optional[DayType] = None
+    start_hour: Optional[int] = Field(default=None, ge=0, le=23)
+    end_hour: Optional[int] = Field(default=None, ge=1, le=24)
+    multiplier: Optional[float] = Field(default=None, ge=0.5, le=3.0)
+    status: Optional[ActiveState] = None
+
+
+class PromotionIn(BaseModel):
+    studio_id: int = Field(gt=0)
+    code: str = Field(min_length=3, max_length=30, pattern=r"^[A-Za-z0-9_-]+$")
+    title: str = Field(min_length=1, max_length=150)
+    discount_type: Literal["PERCENT", "FIXED"]
+    discount_value: float = Field(gt=0)
+    max_discount: Optional[float] = Field(default=None, gt=0)
+    min_order_amount: float = Field(default=0, ge=0)
+    start_date: date
+    end_date: date
+    max_uses: Optional[int] = Field(default=None, gt=0)
+    status: ActiveState = "ACTIVE"
+
+    @model_validator(mode="after")
+    def _check(self):
+        self.code = self.code.upper()
+        if self.end_date < self.start_date:
+            raise ValueError("end_date phải sau hoặc bằng start_date")
+        if self.discount_type == "PERCENT" and self.discount_value > 100:
+            raise ValueError("Giảm theo % không được vượt 100")
+        return self
+
+
+class PromotionPatch(BaseModel):
+    title: Optional[str] = Field(default=None, min_length=1, max_length=150)
+    discount_type: Optional[Literal["PERCENT", "FIXED"]] = None
+    discount_value: Optional[float] = Field(default=None, gt=0)
+    max_discount: Optional[float] = Field(default=None, gt=0)
+    min_order_amount: Optional[float] = Field(default=None, ge=0)
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
+    max_uses: Optional[int] = Field(default=None, gt=0)
+    status: Optional[ActiveState] = None

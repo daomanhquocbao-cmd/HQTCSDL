@@ -48,6 +48,20 @@ Base URL: `http://localhost:8000` · Swagger: `/docs`
 | DELETE | /api/workshops/{id}/register | Hủy đăng ký | 🔒 |
 | GET | /api/workshops/me/registrations | Workshop tôi đã đăng ký | 🔒 |
 
+## Pricing / AI / Community / Admin (database/07)
+| Method | Path | Mô tả | Quyền |
+|---|---|---|---|
+| GET | /api/pricing/quote | Báo giá (giờ cao/thấp điểm + mã giảm giá) | public |
+| POST | /api/pricing/bookings/{id}/promotion | Áp mã khuyến mãi (`sp_ApplyPromotion`) | 🔒 |
+| GET | /api/ai/recommendations | Gợi ý phòng (`sp_RecommendRooms`) | public / 🔒 cá nhân hóa |
+| GET | /api/ai/ask?q= | Tìm phòng bằng câu hỏi tự nhiên | public |
+| GET/POST | /api/community/posts | Xem / đăng bài cộng đồng | public / 🔒 |
+| POST | /api/community/posts/{id}/comments | Bình luận | 🔒 |
+| GET | /api/admin/overview, /providers, /studios | Danh sách chờ duyệt | 👑 |
+| PATCH | /api/admin/providers/{id}, /studios/{id} | Duyệt / khóa | 👑 |
+
+Chi tiết các endpoint của provider (phân tích, quy tắc giá, khuyến mãi): xem `PROVIDER_API.md`.
+
 ## Stats
 | Method | Path | Mô tả | Quyền |
 |---|---|---|---|

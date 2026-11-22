@@ -101,9 +101,18 @@ def create_booking(user_id: int, data: BookingCreate) -> dict:
             data.room_id, user_id, data.start_time, data.end_time,
         )
         row = cur.fetchone()
-        conn.commit()
         if row is None:
             raise BookingError("Không tạo được đơn đặt phòng")
+        # Tính lại tổng tiền theo chính sách giá (giờ cao/thấp điểm), rồi áp mã khuyến mãi nếu có.
+        # Cùng transaction với việc tạo đơn: mã sai thì cả đơn bị hủy, không để đơn "nửa vời".
+        cur.execute("EXEC dbo.sp_RecalculateReservationTotal @reservation_id = ?", row.reservation_id)
+        _drain(cur)
+        if data.promo_code:
+            cur.execute("EXEC dbo.sp_ApplyPromotion @reservation_id = ?, @code = ?, @actor_id = ?",
+                        row.reservation_id, data.promo_code.strip().upper(), user_id)
+            _drain(cur)
+        row = _fetch(cur, row.reservation_id)
+        conn.commit()
         return _row_to_dict(row)
     except pyodbc.Error as exc:
         conn.rollback()

@@ -39,7 +39,7 @@ Giao diện không còn đổi trạng thái tùy ý: đơn chỉ đi theo `PEND
 | Endpoint | Ghi chú |
 |---|---|
 | `GET /api/provider/overview` | `studio_count, room_count, equipment_count, total_bookings, pending_bookings, upcoming_bookings, revenue_total, revenue_this_month, avg_rating, review_count, revenue_by_month[{month 'YYYY-MM', revenue, bookings}], top_rooms[{room_id, room_name, studio_name, bookings, revenue}]`. Doanh thu chỉ tính `Payments.status = 'SUCCESS'` (khoản `REFUNDED` không tính). Điểm đánh giá lấy từ `vw_StudioRating`. |
-| `GET/POST /api/provider/studios`, `PATCH …/{id}` | Studio tạo mới ở trạng thái `PENDING` (admin tạo thì `APPROVED`). Trường: `name, address, city, phone, description, open_time, close_time`. |
+| `GET/POST /api/provider/studios`, `PATCH …/{id}` | Studio tạo mới ở trạng thái `PENDING` (admin tạo thì `APPROVED`). Nhà cung cấp phải được admin duyệt (`Users.status = ACTIVE`) mới tạo được, nếu không `403`. Trường: `name, address, city, phone, description, open_time, close_time`. |
 | `DELETE /api/provider/studios/{id}` | `204`. Xóa cơ sở cùng phòng / thiết bị / gói của nó. `409` nếu cơ sở đã có đơn đặt phòng hoặc workshop (khi đó chỉ nên ẩn phòng). `403` nếu không phải chủ cơ sở. |
 | `POST /api/provider/bookings/{id}/cancel` | Body tùy chọn `{"reason": "..."}` (≤ 500 ký tự). Lý do lưu vào `Reservations.cancel_reason` (cần chạy `database/06_provider_additions.sql`); chưa có cột thì vẫn hủy được nhưng phản hồi có `reason_saved: false`. Chi tiết đơn trả thêm `cancel_reason`. |
 | `GET /api/provider/disputes?status=` | Khiếu nại thuộc các cơ sở của provider (join Disputes → Reservations → Rooms → Studios). |
@@ -51,6 +51,35 @@ Giao diện không còn đổi trạng thái tùy ý: đơn chỉ đi theo `PEND
 | `GET /api/provider/packages?studio_id=` | `ServicePackages` kèm `equipment[{equipment_id, name, quantity_included}]` từ `PackageEquipment`. |
 | `GET /api/provider/reviews?studio_id=` | `Reviews` của studio mình. |
 | `PATCH /api/users/me`, `POST /api/users/change-password` | Tùy chọn. Chưa có thì trang Hồ sơ hiển thị "Backend chưa có endpoint". |
+
+## Phân tích, AI, giá, khuyến mãi (cần chạy `database/07_pricing_promotions_ai.sql`)
+Chưa chạy file 07 thì các endpoint dưới đây trả `503` kèm hướng dẫn; các endpoint cũ vẫn chạy bình thường.
+
+| Endpoint | Ghi chú |
+|---|---|
+| `GET /api/provider/analytics/occupancy?days=30&studio_id=` | Tỉ lệ lấp đầy mỗi phòng = giờ đã đặt / giờ mở cửa trong `days` ngày (đơn CONFIRMED/IN_USE/COMPLETED đã bắt đầu). Trả `rooms[{room_id, room_name, studio_name, bookings, booked_hours, available_hours, occupancy_pct}]` và `summary`. |
+| `GET /api/provider/analytics/heatmap?days=56&studio_id=` | `cells[{weekday_index 0=Thứ Hai, weekday, hour, booked_hours, available_hours, occupancy_pct}]`: mức lấp đầy theo thứ × giờ (đã nhân số phòng). |
+| `GET /api/provider/analytics/equipment?days=30&studio_id=` | Hiệu suất thiết bị `REUSABLE` = giờ-thiết bị được thuê / (số lượng × giờ mở cửa). Kèm `rentals, unit_hours, rental_revenue, maintenance_count, maintenance_cost, alerts[]` (hỏng, quá hạn/sắp bảo trì, vật tư sắp hết, quá tải ≥85%, ít thuê <10%). |
+| `GET /api/provider/ai/forecast?studio_id=&horizon_days=7&lookback_days=84` | Gọi `sp_ForecastDemand`: dự báo số đơn từng ngày tới = trung bình cùng thứ trong lịch sử. `level` HIGH/NORMAL/LOW, `reliable=false` nếu ít hơn 4 tuần dữ liệu. |
+| `GET /api/provider/ai/pricing-suggestions?studio_id=&days=56` | Gợi ý hệ số giá theo khung (Sáng/Chiều/Tối × ngày thường/cuối tuần): lấp đầy ≥75% → ×1.15, ≥60% → ×1.08, ≤20% → ×0.90. `insufficient_data=true` nếu < 5 giờ đặt. |
+| `GET/POST /api/provider/pricing-rules`, `PATCH/DELETE …/{id}` | Quy tắc giá `{studio_id, room_id?, name, day_type ALL/WEEKDAY/WEEKEND, start_hour 0-23, end_hour 1-24, multiplier 0.5-3, status}`. Giá đơn tính theo từng khung 30 phút; quy tắc của phòng thắng quy tắc cả cơ sở; nhiều quy tắc cùng cấp thì lấy hệ số lớn nhất. |
+| `GET/POST /api/provider/promotions`, `PATCH/DELETE …/{id}` | Khuyến mãi `{studio_id, code, title, discount_type PERCENT/FIXED, discount_value, max_discount?, min_order_amount, start_date, end_date, max_uses?, status}`; trả thêm `used_count` và `state` (RUNNING/UPCOMING/EXPIRED/USED_UP/INACTIVE). Mã trùng trong cơ sở `409`; mã đã có người dùng không xóa được (`409`, hãy tạm ngưng). |
+
+Phía khách (cùng nghiệp vụ giá): `GET /api/pricing/quote?room_id&start_time&end_time&promo_code` (công khai), `POST /api/pricing/bookings/{id}/promotion {code}` (gọi `sp_ApplyPromotion`, khóa dòng chống dùng quá lượt), `POST /api/bookings` nhận thêm `promo_code` tùy chọn.
+
+## Quản trị, cộng đồng, AI cho khách
+| Endpoint | Ghi chú |
+|---|---|
+| `GET /api/admin/overview` | Chỉ ADMIN. Số nhà cung cấp/cơ sở chờ duyệt, khiếu nại đang mở... |
+| `GET /api/admin/providers?status=PENDING\|ACTIVE\|SUSPENDED` | Danh sách nhà cung cấp kèm số cơ sở. |
+| `PATCH /api/admin/providers/{id}` `{"status":"ACTIVE"\|"SUSPENDED"}` | Duyệt / mở khóa / từ chối / khóa. Khóa thì các cơ sở đang `APPROVED` chuyển `SUSPENDED` (ngừng nhận đặt). |
+| `GET /api/admin/studios?status=`, `PATCH /api/admin/studios/{id}` `{"status":"APPROVED"\|"REJECTED"\|"SUSPENDED"}` | Duyệt cơ sở; chỉ duyệt được khi nhà cung cấp đã `ACTIVE`. |
+| `GET /api/community/posts?post_type=&q=&limit=&offset=`, `GET …/{id}` | Công khai. Chi tiết kèm `comments[]`. |
+| `POST /api/community/posts`, `POST …/{id}/comments`, `DELETE …/posts/{id}`, `DELETE …/comments/{id}` | Cần đăng nhập. Loại `ARTICLE/TUTORIAL/WORKSHOP_ANNOUNCEMENT` chỉ EXPERT/PROVIDER/ADMIN được đăng; chỉ tác giả hoặc ADMIN xóa. |
+| `GET /api/ai/recommendations?top=5` | Gọi `sp_RecommendRooms`: điểm = 35% đánh giá + 25% độ phổ biến 90 ngày + 20% hợp loại phòng + 10% hợp thành phố + 10% hợp mức giá của khách. Có token thì cá nhân hóa. |
+| `GET /api/ai/ask?q=phòng tối dưới 300k ở Hà Nội cho 4 người` | Tìm phòng bằng câu hỏi tự nhiên (tách loại phòng, ngân sách, sức chứa, thành phố theo luật từ khóa). |
+
+Nhà cung cấp đăng ký mới (`role=PROVIDER`) có `status = PENDING`: đăng nhập được nhưng chưa tạo được cơ sở cho tới khi admin duyệt.
 
 ## Quy tắc nghiệp vụ nằm ở SQL (giao diện chỉ hiển thị lại)
 - Đơn chỉ đặt trong **1 ngày**, trong giờ mở/đóng cửa của studio, không trùng đơn `PENDING/CONFIRMED/IN_USE` của cùng phòng.

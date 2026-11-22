@@ -10,7 +10,11 @@ from fastapi import FastAPI  # noqa: E402
 from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
 from fastapi.staticfiles import StaticFiles  # noqa: E402
 
+from admin.router import router as admin_router  # noqa: E402
+from ai.router import router as ai_router  # noqa: E402
 from booking.router import router as booking_router  # noqa: E402
+from community.router import router as community_router  # noqa: E402
+from pricing.router import router as pricing_router  # noqa: E402
 from core.config import settings  # noqa: E402
 from core.exceptions import register_exception_handlers  # noqa: E402
 from core.logging_config import setup_logging  # noqa: E402
@@ -47,6 +51,10 @@ def create_app() -> FastAPI:
     app.include_router(booking_router)
     app.include_router(workshops_router)
     app.include_router(stats_router)
+    app.include_router(admin_router)
+    app.include_router(community_router)
+    app.include_router(ai_router)
+    app.include_router(pricing_router)
 
     @app.get("/")
     def root():

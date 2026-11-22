@@ -210,9 +210,20 @@ def test_provider_studio_starts_pending_admin_approved(db):
     data = SimpleNamespace(name="S", address="A", city="C", description=None, phone=None,
                            open_time="08:00", close_time="21:00")
     for user, expected in ((PROVIDER, "PENDING"), (ADMIN, "APPROVED")):
-        conn = db([(r"SCOPE_IDENTITY", ["id"], [(11,)]), (r"FROM dbo.Studios s", ["studio_id"], [(11,)])])
+        conn = db([(r"SELECT status FROM dbo.Users", ["status"], [("ACTIVE",)]),
+                   (r"SCOPE_IDENTITY", ["id"], [(11,)]), (r"FROM dbo.Studios s", ["studio_id"], [(11,)])])
         service.create_studio(user, data)
         assert conn.cur.sqls("INSERT INTO dbo.Studios")[0][1][-1] == expected
+
+
+@pytest.mark.parametrize("status_", ["PENDING", "SUSPENDED"])
+def test_unapproved_provider_cannot_create_studio(db, status_):
+    conn = db([(r"SELECT status FROM dbo.Users", ["status"], [(status_,)])])
+    data = SimpleNamespace(name="S", address="A", city="C", description=None, phone=None,
+                           open_time="08:00", close_time="21:00")
+    with pytest.raises(HTTPException) as e:
+        service.create_studio(PROVIDER, data)
+    assert e.value.status_code == 403 and not conn.cur.sqls("INSERT INTO dbo.Studios")
 
 
 def test_studio_hours_validated(db):
@@ -238,6 +249,13 @@ def test_delete_studio_removes_children_in_fk_order(db):
     order = [s.split("dbo.")[1].split()[0] for s, _ in conn.cur.log if s.startswith("DELETE")]
     assert order == ["ServicePackages", "Equipment", "Rooms", "Studios"]
     assert conn.commits == 1 and conn.rollbacks == 0
+
+
+def test_delete_studio_also_clears_pricing_and_promotions_guarded(db):
+    conn = db(_studio_script())
+    service.delete_studio(PROVIDER, 1)
+    guarded = [s for s, _ in conn.cur.log if s.startswith("IF OBJECT_ID")]
+    assert len(guarded) == 2 and "PricingRules" in guarded[0] and "Promotions" in guarded[1]
 
 
 @pytest.mark.parametrize("reservations,workshops", [(3, 0), (0, 1)])

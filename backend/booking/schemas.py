@@ -29,6 +29,7 @@ class BookingCreate(BaseModel):
     start_time: datetime
     end_time: datetime
     customer_note: Optional[str] = Field(default=None, max_length=2000)
+    promo_code: Optional[str] = Field(default=None, max_length=30, description="Mã khuyến mãi (tùy chọn)")
 
     @field_validator("start_time", "end_time")
     @classmethod

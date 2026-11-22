@@ -166,6 +166,11 @@ def create_studio(user: dict, data) -> dict:
         raise _err(400, "Giờ đóng cửa phải sau giờ mở cửa")
     state = "APPROVED" if _is_admin(user) else "PENDING"
     with _db() as cur:
+        if not _is_admin(user):
+            cur.execute("SELECT status FROM dbo.Users WHERE user_id = ?", user["user_id"])
+            row = cur.fetchone()
+            if row is None or str(row.status).upper() != "ACTIVE":
+                raise _err(403, "Tài khoản nhà cung cấp chưa được quản trị viên duyệt, chưa thể tạo cơ sở.")
         cur.execute(
             "INSERT INTO dbo.Studios (provider_id, name, address, city, description, phone, "
             "open_time, close_time, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
@@ -208,6 +213,10 @@ def delete_studio(user: dict, studio_id: int) -> None:
         if cur.fetchone()[0]:
             raise _err(409, "Cơ sở đang có workshop nên không thể xóa.")
         # PackageEquipment / EquipmentMaintenance / StudioImages tự xóa theo (ON DELETE CASCADE)
+        # PricingRules / Promotions chỉ có sau khi chạy 07_pricing_promotions_ai.sql nên xóa có điều kiện
+        for table in ("PricingRules", "Promotions"):
+            cur.execute(f"IF OBJECT_ID('dbo.{table}', 'U') IS NOT NULL "
+                        f"DELETE FROM dbo.{table} WHERE studio_id = ?", studio_id)
         cur.execute("DELETE FROM dbo.ServicePackages WHERE studio_id = ?", studio_id)
         cur.execute("DELETE FROM dbo.Equipment WHERE studio_id = ?", studio_id)
         cur.execute("DELETE FROM dbo.Rooms WHERE studio_id = ?", studio_id)

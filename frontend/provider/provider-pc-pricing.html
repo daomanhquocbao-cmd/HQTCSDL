@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Giá &amp; Khuyến mãi - Provider Hub (PC)</title>
+    <link rel="stylesheet" href="../assets/css/provider-pc.css">
+</head>
+<body>
+<div class="pc-shell">
+    <aside class="pc-sidebar" id="pcSidebar"></aside>
+    <div class="pc-main">
+        <header class="pc-topbar" id="pcTopbar"></header>
+        <main class="pc-content">
+            <div class="alert bad" id="pageError" role="alert" hidden></div>
+            <div class="alert warn">ℹ️ Giá cuối = giá gốc của phòng × hệ số khung giờ (lấy hệ số <b>cao nhất</b> đang áp dụng, quy tắc riêng của phòng được ưu tiên hơn quy tắc cả cơ sở) + thiết bị + gói − khuyến mãi. Đơn đã tạo giữ nguyên giá cho tới khi được tính lại.</div>
+            <div class="card">
+                <div class="toolbar">
+                    <div class="tabs" id="tabs" role="tablist"><button class="tab active" data-t="rules">Quy tắc giá</button><button class="tab" data-t="promos">Khuyến mãi</button></div>
+                    <span class="spacer"></span>
+                    <button class="btn btn-primary" id="addBtn">+ Thêm</button>
+                </div>
+            </div>
+            <div class="card" id="rulesCard"><div class="table-wrap"><table class="data">
+                <thead><tr><th>Tên quy tắc</th><th>Phạm vi</th><th>Ngày</th><th>Giờ</th><th class="num">Hệ số</th><th>Trạng thái</th><th></th></tr></thead>
+                <tbody id="ruleRows"></tbody></table></div></div>
+            <div class="card" id="promoCard" hidden><div class="table-wrap"><table class="data">
+                <thead><tr><th>Mã</th><th>Ưu đãi</th><th>Hiệu lực</th><th class="num">Đã dùng</th><th>Trạng thái</th><th></th></tr></thead>
+                <tbody id="promoRows"></tbody></table></div></div>
+        </main>
+    </div>
+</div>
+
+<div class="modal-overlay" id="ruleModal" role="dialog" aria-modal="true" aria-labelledby="ruleTitle">
+    <form class="modal" id="ruleForm" novalidate>
+        <div class="modal-head"><span id="ruleTitle">Thêm quy tắc giá</span><button type="button" class="icon-btn" data-close aria-label="Đóng">✕</button></div>
+        <div class="form-grid">
+            <div class="field full"><label for="rName">Tên quy tắc</label><input class="input" id="rName" maxlength="100" placeholder="VD: Cuối tuần"><div class="err" data-err="name"></div></div>
+            <div class="field"><label for="rStudio">Cơ sở</label><select class="select" id="rStudio"></select></div>
+            <div class="field"><label for="rRoom">Áp dụng cho</label><select class="select" id="rRoom"></select></div>
+            <div class="field"><label for="rDay">Loại ngày</label><select class="select" id="rDay"><option value="ALL">Mọi ngày</option><option value="WEEKDAY">Ngày thường (T2–T6)</option><option value="WEEKEND">Cuối tuần (T7, CN)</option></select></div>
+            <div class="field"><label for="rMult">Hệ số giá (0.5 – 3)</label><input class="input" id="rMult" type="number" min="0.5" max="3" step="0.05" value="1.1"><div class="hint">1.10 = tăng 10%, 0.90 = giảm 10%</div><div class="err" data-err="multiplier"></div></div>
+            <div class="field"><label for="rStart">Từ giờ (0–23)</label><input class="input" id="rStart" type="number" min="0" max="23" value="17"><div class="err" data-err="start_hour"></div></div>
+            <div class="field"><label for="rEnd">Đến giờ (1–24)</label><input class="input" id="rEnd" type="number" min="1" max="24" value="21"><div class="err" data-err="end_hour"></div></div>
+            <div class="field"><label for="rStatus">Trạng thái</label><select class="select" id="rStatus"><option value="ACTIVE">Đang áp dụng</option><option value="INACTIVE">Tạm ngưng</option></select></div>
+        </div>
+        <div class="modal-foot"><button type="button" class="btn btn-ghost" data-close>Hủy</button><button type="submit" class="btn btn-primary">Lưu</button></div>
+    </form>
+</div>
+
+<div class="modal-overlay" id="promoModal" role="dialog" aria-modal="true" aria-labelledby="promoTitle">
+    <form class="modal" id="promoForm" novalidate>
+        <div class="modal-head"><span id="promoTitle">Thêm khuyến mãi</span><button type="button" class="icon-btn" data-close aria-label="Đóng">✕</button></div>
+        <div class="form-grid">
+            <div class="field"><label for="pCode">Mã (chữ/số, 3–30 ký tự)</label><input class="input" id="pCode" maxlength="30" placeholder="WELCOME10"><div class="err" data-err="code"></div></div>
+            <div class="field"><label for="pStudio">Cơ sở</label><select class="select" id="pStudio"></select></div>
+            <div class="field full"><label for="pTitle">Tiêu đề</label><input class="input" id="pTitle" maxlength="150"><div class="err" data-err="title"></div></div>
+            <div class="field"><label for="pType">Kiểu giảm</label><select class="select" id="pType"><option value="PERCENT">Theo %</option><option value="FIXED">Số tiền cố định</option></select></div>
+            <div class="field"><label for="pValue" id="pValueLabel">Giá trị (%)</label><input class="input" id="pValue" type="number" min="0" step="any"><div class="err" data-err="discount_value"></div></div>
+            <div class="field"><label for="pMax">Giảm tối đa (VNĐ, chỉ với %)</label><input class="input" id="pMax" type="number" min="0" step="1000"></div>
+            <div class="field"><label for="pMin">Đơn tối thiểu (VNĐ)</label><input class="input" id="pMin" type="number" min="0" step="1000" value="0"></div>
+            <div class="field"><label for="pStart">Bắt đầu</label><input class="input" id="pStart" type="date"><div class="err" data-err="start_date"></div></div>
+            <div class="field"><label for="pEnd">Kết thúc</label><input class="input" id="pEnd" type="date"><div class="err" data-err="end_date"></div></div>
+            <div class="field"><label for="pUses">Số lượt tối đa (bỏ trống = không giới hạn)</label><input class="input" id="pUses" type="number" min="1" step="1"></div>
+            <div class="field"><label for="pStatus">Trạng thái</label><select class="select" id="pStatus"><option value="ACTIVE">Đang bật</option><option value="INACTIVE">Tạm ngưng</option></select></div>
+        </div>
+        <div class="modal-foot"><button type="button" class="btn btn-ghost" data-close>Hủy</button><button type="submit" class="btn btn-primary">Lưu</button></div>
+    </form>
+</div>
+
+<script src="../assets/js/provider-common.js"></script>
+<script>
+(async function () {
+    const P = Provider, $ = id => document.getElementById(id);
+    await P.mountPC('pricing', 'Giá & Khuyến mãi');
+    const DAY = { WEEKDAY: 'Ngày thường', WEEKEND: 'Cuối tuần', ALL: 'Mọi ngày' };
+    const STATE = { RUNNING: ['ok', 'Đang chạy'], UPCOMING: ['info', 'Sắp diễn ra'], EXPIRED: ['muted', 'Hết hạn'], USED_UP: ['warn', 'Hết lượt'], INACTIVE: ['muted', 'Tạm ngưng'] };
+    let studios = [], rooms = [], rules = [], promos = [], tab = 'rules', editing = null;
+
+    const fail = err => { const b = $('pageError'); b.hidden = false; b.textContent = 'Lỗi: ' + err.message; };
+    let lastFocus = null;
+    const openM = id => { lastFocus = document.activeElement; $(id).classList.add('open'); const f = $(id).querySelector('input,select'); if (f) f.focus(); };
+    const closeM = el => { el.classList.remove('open'); if (lastFocus) lastFocus.focus(); };
+    document.querySelectorAll('.modal-overlay').forEach(ov => ov.addEventListener('click', e => { if (e.target === ov || e.target.hasAttribute('data-close')) closeM(ov); }));
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') document.querySelectorAll('.modal-overlay.open').forEach(closeM); });
+    const clearErr = f => f.querySelectorAll('[data-err]').forEach(e => e.textContent = '');
+    const setErr = (f, k, m) => { const e = f.querySelector(`[data-err="${k}"]`); if (e) { e.textContent = m; return true; } return false; };
+    const num = v => v === '' || v == null ? null : Number(v);
+
+    function render() {
+        $('rulesCard').hidden = tab !== 'rules'; $('promoCard').hidden = tab !== 'promos';
+        document.querySelectorAll('#tabs .tab').forEach(b => b.classList.toggle('active', b.dataset.t === tab));
+        $('addBtn').textContent = tab === 'rules' ? '+ Thêm quy tắc giá' : '+ Thêm khuyến mãi';
+        $('ruleRows').innerHTML = rules.map(r => `<tr><td><strong>${P.esc(r.name)}</strong></td>
+            <td>${P.esc(r.room_name || 'Cả cơ sở')}<span class="sub">${P.esc(r.studio_name)}</span></td><td>${DAY[r.day_type]}</td>
+            <td>${r.start_hour}h – ${r.end_hour}h</td>
+            <td class="num"><span class="badge ${r.multiplier > 1 ? 'warn' : r.multiplier < 1 ? 'info' : 'muted'}">×${Number(r.multiplier).toFixed(2)}</span></td>
+            <td><span class="badge ${r.status === 'ACTIVE' ? 'ok' : 'muted'}">${r.status === 'ACTIVE' ? 'Đang áp dụng' : 'Tạm ngưng'}</span></td>
+            <td class="row-actions"><button class="btn btn-sm btn-ghost" data-er="${r.rule_id}">Sửa</button><button class="btn btn-sm btn-bad" data-dr="${r.rule_id}">Xóa</button></td></tr>`).join('')
+            || '<tr><td colspan="7" class="empty">Chưa có quy tắc giá. Giá phòng đang bằng giá gốc.</td></tr>';
+        $('promoRows').innerHTML = promos.map(p => {
+            const st = STATE[p.state] || ['muted', p.state];
+            const off = p.discount_type === 'PERCENT' ? p.discount_value + '%' + (p.max_discount ? ' (tối đa ' + P.money(p.max_discount) + ')' : '') : P.money(p.discount_value);
+            return `<tr><td><strong>${P.esc(p.code)}</strong><span class="sub">${P.esc(p.title)}</span></td>
+            <td>Giảm ${off}<span class="sub">${p.min_order_amount ? 'Đơn từ ' + P.money(p.min_order_amount) : 'Không yêu cầu tối thiểu'}</span></td>
+            <td>${P.esc(String(p.start_date).slice(0, 10))} → ${P.esc(String(p.end_date).slice(0, 10))}</td>
+            <td class="num">${p.used_count}${p.max_uses ? '/' + p.max_uses : ''}</td><td><span class="badge ${st[0]}">${st[1]}</span></td>
+            <td class="row-actions"><button class="btn btn-sm btn-ghost" data-ep="${p.promo_id}">Sửa</button><button class="btn btn-sm btn-bad" data-dp="${p.promo_id}">Xóa</button></td></tr>`;
+        }).join('') || '<tr><td colspan="6" class="empty">Chưa có khuyến mãi nào.</td></tr>';
+    }
+    async function load() {
+        try { [rules, promos] = await Promise.all([P.data.pricingRules(), P.data.promotions()]); $('pageError').hidden = true; render(); } catch (e) { fail(e); }
+    }
+    try {
+        [studios, rooms] = await Promise.all([P.data.studios(), P.data.rooms()]);
+        const opts = studios.map(s => `<option value="${s.studio_id}">${P.esc(s.name)}</option>`).join('');
+        $('rStudio').innerHTML = opts; $('pStudio').innerHTML = opts;
+    } catch (e) { return fail(e); }
+    const fillRooms = (sel) => { $('rRoom').innerHTML = '<option value="">Cả cơ sở</option>' + rooms.filter(r => r.studio_id === Number($('rStudio').value)).map(r => `<option value="${r.room_id}">${P.esc(r.name)}</option>`).join(''); if (sel) $('rRoom').value = sel; };
+    $('rStudio').onchange = () => fillRooms();
+    $('pType').onchange = () => { $('pValueLabel').textContent = $('pType').value === 'PERCENT' ? 'Giá trị (%)' : 'Giá trị (VNĐ)'; };
+    $('tabs').onclick = e => { const b = e.target.closest('[data-t]'); if (b) { tab = b.dataset.t; render(); } };
+
+    $('addBtn').onclick = () => {
+        if (!studios.length) return P.toast('Bạn cần có cơ sở trước.', 'warn');
+        editing = null;
+        if (tab === 'rules') {
+            clearErr($('ruleForm')); $('ruleForm').reset(); $('ruleTitle').textContent = 'Thêm quy tắc giá'; $('rStudio').disabled = false; fillRooms(); openM('ruleModal');
+        } else {
+            clearErr($('promoForm')); $('promoForm').reset(); $('promoTitle').textContent = 'Thêm khuyến mãi'; $('pCode').disabled = false; $('pStudio').disabled = false;
+            $('pStart').value = new Date().toISOString().slice(0, 10); $('pEnd').value = new Date(Date.now() + 30 * 864e5).toISOString().slice(0, 10); $('pType').onchange(); openM('promoModal');
+        }
+    };
+    document.addEventListener('click', async e => {
+        const er = e.target.closest('[data-er]'), dr = e.target.closest('[data-dr]'), ep = e.target.closest('[data-ep]'), dp = e.target.closest('[data-dp]');
+        try {
+            if (er) {
+                const r = rules.find(x => x.rule_id === Number(er.dataset.er)); editing = r.rule_id; clearErr($('ruleForm'));
+                $('ruleTitle').textContent = 'Sửa quy tắc giá'; $('rName').value = r.name; $('rStudio').value = r.studio_id; $('rStudio').disabled = true; fillRooms(r.room_id || '');
+                $('rDay').value = r.day_type; $('rMult').value = r.multiplier; $('rStart').value = r.start_hour; $('rEnd').value = r.end_hour; $('rStatus').value = r.status; openM('ruleModal');
+            } else if (dr) {
+                if (!confirm('Xóa quy tắc giá này? Giá các đơn mới sẽ không còn áp dụng quy tắc.')) return;
+                await P.data.deleteRule(dr.dataset.dr); P.toast('Đã xóa quy tắc.', 'ok'); load();
+            } else if (ep) {
+                const p = promos.find(x => x.promo_id === Number(ep.dataset.ep)); editing = p.promo_id; clearErr($('promoForm'));
+                $('promoTitle').textContent = 'Sửa khuyến mãi'; $('pCode').value = p.code; $('pCode').disabled = true; $('pStudio').value = p.studio_id; $('pStudio').disabled = true;
+                $('pTitle').value = p.title; $('pType').value = p.discount_type; $('pType').onchange(); $('pValue').value = p.discount_value; $('pMax').value = p.max_discount || '';
+                $('pMin').value = p.min_order_amount; $('pStart').value = String(p.start_date).slice(0, 10); $('pEnd').value = String(p.end_date).slice(0, 10); $('pUses').value = p.max_uses || ''; $('pStatus').value = p.status; openM('promoModal');
+            } else if (dp) {
+                if (!confirm('Xóa mã khuyến mãi này?')) return;
+                await P.data.deletePromo(dp.dataset.dp); P.toast('Đã xóa khuyến mãi.', 'ok'); load();
+            }
+        } catch (err) { P.toast(err.message, 'bad'); }
+    });
+
+    function showServerErr(f, err) {
+        const m = err.message || ''; clearErr(f);
+        const first = f.querySelector('[data-err]'); if (first) first.textContent = m;
+        P.toast(m, 'bad');
+    }
+    $('ruleForm').addEventListener('submit', async ev => {
+        ev.preventDefault(); const f = $('ruleForm'); clearErr(f); let bad = false;
+        const name = $('rName').value.trim(), s = Number($('rStart').value), e2 = Number($('rEnd').value), m = Number($('rMult').value);
+        if (!name) { setErr(f, 'name', 'Nhập tên quy tắc.'); bad = true; }
+        if (!(m >= 0.5 && m <= 3)) { setErr(f, 'multiplier', 'Hệ số từ 0.5 đến 3.'); bad = true; }
+        if (!(s >= 0 && s <= 23)) { setErr(f, 'start_hour', '0 đến 23.'); bad = true; }
+        if (!(e2 >= 1 && e2 <= 24 && e2 > s)) { setErr(f, 'end_hour', 'Phải lớn hơn giờ bắt đầu (tối đa 24).'); bad = true; }
+        if (bad) return;
+        const payload = { studio_id: Number($('rStudio').value), room_id: num($('rRoom').value), name, day_type: $('rDay').value, start_hour: s, end_hour: e2, multiplier: m, status: $('rStatus').value };
+        try { await P.data.saveRule(editing, payload); closeM($('ruleModal')); P.toast('Đã lưu quy tắc giá.', 'ok'); load(); } catch (err) { showServerErr(f, err); }
+    });
+    $('promoForm').addEventListener('submit', async ev => {
+        ev.preventDefault(); const f = $('promoForm'); clearErr(f); let bad = false;
+        const code = $('pCode').value.trim(), title = $('pTitle').value.trim(), val = Number($('pValue').value), type = $('pType').value;
+        if (!/^[A-Za-z0-9_-]{3,30}$/.test(code)) { setErr(f, 'code', 'Chỉ chữ, số, _ hoặc -, dài 3–30.'); bad = true; }
+        if (!title) { setErr(f, 'title', 'Nhập tiêu đề.'); bad = true; }
+        if (!(val > 0) || (type === 'PERCENT' && val > 100)) { setErr(f, 'discount_value', type === 'PERCENT' ? 'Từ 0 đến 100.' : 'Phải lớn hơn 0.'); bad = true; }
+        if (!$('pStart').value) { setErr(f, 'start_date', 'Chọn ngày.'); bad = true; }
+        if (!$('pEnd').value || $('pEnd').value < $('pStart').value) { setErr(f, 'end_date', 'Phải sau hoặc bằng ngày bắt đầu.'); bad = true; }
+        if (bad) return;
+        const payload = { studio_id: Number($('pStudio').value), code, title, discount_type: type, discount_value: val, max_discount: type === 'PERCENT' ? num($('pMax').value) : null,
+            min_order_amount: Number($('pMin').value || 0), start_date: $('pStart').value, end_date: $('pEnd').value, max_uses: num($('pUses').value), status: $('pStatus').value };
+        try { await P.data.savePromo(editing, payload); closeM($('promoModal')); P.toast('Đã lưu khuyến mãi.', 'ok'); load(); } catch (err) { showServerErr(f, err); }
+    });
+    load();
+})();
+</script>
+</body>
+</html>

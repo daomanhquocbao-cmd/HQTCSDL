@@ -10,8 +10,10 @@ Mở SSMS hoặc Azure Data Studio, chạy lần lượt trong thư mục `../da
 1. `01_create_tables.sql`
 2. `02_seed_data.sql`
 3. `03_stored_procedures.sql`
+4. `06_provider_additions.sql` (cột lý do hủy)
+5. `07_pricing_promotions_ai.sql` (giá theo khung giờ, khuyến mãi, AI, phân tích). Nếu chạy lại 03 thì phải chạy lại 07.
 
-(Các file 04, 05, 06 là truy vấn báo cáo, dữ liệu lớn và demo hiệu năng, chạy sau nếu cần.)
+(Các file 04, 05 và 06_performance_demo là truy vấn báo cáo, dữ liệu lớn và demo hiệu năng, chạy sau nếu cần.)
 
 ## 2. Cài đặt
 ```bash

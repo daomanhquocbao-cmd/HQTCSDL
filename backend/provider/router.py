@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Query, Response, status
 
 from core.dependencies import require_provider
 from core.security import get_current_user
-from provider import schemas, service
+from provider import analytics, schemas, service
 
 router = APIRouter(prefix="/api/provider", tags=["Provider"])
 profile_router = APIRouter(prefix="/api/users", tags=["Users"])
@@ -163,6 +163,78 @@ def add_equipment(reservation_id: int, data: schemas.BookingEquipmentIn, user: d
 @router.post("/bookings/{reservation_id}/packages", status_code=status.HTTP_201_CREATED)
 def add_package(reservation_id: int, data: schemas.BookingPackageIn, user: dict = User):
     return service.add_package(user, reservation_id, data)
+
+
+# --- phân tích: tỉ lệ lấp đầy, hiệu suất thiết bị, AI dự báo / gợi ý giá
+@router.get("/analytics/occupancy")
+def occupancy(days: int = Query(30, ge=7, le=365), studio_id: Optional[int] = Query(None, gt=0), user: dict = User):
+    return analytics.occupancy(user, days, studio_id)
+
+
+@router.get("/analytics/heatmap")
+def heatmap(days: int = Query(56, ge=14, le=365), studio_id: Optional[int] = Query(None, gt=0), user: dict = User):
+    return analytics.heatmap(user, days, studio_id)
+
+
+@router.get("/analytics/equipment")
+def equipment_utilization(days: int = Query(30, ge=7, le=365), studio_id: Optional[int] = Query(None, gt=0),
+                          user: dict = User):
+    return analytics.equipment_utilization(user, days, studio_id)
+
+
+@router.get("/ai/forecast")
+def ai_forecast(studio_id: Optional[int] = Query(None, gt=0), horizon_days: int = Query(7, ge=1, le=30),
+                lookback_days: int = Query(84, ge=28, le=365), user: dict = User):
+    return analytics.forecast(user, studio_id, horizon_days, lookback_days)
+
+
+@router.get("/ai/pricing-suggestions")
+def ai_pricing(studio_id: Optional[int] = Query(None, gt=0), days: int = Query(56, ge=14, le=365), user: dict = User):
+    return analytics.pricing_suggestions(user, studio_id, days)
+
+
+# --- chính sách giá
+@router.get("/pricing-rules")
+def list_rules(studio_id: Optional[int] = Query(None, gt=0), user: dict = User):
+    return analytics.list_rules(user, studio_id)
+
+
+@router.post("/pricing-rules", status_code=status.HTTP_201_CREATED)
+def create_rule(data: schemas.PricingRuleIn, user: dict = User):
+    return analytics.create_rule(user, data)
+
+
+@router.patch("/pricing-rules/{rule_id}")
+def update_rule(rule_id: int, data: schemas.PricingRulePatch, user: dict = User):
+    return analytics.update_rule(user, rule_id, data)
+
+
+@router.delete("/pricing-rules/{rule_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_rule(rule_id: int, user: dict = User):
+    analytics.delete_rule(user, rule_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+# --- khuyến mãi
+@router.get("/promotions")
+def list_promotions(studio_id: Optional[int] = Query(None, gt=0), user: dict = User):
+    return analytics.list_promotions(user, studio_id)
+
+
+@router.post("/promotions", status_code=status.HTTP_201_CREATED)
+def create_promotion(data: schemas.PromotionIn, user: dict = User):
+    return analytics.create_promotion(user, data)
+
+
+@router.patch("/promotions/{promo_id}")
+def update_promotion(promo_id: int, data: schemas.PromotionPatch, user: dict = User):
+    return analytics.update_promotion(user, promo_id, data)
+
+
+@router.delete("/promotions/{promo_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_promotion(promo_id: int, user: dict = User):
+    analytics.delete_promotion(user, promo_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 # --- hồ sơ cá nhân (dùng chung mọi vai trò đã đăng nhập)

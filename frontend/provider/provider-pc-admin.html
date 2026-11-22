@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản trị - Provider Hub (PC)</title>
+    <link rel="stylesheet" href="../assets/css/provider-pc.css">
+</head>
+<body>
+<div class="pc-shell">
+    <aside class="pc-sidebar" id="pcSidebar"></aside>
+    <div class="pc-main">
+        <header class="pc-topbar" id="pcTopbar"></header>
+        <main class="pc-content">
+            <div class="alert bad" id="pageError" role="alert" hidden></div>
+            <div class="alert warn" id="roleNote" hidden>🔒 Trang này chỉ dành cho tài khoản ADMIN. Bạn đang đăng nhập bằng vai trò khác nên các thao tác sẽ bị từ chối.</div>
+            <section class="kpi-grid" aria-label="Tổng quan">
+                <div class="card kpi banner"><span class="kpi-label">Nhà cung cấp chờ duyệt</span><span class="kpi-value" id="kPP">—</span><span class="kpi-sub" id="kPPSub">&nbsp;</span></div>
+                <div class="card kpi"><span class="kpi-label">Cơ sở chờ duyệt</span><span class="kpi-value" id="kPS">—</span><span class="kpi-sub" id="kPSSub">&nbsp;</span></div>
+                <div class="card kpi"><span class="kpi-label">Khiếu nại đang mở</span><span class="kpi-value" id="kDis">—</span><span class="kpi-sub">OPEN + IN_REVIEW</span></div>
+                <div class="card kpi"><span class="kpi-label">Khách / Đơn đặt</span><span class="kpi-value" id="kCus">—</span><span class="kpi-sub" id="kRes">&nbsp;</span></div>
+            </section>
+            <div class="card">
+                <div class="card-head"><span class="card-title">Nhà cung cấp</span></div>
+                <div class="toolbar"><div class="tabs" id="pTabs"></div></div>
+                <div class="table-wrap"><table class="data">
+                    <thead><tr><th>Nhà cung cấp</th><th>Liên hệ</th><th class="num">Cơ sở</th><th>Trạng thái</th><th></th></tr></thead>
+                    <tbody id="pRows"></tbody></table></div>
+            </div>
+            <div class="card">
+                <div class="card-head"><span class="card-title">Cơ sở (studio)</span></div>
+                <div class="toolbar"><div class="tabs" id="sTabs"></div></div>
+                <div class="table-wrap"><table class="data">
+                    <thead><tr><th>Cơ sở</th><th>Nhà cung cấp</th><th class="num">Phòng</th><th>Trạng thái</th><th></th></tr></thead>
+                    <tbody id="sRows"></tbody></table></div>
+            </div>
+        </main>
+    </div>
+</div>
+<script src="../assets/js/provider-common.js"></script>
+<script>
+(async function () {
+    const P = Provider, $ = id => document.getElementById(id);
+    const me = await P.mountPC('admin', 'Quản trị: duyệt nhà cung cấp');
+    if (P.isLive() && String(me.role).toUpperCase() !== 'ADMIN') $('roleNote').hidden = false;
+    const PS = { PENDING: ['warn', 'Chờ duyệt'], ACTIVE: ['ok', 'Đã duyệt'], SUSPENDED: ['bad', 'Bị khóa'] };
+    const SS = { PENDING: ['warn', 'Chờ duyệt'], APPROVED: ['ok', 'Đang hoạt động'], REJECTED: ['bad', 'Bị từ chối'], SUSPENDED: ['bad', 'Tạm khóa'] };
+    let pTab = '', sTab = '', providers = [], studios = [];
+    const fail = err => { const b = $('pageError'); b.hidden = false; b.textContent = err.message; };
+    const tabs = (el, map, cur) => { el.innerHTML = [['', 'Tất cả'], ...Object.entries(map).map(([k, v]) => [k, v[1]])].map(([k, l]) => `<button class="tab${k === cur ? ' active' : ''}" data-t="${k}">${l}</button>`).join(''); };
+
+    function render() {
+        tabs($('pTabs'), PS, pTab); tabs($('sTabs'), SS, sTab);
+        $('pRows').innerHTML = providers.map(p => { const st = PS[p.status] || ['muted', p.status];
+            return `<tr><td><strong>${P.esc(p.full_name)}</strong><span class="sub">@${P.esc(p.username)} · đăng ký ${P.fmtDate(p.created_at)}</span></td>
+            <td>${P.esc(p.email)}<span class="sub">${P.esc(p.phone || '—')}</span></td>
+            <td class="num">${p.studio_count}${p.pending_studio_count ? ` <span class="badge warn">${p.pending_studio_count} chờ</span>` : ''}</td>
+            <td><span class="badge ${st[0]}">${st[1]}</span></td>
+            <td class="row-actions">${p.status !== 'ACTIVE' ? `<button class="btn btn-sm btn-ok" data-p="${p.user_id}" data-s="ACTIVE">${p.status === 'PENDING' ? 'Duyệt' : 'Mở khóa'}</button>` : ''}
+                ${p.status !== 'SUSPENDED' ? `<button class="btn btn-sm btn-bad" data-p="${p.user_id}" data-s="SUSPENDED">${p.status === 'PENDING' ? 'Từ chối' : 'Khóa'}</button>` : ''}</td></tr>`; }).join('')
+            || '<tr><td colspan="5" class="empty">Không có nhà cung cấp nào.</td></tr>';
+        $('sRows').innerHTML = studios.map(s => { const st = SS[s.status] || ['muted', s.status];
+            return `<tr><td><strong>${P.esc(s.name)}</strong><span class="sub">${P.esc(s.address)}, ${P.esc(s.city)}</span></td>
+            <td>${P.esc(s.provider_name)}<span class="sub">${s.provider_status === 'ACTIVE' ? '' : '⚠️ nhà cung cấp chưa được duyệt'}</span></td>
+            <td class="num">${s.room_count}</td><td><span class="badge ${st[0]}">${st[1]}</span></td>
+            <td class="row-actions">${s.status !== 'APPROVED' ? `<button class="btn btn-sm btn-ok" data-st="${s.studio_id}" data-s="APPROVED">Duyệt</button>` : ''}
+                ${s.status === 'PENDING' ? `<button class="btn btn-sm btn-bad" data-st="${s.studio_id}" data-s="REJECTED">Từ chối</button>` : ''}
+                ${s.status === 'APPROVED' ? `<button class="btn btn-sm btn-bad" data-st="${s.studio_id}" data-s="SUSPENDED">Tạm khóa</button>` : ''}</td></tr>`; }).join('')
+            || '<tr><td colspan="5" class="empty">Không có cơ sở nào.</td></tr>';
+    }
+    async function load() {
+        try {
+            const [o, p, s] = await Promise.all([P.data.adminOverview(), P.data.adminProviders(pTab || undefined), P.data.adminStudios(sTab || undefined)]);
+            providers = p; studios = s; $('pageError').hidden = true;
+            $('kPP').textContent = o.pending_providers; $('kPPSub').textContent = o.active_providers + ' đã được duyệt';
+            $('kPS').textContent = o.pending_studios; $('kPSSub').textContent = o.approved_studios + ' đang hoạt động';
+            $('kDis').textContent = o.open_disputes; $('kCus').textContent = o.customers; $('kRes').textContent = o.reservations + ' đơn đặt phòng';
+            render();
+        } catch (e) { fail(e); }
+    }
+    $('pTabs').onclick = e => { const b = e.target.closest('[data-t]'); if (b) { pTab = b.dataset.t; load(); } };
+    $('sTabs').onclick = e => { const b = e.target.closest('[data-t]'); if (b) { sTab = b.dataset.t; load(); } };
+    document.addEventListener('click', async e => {
+        const p = e.target.closest('[data-p]'), s = e.target.closest('[data-st]');
+        try {
+            if (p) {
+                const bad = p.dataset.s === 'SUSPENDED';
+                if (bad && !confirm('Khóa / từ chối nhà cung cấp này? Các cơ sở đang hoạt động của họ sẽ ngừng nhận đặt.')) return;
+                await P.data.setProviderStatus(p.dataset.p, p.dataset.s); P.toast(bad ? 'Đã khóa nhà cung cấp.' : 'Đã duyệt nhà cung cấp.', 'ok'); load();
+            } else if (s) {
+                await P.data.setStudioStatus(s.dataset.st, s.dataset.s); P.toast('Đã cập nhật cơ sở.', 'ok'); load();
+            }
+        } catch (err) { P.toast(err.message, 'bad'); }
+    });
+    load();
+})();
+</script>
+</body>
+</html>

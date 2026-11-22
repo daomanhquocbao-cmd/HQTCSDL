@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cộng đồng - Provider Hub (PC)</title>
+    <link rel="stylesheet" href="../assets/css/provider-pc.css">
+    <style>
+        .post { padding: 14px 0; border-bottom: 1px solid var(--border-color); }
+        .post:last-child { border: none; }
+        .post h3 { margin: 6px 0 4px; font-size: .98rem; }
+        .post .meta { font-size: .72rem; color: var(--text-muted); }
+        .post p { margin: 6px 0; font-size: .84rem; white-space: pre-wrap; }
+        .cmt { background: var(--bg-screen); border-radius: 10px; padding: 8px 12px; margin-top: 6px; font-size: .8rem; }
+        .cmt small { color: var(--text-muted); }
+    </style>
+</head>
+<body>
+<div class="pc-shell">
+    <aside class="pc-sidebar" id="pcSidebar"></aside>
+    <div class="pc-main">
+        <header class="pc-topbar" id="pcTopbar"></header>
+        <main class="pc-content">
+            <div class="alert bad" id="pageError" role="alert" hidden></div>
+            <div class="alert warn">ℹ️ Cộng đồng là nơi chuyên gia chia sẻ bài viết / hướng dẫn, nhà cung cấp đăng thông báo workshop, khách thảo luận và đánh giá thiết bị. Bạn có thể đăng bài, bình luận và xóa bài của mình.</div>
+            <div class="grid-2">
+                <div class="card">
+                    <div class="toolbar"><div class="tabs" id="tabs"></div></div>
+                    <div id="feed"></div>
+                </div>
+                <div class="card">
+                    <div class="card-head"><span class="card-title">Đăng bài mới</span></div>
+                    <form id="postForm" novalidate>
+                        <div class="field"><label for="tType">Loại bài</label><select class="select" id="tType"></select></div>
+                        <div class="field"><label for="tTitle">Tiêu đề</label><input class="input" id="tTitle" maxlength="200"><div class="err" data-err="title"></div></div>
+                        <div class="field"><label for="tContent">Nội dung</label><textarea class="textarea" id="tContent" maxlength="20000"></textarea><div class="err" data-err="content"></div></div>
+                        <button class="btn btn-primary" type="submit">Đăng bài</button>
+                    </form>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+<script src="../assets/js/provider-common.js"></script>
+<script>
+(async function () {
+    const P = Provider, $ = id => document.getElementById(id);
+    const me = await P.mountPC('community', 'Cộng đồng');
+    const TYPES = { ARTICLE: 'Bài viết', TUTORIAL: 'Hướng dẫn', EQUIPMENT_REVIEW: 'Review thiết bị', DISCUSSION: 'Thảo luận', WORKSHOP_ANNOUNCEMENT: 'Thông báo workshop' };
+    const ROLE = { EXPERT: 'Chuyên gia', PROVIDER: 'Nhà cung cấp', ADMIN: 'Quản trị', CUSTOMER: 'Khách hàng' };
+    let tab = '', posts = [], open = null;
+    const isAdmin = String(me.role).toUpperCase() === 'ADMIN';
+    $('tType').innerHTML = Object.entries(TYPES).map(([k, v]) => `<option value="${k}">${v}</option>`).join('');
+    $('tType').value = 'WORKSHOP_ANNOUNCEMENT';
+    $('tabs').innerHTML = [['', 'Tất cả'], ...Object.entries(TYPES)].map(([k, v]) => `<button class="tab${k === tab ? ' active' : ''}" data-t="${k}">${v}</button>`).join('');
+    const fail = err => { const b = $('pageError'); b.hidden = false; b.textContent = err.message; };
+    const when = s => P.fmtDate(s) + ' ' + P.fmtTime(s);
+
+    function postHTML(p) {
+        const mine = p.author_id === me.user_id || isAdmin;
+        const cm = open && open.post_id === p.post_id ? open.comments : null;
+        return `<article class="post"><div class="meta"><span class="badge info">${TYPES[p.post_type]}</span> ${P.esc(p.author_name)} · ${ROLE[p.author_role] || p.author_role} · ${when(p.created_at)}</div>
+            <h3>${P.esc(p.title)}</h3><p>${P.esc(p.content)}</p>
+            <div class="row-actions" style="justify-content:flex-start"><button class="btn btn-sm btn-ghost" data-cm="${p.post_id}">💬 ${p.comment_count} bình luận</button>${mine ? `<button class="btn btn-sm btn-bad" data-del="${p.post_id}">Xóa</button>` : ''}</div>
+            ${cm ? cm.map(c => `<div class="cmt"><strong>${P.esc(c.user_name)}</strong> <small>${ROLE[c.user_role] || ''} · ${when(c.created_at)}</small><div>${P.esc(c.content)}</div></div>`).join('') +
+                `<form class="inline-form" data-cf="${p.post_id}" style="margin-top:8px"><div class="field"><input class="input" placeholder="Viết bình luận..." maxlength="2000" aria-label="Bình luận"></div><button class="btn btn-sm btn-primary">Gửi</button></form>` : ''}</article>`;
+    }
+    const render = () => { $('feed').innerHTML = posts.map(postHTML).join('') || '<div class="empty">Chưa có bài viết nào.</div>';
+        document.querySelectorAll('#tabs .tab').forEach(b => b.classList.toggle('active', b.dataset.t === tab)); };
+    async function load() { try { posts = await P.data.posts(tab || undefined); $('pageError').hidden = true; render(); } catch (e) { fail(e); } }
+    $('tabs').onclick = e => { const b = e.target.closest('[data-t]'); if (b) { tab = b.dataset.t; open = null; load(); } };
+    $('feed').addEventListener('click', async e => {
+        const c = e.target.closest('[data-cm]'), d = e.target.closest('[data-del]');
+        try {
+            if (c) { const id = Number(c.dataset.cm); open = open && open.post_id === id ? null : await P.data.post(id); render(); }
+            if (d) { if (!confirm('Xóa bài viết này cùng các bình luận?')) return; await P.data.deletePost(d.dataset.del); open = null; P.toast('Đã xóa bài.', 'ok'); load(); }
+        } catch (err) { P.toast(err.message, 'bad'); }
+    });
+    $('feed').addEventListener('submit', async e => {
+        const f = e.target.closest('[data-cf]'); if (!f) return; e.preventDefault();
+        const input = f.querySelector('input'), text = input.value.trim(); if (!text) return;
+        try { await P.data.addComment(f.dataset.cf, text); open = await P.data.post(f.dataset.cf); await load(); } catch (err) { P.toast(err.message, 'bad'); }
+    });
+    $('postForm').addEventListener('submit', async e => {
+        e.preventDefault(); const f = $('postForm');
+        f.querySelectorAll('[data-err]').forEach(x => x.textContent = '');
+        const title = $('tTitle').value.trim(), content = $('tContent').value.trim(); let bad = false;
+        if (title.length < 3) { f.querySelector('[data-err="title"]').textContent = 'Tiêu đề tối thiểu 3 ký tự.'; bad = true; }
+        if (!content) { f.querySelector('[data-err="content"]').textContent = 'Nhập nội dung.'; bad = true; }
+        if (bad) return;
+        try { await P.data.createPost({ post_type: $('tType').value, title, content }); f.reset(); $('tType').value = 'WORKSHOP_ANNOUNCEMENT'; P.toast('Đã đăng bài.', 'ok'); load(); }
+        catch (err) { P.toast(err.message, 'bad'); }
+    });
+    load();
+})();
+</script>
+</body>
+</html>

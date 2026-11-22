@@ -24,7 +24,12 @@
         overview: '/api/provider/overview', studios: '/api/provider/studios', rooms: '/api/provider/rooms',
         bookings: '/api/provider/bookings', checkin: '/api/provider/bookings/checkin',
         equipment: '/api/provider/equipment', packages: '/api/provider/packages', reviews: '/api/provider/reviews',
-        disputes: '/api/provider/disputes', workshops: '/api/provider/workshops'
+        disputes: '/api/provider/disputes', workshops: '/api/provider/workshops',
+        occupancy: '/api/provider/analytics/occupancy', heatmap: '/api/provider/analytics/heatmap',
+        eqUtil: '/api/provider/analytics/equipment', forecast: '/api/provider/ai/forecast',
+        priceSuggest: '/api/provider/ai/pricing-suggestions', rules: '/api/provider/pricing-rules',
+        promos: '/api/provider/promotions', posts: '/api/community/posts', comments: '/api/community/comments',
+        adminOverview: '/api/admin/overview', adminProviders: '/api/admin/providers', adminStudios: '/api/admin/studios'
     };
 
     const KEY = {
@@ -151,6 +156,45 @@
             { workshop_id: 3, title: 'Review máy ảnh phim cũ', description: null, expert_id: 3, expert_name: 'Lê Quốc Bảo', studio_id: 1, studio_name: 'Silver Grain Studio', capacity: 15, registered: 15, fee: 0, start_time: iso(-9, 15), end_time: iso(-9, 17), status: 'COMPLETED' }
         ]
     };
+
+
+    // ---- Phần mới: chính sách giá, khuyến mãi, cộng đồng, quản trị (demo; dữ liệu thật nằm trong database/07)
+    Object.assign(DEMO, {
+        rules: [
+            { rule_id: 1, studio_id: 1, studio_name: 'Silver Grain Studio', room_id: null, room_name: null, name: 'Cuối tuần', day_type: 'WEEKEND', start_hour: 8, end_hour: 21, multiplier: 1.15, status: 'ACTIVE' },
+            { rule_id: 2, studio_id: 1, studio_name: 'Silver Grain Studio', room_id: null, room_name: null, name: 'Giờ vàng buổi tối', day_type: 'ALL', start_hour: 17, end_hour: 21, multiplier: 1.10, status: 'ACTIVE' },
+            { rule_id: 3, studio_id: 1, studio_name: 'Silver Grain Studio', room_id: null, room_name: null, name: 'Thấp điểm sáng ngày thường', day_type: 'WEEKDAY', start_hour: 8, end_hour: 11, multiplier: 0.90, status: 'ACTIVE' }
+        ],
+        promos: [
+            { promo_id: 1, studio_id: 1, studio_name: 'Silver Grain Studio', code: 'WELCOME10', title: 'Chào khách mới giảm 10%', discount_type: 'PERCENT', discount_value: 10, max_discount: 100000, min_order_amount: 200000, start_date: dayISO(-20), end_date: dayISO(40), max_uses: 100, used_count: 12, status: 'ACTIVE', state: 'RUNNING' },
+            { promo_id: 2, studio_id: 1, studio_name: 'Silver Grain Studio', code: 'GIAM50K', title: 'Giảm 50.000đ đơn từ 400.000đ', discount_type: 'FIXED', discount_value: 50000, max_discount: null, min_order_amount: 400000, start_date: dayISO(-60), end_date: dayISO(-5), max_uses: null, used_count: 31, status: 'ACTIVE', state: 'EXPIRED' }
+        ],
+        posts: [
+            { post_id: 1, author_id: 3, author_name: 'Lê Quốc Bảo', author_role: 'EXPERT', post_type: 'TUTORIAL', title: 'Tráng phim đen trắng tại nhà: 5 lỗi hay gặp', content: 'Nhiệt độ hóa chất, thời gian khuấy và cách rửa phim là ba chỗ người mới hay sai nhất...', image_url: null, created_at: iso(-3, 9), comment_count: 2 },
+            { post_id: 2, author_id: 5, author_name: 'Phạm Gia Huy', author_role: 'PROVIDER', post_type: 'WORKSHOP_ANNOUNCEMENT', title: 'Workshop in ảnh phòng tối cuối tuần này', content: 'Còn 4 chỗ, mang theo phim đã tráng để in thử.', image_url: null, created_at: iso(-1, 15), comment_count: 0 },
+            { post_id: 3, author_id: 21, author_name: 'Khách hàng số 1', author_role: 'CUSTOMER', post_type: 'DISCUSSION', title: 'Máy nào hợp để bắt đầu chụp phim?', content: 'Mình đang phân vân giữa Canon AE-1 và Pentax K1000.', image_url: null, created_at: iso(-2, 20), comment_count: 1 }
+        ],
+        adminProviders: [
+            { user_id: 5, username: 'provider1', full_name: 'Phạm Gia Huy', email: 'provider1@filmplatform.vn', phone: '0900000005', status: 'ACTIVE', created_at: iso(-90, 9), studio_count: 1, pending_studio_count: 0 },
+            { user_id: 8, username: 'provider_moi', full_name: 'Trần Thu Hà', email: 'thuha@example.com', phone: '0900000008', status: 'PENDING', created_at: iso(-2, 10), studio_count: 0, pending_studio_count: 0 },
+            { user_id: 9, username: 'darkroom_hn', full_name: 'Vũ Đức Anh', email: 'ducanh@example.com', phone: null, status: 'PENDING', created_at: iso(-1, 16), studio_count: 1, pending_studio_count: 1 }
+        ],
+        adminStudios: [
+            { studio_id: 1, name: 'Silver Grain Studio', address: '12 Nguyễn Huệ, Quận 1', city: 'TP.HCM', status: 'APPROVED', created_at: iso(-90, 9), provider_id: 5, provider_name: 'Phạm Gia Huy', provider_status: 'ACTIVE', room_count: 3 },
+            { studio_id: 7, name: 'Phòng tối Hà Thành', address: '5 Hàng Bài', city: 'Hà Nội', status: 'PENDING', created_at: iso(-1, 16), provider_id: 9, provider_name: 'Vũ Đức Anh', provider_status: 'PENDING', room_count: 1 }
+        ]
+    });
+    // Số liệu phân tích demo: dựng ra từ công thức đơn giản, không phải từ đơn thật
+    const demoHeat = () => {
+        const cells = [];
+        for (let wd = 0; wd < 7; wd++) for (let h = 8; h < 21; h++) {
+            let o = 22 + (h >= 17 ? 38 : 0) + (h >= 12 && h < 14 ? -12 : 0) + (wd >= 5 ? 22 : 0) + ((wd * 7 + h * 3) % 9);
+            o = Math.max(4, Math.min(96, o));
+            cells.push({ weekday_index: wd, weekday: WEEKDAYS[wd], hour: h, booked_hours: +(o / 100 * 12).toFixed(2), available_hours: 12, occupancy_pct: o });
+        }
+        return cells;
+    };
+    const WEEKDAYS = ['Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy', 'Chủ Nhật'];
 
     /* ---------- Trạng thái chế độ dữ liệu ---------- */
     // 'live' = đang dùng API thật; còn lại = demo (kèm lý do)
@@ -623,6 +667,143 @@
                 () => DEMO.workshops.filter(w => !status || w.status === status).map(w => Object.assign({}, w)));
         },
 
+        // ---- Phân tích, AI, giá, khuyến mãi
+        async occupancy(days, studioId) {
+            return withFallback(() => api(EP.occupancy + qs({ days, studio_id: studioId })), () => {
+                const rooms = DEMO.rooms.filter(r => r.status !== 'INACTIVE').map((r, i) => {
+                    const pct = [62.4, 41.8, 27.5][i % 3], avail = days * 13;
+                    return { room_id: r.room_id, room_name: r.name, room_status: r.status, studio_id: r.studio_id, studio_name: r.studio_name,
+                        bookings: Math.round(days * pct / 100 * 3), booked_hours: +(avail * pct / 100).toFixed(1), available_hours: avail, occupancy_pct: pct };
+                });
+                const b = rooms.reduce((a, r) => a + r.booked_hours, 0), v = rooms.reduce((a, r) => a + r.available_hours, 0);
+                return { days, rooms, summary: { booked_hours: +b.toFixed(1), available_hours: v, occupancy_pct: v ? +(b / v * 100).toFixed(1) : 0 } };
+            });
+        },
+        async heatmap(days, studioId) {
+            return withFallback(() => api(EP.heatmap + qs({ days, studio_id: studioId })), () => ({ days, cells: demoHeat() }));
+        },
+        async equipmentUtil(days, studioId) {
+            return withFallback(() => api(EP.eqUtil + qs({ days, studio_id: studioId })), () => {
+                const pcts = [78.5, 91.2, 34.0, 6.5, null];
+                const items = DEMO.equipment.filter(e => e.status !== 'RETIRED').map((e, i) => {
+                    const u = e.equipment_type === 'REUSABLE' ? pcts[i % 4] : null;
+                    const alerts = [];
+                    if (e.status === 'NEEDS_MAINTENANCE') alerts.push('Cần bảo trì');
+                    if (e.status === 'BROKEN') alerts.push('Đang hỏng');
+                    if (u !== null && u >= 85) alerts.push('Dùng rất nhiều - cân nhắc mua thêm');
+                    if (u !== null && u < 10 && e.status === 'GOOD') alerts.push('Ít được thuê');
+                    if (e.equipment_type === 'CONSUMABLE' && e.quantity < 10) alerts.push('Vật tư sắp hết');
+                    return Object.assign({}, e, { studio_name: e.studio_name || SG.studio_name, utilization_pct: u, rentals: u ? Math.round(u / 4) : 0, units: u ? Math.round(u / 3) : 0,
+                        unit_hours: u ? +(u * e.quantity * days * 13 / 100).toFixed(1) : 0, rental_revenue: u ? Math.round(u * 8000 * (e.rental_price / 50000 + 1)) : 0, maintenance_count: i % 3 === 0 ? 1 : 0, maintenance_cost: i % 3 === 0 ? 150000 : 0, alerts });
+                });
+                const re = items.filter(x => x.utilization_pct !== null);
+                return { days, items, summary: { equipment_count: items.length, avg_utilization_pct: re.length ? +(re.reduce((a, x) => a + x.utilization_pct, 0) / re.length).toFixed(1) : null,
+                    with_alerts: items.filter(x => x.alerts.length).length, rental_revenue: items.reduce((a, x) => a + x.rental_revenue, 0), maintenance_cost: items.reduce((a, x) => a + x.maintenance_cost, 0) } };
+            });
+        },
+        async forecast(studioId) {
+            return withFallback(() => api(EP.forecast + qs({ studio_id: studioId })), () => {
+                const base = [1.2, 1.4, 1.3, 1.6, 2.4, 4.1, 3.5], rows = [];
+                const mean = base.reduce((a, b) => a + b, 0) / 7;
+                for (let i = 1; i <= 7; i++) {
+                    const d = new Date(Date.now() + i * 864e5), wd = (d.getDay() + 6) % 7, e = base[wd];
+                    rows.push({ forecast_date: d.toISOString().slice(0, 10), weekday_index: wd, weekday: WEEKDAYS[wd], expected_bookings: e, expected_hours: +(e * 2.1).toFixed(1), sample_days: 12, already_booked: i % 3 === 0 ? 1 : 0, level: e / mean >= 1.25 ? 'HIGH' : e / mean <= 0.6 ? 'LOW' : 'NORMAL' });
+                }
+                return { studio_id: 1, horizon_days: 7, lookback_days: 84, method: 'Trung bình số đơn của cùng thứ trong lịch sử (dữ liệu demo).', reliable: true, forecast: rows };
+            });
+        },
+        async priceSuggestions(studioId) {
+            return withFallback(() => api(EP.priceSuggest + qs({ studio_id: studioId })), () => ({
+                studio_id: 1, days: 56, method: 'So sánh mức lấp đầy theo khung giờ và loại ngày (dữ liệu demo).', insufficient_data: false,
+                suggestions: [
+                    { day_type: 'WEEKEND', band: 'Chiều', start_hour: 12, end_hour: 17, occupancy_pct: 81.3, suggested_multiplier: 1.15, reason: 'Lấp đầy rất cao, có thể tăng giá để tối ưu doanh thu.', already_has_rule: true },
+                    { day_type: 'WEEKDAY', band: 'Tối', start_hour: 17, end_hour: 21, occupancy_pct: 66.0, suggested_multiplier: 1.08, reason: 'Lấp đầy cao, có thể tăng nhẹ giá.', already_has_rule: true },
+                    { day_type: 'WEEKDAY', band: 'Chiều', start_hour: 12, end_hour: 17, occupancy_pct: 14.2, suggested_multiplier: 0.90, reason: 'Lấp đầy thấp, giảm giá để kích cầu.', already_has_rule: false }
+                ]
+            }));
+        },
+        async pricingRules() { return withFallback(() => api(EP.rules), () => DEMO.rules.map(r => Object.assign({}, r))); },
+        async saveRule(id, payload) {
+            if (!isLive()) {
+                if (id) { const r = DEMO.rules.find(x => x.rule_id === Number(id)); Object.assign(r, payload); return r; }
+                const r = Object.assign({ rule_id: demoId(), studio_name: SG.studio_name, room_id: null, room_name: null, status: 'ACTIVE' }, payload); DEMO.rules.push(r); return r;
+            }
+            if (id) { const { studio_id, ...patch } = payload; return api(EP.rules + '/' + id, { method: 'PATCH', body: patch }); }
+            return api(EP.rules, { method: 'POST', body: payload });
+        },
+        async deleteRule(id) {
+            if (!isLive()) { DEMO.rules = DEMO.rules.filter(r => r.rule_id !== Number(id)); return null; }
+            return api(EP.rules + '/' + id, { method: 'DELETE' });
+        },
+        async promotions() { return withFallback(() => api(EP.promos), () => DEMO.promos.map(r => Object.assign({}, r))); },
+        async savePromo(id, payload) {
+            if (!isLive()) {
+                if (id) { const r = DEMO.promos.find(x => x.promo_id === Number(id)); Object.assign(r, payload); r.state = r.status === 'ACTIVE' ? 'RUNNING' : 'INACTIVE'; return r; }
+                if (DEMO.promos.some(x => x.code === payload.code.toUpperCase())) throw new ApiError('Mã ' + payload.code.toUpperCase() + ' đã tồn tại ở cơ sở này', 409);
+                const r = Object.assign({ promo_id: demoId(), studio_name: SG.studio_name, used_count: 0, state: 'RUNNING' }, payload, { code: payload.code.toUpperCase() }); DEMO.promos.unshift(r); return r;
+            }
+            if (id) { const { studio_id, code, ...patch } = payload; return api(EP.promos + '/' + id, { method: 'PATCH', body: patch }); }
+            return api(EP.promos, { method: 'POST', body: payload });
+        },
+        async deletePromo(id) {
+            if (!isLive()) {
+                const r = DEMO.promos.find(x => x.promo_id === Number(id));
+                if (r && r.used_count) throw new ApiError('Mã đã được dùng nên không thể xóa. Hãy chuyển sang tạm ngưng.', 409);
+                DEMO.promos = DEMO.promos.filter(x => x.promo_id !== Number(id)); return null;
+            }
+            return api(EP.promos + '/' + id, { method: 'DELETE' });
+        },
+
+        // ---- Cộng đồng (luồng 6)
+        async posts(type) {
+            return withFallback(() => api(EP.posts + qs({ post_type: type, limit: 50 })), () => DEMO.posts.filter(p => !type || p.post_type === type).map(p => Object.assign({}, p)));
+        },
+        async post(id) {
+            return withFallback(() => api(EP.posts + '/' + id), () => {
+                const p = DEMO.posts.find(x => x.post_id === Number(id));
+                if (!p.comments) p.comments = p.comment_count ? [{ comment_id: 1, user_id: 21, user_name: 'Khách hàng số 1', user_role: 'CUSTOMER', content: 'Cảm ơn bạn, mình sẽ thử!', created_at: iso(-1, 8) }] : [];
+                return Object.assign({}, p, { comments: p.comments.slice() });
+            });
+        },
+        async createPost(payload) {
+            if (!isLive()) { const u = DEMO.user; const p = Object.assign({ post_id: demoId(), author_id: u.user_id, author_name: u.full_name, author_role: u.role, image_url: null, created_at: new Date().toISOString(), comment_count: 0 }, payload); DEMO.posts.unshift(p); return p; }
+            return api(EP.posts, { method: 'POST', body: payload });
+        },
+        async addComment(postId, content) {
+            if (!isLive()) { const p = DEMO.posts.find(x => x.post_id === Number(postId)); p.comments = (p.comments || []).concat([{ comment_id: demoId(), user_id: DEMO.user.user_id, user_name: DEMO.user.full_name, user_role: DEMO.user.role, content, created_at: new Date().toISOString() }]); p.comment_count = p.comments.length; return p.comments[p.comments.length - 1]; }
+            return api(EP.posts + '/' + postId + '/comments', { method: 'POST', body: { content } });
+        },
+        async deletePost(id) {
+            if (!isLive()) { DEMO.posts = DEMO.posts.filter(p => p.post_id !== Number(id)); return null; }
+            return api(EP.posts + '/' + id, { method: 'DELETE' });
+        },
+
+        // ---- Quản trị viên: duyệt nhà cung cấp / cơ sở
+        async adminOverview() {
+            return withFallback(() => api(EP.adminOverview), () => ({
+                pending_providers: DEMO.adminProviders.filter(p => p.status === 'PENDING').length, active_providers: DEMO.adminProviders.filter(p => p.status === 'ACTIVE').length,
+                pending_studios: DEMO.adminStudios.filter(s => s.status === 'PENDING').length, approved_studios: DEMO.adminStudios.filter(s => s.status === 'APPROVED').length,
+                open_disputes: DEMO.disputes.filter(d => ['OPEN', 'IN_REVIEW'].includes(d.status)).length, customers: 30, reservations: DEMO.bookings.length }));
+        },
+        async adminProviders(status) {
+            return withFallback(() => api(EP.adminProviders + qs({ status })), () => DEMO.adminProviders.filter(p => !status || p.status === status).map(p => Object.assign({}, p)));
+        },
+        async setProviderStatus(id, status) {
+            if (!isLive()) { const p = DEMO.adminProviders.find(x => x.user_id === Number(id)); p.status = status; if (status === 'SUSPENDED') DEMO.adminStudios.forEach(s => { if (s.provider_id === p.user_id && s.status === 'APPROVED') s.status = 'SUSPENDED'; }); DEMO.adminStudios.forEach(s => { if (s.provider_id === p.user_id) s.provider_status = status; }); return p; }
+            return api(EP.adminProviders + '/' + id, { method: 'PATCH', body: { status } });
+        },
+        async adminStudios(status) {
+            return withFallback(() => api(EP.adminStudios + qs({ status })), () => DEMO.adminStudios.filter(s => !status || s.status === status).map(s => Object.assign({}, s)));
+        },
+        async setStudioStatus(id, status) {
+            if (!isLive()) {
+                const s = DEMO.adminStudios.find(x => x.studio_id === Number(id));
+                if (status === 'APPROVED' && s.provider_status !== 'ACTIVE') throw new ApiError('Hãy duyệt nhà cung cấp trước khi duyệt cơ sở của họ', 409);
+                s.status = status; return s;
+            }
+            return api(EP.adminStudios + '/' + id, { method: 'PATCH', body: { status } });
+        },
+
         // Giữ lại cho các trang cũ: dữ liệu biểu đồ doanh thu theo tháng
         revenueByMonth() { return demoOverview().revenue_by_month.map(m => ({ label: 'T' + Number(m.month.slice(-2)), value: m.revenue })); }
     };
@@ -787,6 +968,10 @@
         { key: 'equipment', icon: '🎛️', label: 'Thiết bị', href: 'provider-pc-equipment.html' },
         { key: 'feedback', icon: '💬', label: 'Đánh giá & Khiếu nại', href: 'provider-pc-feedback.html' },
         { key: 'workshops', icon: '🎓', label: 'Workshop', href: 'provider-pc-workshops.html' },
+        { key: 'analytics', icon: '📈', label: 'Phân tích & AI', href: 'provider-pc-analytics.html' },
+        { key: 'pricing', icon: '🏷️', label: 'Giá & Khuyến mãi', href: 'provider-pc-pricing.html' },
+        { key: 'community', icon: '👥', label: 'Cộng đồng', href: 'provider-pc-community.html' },
+        { key: 'admin', icon: '🛡️', label: 'Quản trị (Admin)', href: 'provider-pc-admin.html', adminOnly: true },
         { key: 'profile', icon: '👤', label: 'Hồ sơ & Bảo mật', href: 'provider-pc-profile.html' }
     ];
 
@@ -798,7 +983,7 @@
             side.innerHTML = `
                 <div class="pc-brand"><span class="pc-brand-logo">🎞️</span><div><strong>Provider Hub</strong><small>Film Photography</small></div></div>
                 <nav class="pc-nav" aria-label="Điều hướng chính">
-                    ${PC_NAV.map(n => `<a href="${n.href}" class="pc-nav-item${n.key === activeKey ? ' active' : ''}"${n.key === activeKey ? ' aria-current="page"' : ''}><span>${n.icon}</span>${n.label}</a>`).join('')}
+                    ${PC_NAV.map(n => `<a href="${n.href}" class="pc-nav-item${n.key === activeKey ? ' active' : ''}"${n.adminOnly ? ' data-admin hidden' : ''}${n.key === activeKey ? ' aria-current="page"' : ''}><span>${n.icon}</span>${n.label}</a>`).join('')}
                 </nav>`;
         }
         if (top) {
@@ -814,6 +999,8 @@
         }
         const me = await data.me().catch(() => DEMO.user);
         refreshChrome(me);
+        // Mục Quản trị chỉ hiện với ADMIN (bản demo cũng hiện để xem thử giao diện)
+        document.querySelectorAll('[data-admin]').forEach(a => { a.hidden = isLive() && String(me.role).toUpperCase() !== 'ADMIN'; });
         return me;
     }
 
