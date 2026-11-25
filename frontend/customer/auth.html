@@ -16,8 +16,8 @@
     .auth-form.active { display: flex; }
     .form-group { display: flex; flex-direction: column; gap: 6px; }
     label { font-size: 13px; font-weight: 600; color: #374151; }
-    input { padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; outline: none; }
-    input:focus { border-color: #2563eb; }
+    input, select { padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; outline: none; }
+    input:focus, select:focus { border-color: #2563eb; }
     .hint { font-size: 12px; color: #6b7280; }
     .btn-submit { margin-top: 6px; padding: 11px; background: #2563eb; color: #fff; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; }
     .btn-submit:hover { background: #1d4ed8; }
@@ -73,7 +73,11 @@
           <label for="regPassword">Mật khẩu</label>
           <input type="password" id="regPassword" required minlength="8" maxlength="128" placeholder="Tối thiểu 8 ký tự" />
         </div>
-        <button type="submit" class="btn-submit">Tạo tài khoản khách hàng</button>
+        <div class="form-group">
+          <label for="regRole">Bạn đăng ký với tư cách</label>
+          <select id="regRole"><option value="CUSTOMER">Khách hàng (nhiếp ảnh gia)</option><option value="EXPERT">Chuyên gia (viết bài, mở workshop)</option></select>
+        </div>
+        <button type="submit" class="btn-submit">Tạo tài khoản</button>
         <div id="regMsg" class="message"></div>
       </form>
 
@@ -83,7 +87,7 @@
 
   <script>
     // FastAPI mặc định chạy cổng 8000, endpoint router prefix là /api/users
-    const API_BASE = 'http://localhost:8000/api/users';
+    const API_BASE = (location.pathname.indexOf('/web/') === 0 ? '' : 'http://localhost:8000') + '/api/users';
 
     function switchTab(tab) {
       document.querySelectorAll('.tab-btn').forEach((btn, idx) => {
@@ -100,6 +104,17 @@
         return data.detail.map(err => err.msg).join(', ');
       }
       return data.message || fallback;
+    }
+
+    // Sau khi đăng nhập: về trang ?next=... (chỉ trang trong customer/expert/admin) hoặc trang chính theo vai trò
+    function homeFor(user) {
+      const next = new URLSearchParams(location.search).get('next');
+      if (next && /^(customer|expert|admin)\/[\w-]+\.html(\?.*)?$/.test(next)) return '../' + next;
+      const role = String((user && user.role) || '').toUpperCase();
+      if (role === 'ADMIN') return '../admin/admin-pc.html';
+      if (role === 'EXPERT') return '../expert/expert-pc.html';
+      if (role === 'PROVIDER') return '../provider/provider-pc-dashboard.html';
+      return 'customer-pc.html';
     }
 
     document.getElementById('loginForm').addEventListener('submit', async (e) => {
@@ -130,7 +145,7 @@
 
         msg.textContent = 'Đăng nhập thành công! Đang chuyển hướng...';
         msg.classList.add('success');
-        setTimeout(() => window.location.href = 'index.html', 700);
+        setTimeout(() => window.location.href = homeFor(data.user), 700);
       } catch (err) {
         msg.textContent = err.message;
         msg.classList.add('error');
@@ -155,7 +170,7 @@
             email: document.getElementById('regEmail').value.trim(),
             phone: phoneVal || null,
             password: document.getElementById('regPassword').value,
-            role: 'CUSTOMER'
+            role: document.getElementById('regRole') ? document.getElementById('regRole').value : 'CUSTOMER'
           })
         });
         const data = await res.json();
