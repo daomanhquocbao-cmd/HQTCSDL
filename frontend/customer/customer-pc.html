@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Film Hub - Khách hàng</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📷</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/css/app.css">
+</head>
+<body>
+<div class="shell">
+ <aside>
+  <div class="brand"><div class="logo">🎞️</div><div><b>Film Hub</b><span class="mute">Film Photography</span></div></div>
+  <nav class="side" id="side"></nav>
+ </aside>
+ <main>
+  <header class="top"><h1 id="title"></h1>
+   <label class="search"><span>🔍</span><input id="gq" placeholder="Tìm phòng chụp, phòng tối, thiết bị…"></label>
+   <button class="ic" data-a="theme" aria-label="Đổi giao diện">🌓</button>
+   <div class="row"><div class="avatar" id="av">?</div><div class="who"><b id="uname">…</b><span id="urole"></span></div><button class="link" data-a="logout">Thoát</button></div>
+  </header>
+  <div class="content" id="view"><div class="empty">Đang tải…</div></div>
+ </main>
+</div>
+<div id="ai" class="ai"></div>
+<script src="../assets/js/app-common.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" async></script>
+<script>
+const {api,qs,esc:e,money,fd,ft,fdt,iso,todayStr,chip,toast,sheet,closeSheet,run,POST_TYPE,PAY}=App;
+const $=s=>document.querySelector(s);
+const TITLES={home:'Tổng quan',explore:'Khám phá',bookings:'Lịch đặt của tôi',community:'Cộng đồng',profile:'Hồ sơ & Bộ sưu tập'};
+const NAV=[['home','📊','Tổng quan'],['explore','🔍','Khám phá'],['bookings','🗓️','Lịch đặt'],['community','👥','Cộng đồng'],['profile','👤','Hồ sơ']];
+const COLORS=[['#1fb85a','#0e8a43'],['#0b7bbd','#065a95'],['#f2a03d','#e8830c']];
+const TYPE={STUDIO:'Studio chụp ảnh',DARKROOM:'Phòng tối (Darkroom)'};
+const EMOJI={STUDIO:'📸',DARKROOM:'🧪'};
+const S={tab:'home',user:null,rooms:[],cities:[],f:{q:'',type:'',city:'',max:'',cap:'',sort:'rating'},cmp:new Set(),
+ home:null,bk:[],bkTab:'up',room:null,book:null,posts:[],postType:'',post:null,ws:[],myWs:new Set(),com:'post',kb:null,
+ cols:[],col:null,photos:[],chat:[['ai','Chào bạn! Mình là trợ lý AI. Hỏi mình để tìm phòng (vd: "phòng tối dưới 300k ở Hà Nội cho 4 người") hoặc hỏi kỹ thuật nhiếp ảnh phim.']],aiOpen:false,err:''};
+
+/* ---------------------------------------------------------------- tiện ích hiển thị */
+const cover=(r,h)=>{const c=COLORS[r.room_id%3];return `<div class="cover" style="${h?`height:${h}px;`:''}background:linear-gradient(135deg,${c[0]},${c[1]})">${r.image_url?`<img src="${e(r.image_url)}" alt="" onerror="this.remove()">`:''}<span style="font-size:${h?72:48}px">${EMOJI[r.room_type]||'📷'}</span><span class="tag">${e(TYPE[r.room_type]||r.room_type)}</span></div>`};
+const stars=n=>n?`⭐ ${Number(n).toFixed(1)}`:'Chưa có đánh giá';
+const roomCard=r=>`<div class="card rc"><button style="width:100%;text-align:left" data-a="open" data-id="${r.room_id}">${cover(r)}<h3>${e(r.room_name)}</h3><div class="mute">${e(r.studio_name)} · ${e(r.city)}</div></button>
+ <div class="row sp-b" style="margin-top:8px"><span class="price">${money(r.price_per_hour)}/giờ</span><span class="mute">${stars(r.avg_rating)} ${r.review_count?`(${r.review_count})`:''}</span></div>
+ <label class="row mute" style="margin-top:8px;gap:6px"><input type="checkbox" class="cmp" data-a="cmp" data-id="${r.room_id}" ${S.cmp.has(r.room_id)?'checked':''}> So sánh</label></div>`;
+const err=m=>m?`<div class="err">${e(m)}</div>`:'';
+const empty=m=>`<div class="card empty">${m}</div>`;
+
+/* ---------------------------------------------------------------- Tổng quan */
+async function loadHome(){
+ const [ov,rec,ws,bk]=await Promise.all([api('/api/customer/overview'),api('/api/ai/recommendations?top=3').catch(x=>({error:x.message})),api('/api/workshops?upcoming_only=true&limit=3').catch(()=>[]),api('/api/customer/bookings?limit=3').catch(()=>[])]);
+ S.home={ov,rec,ws,bk};
+}
+function home(){
+ const {ov,rec,ws,bk}=S.home,up=ov.upcoming,st=ov.by_status,sp=ov.spending,mx=Math.max(1,...sp.map(m=>m.spent)),cur=sp[sp.length-1];
+ return `<div class="g4">
+  <div class="card stat hero"><div class="lbl">LỊCH SẮP TỚI</div>${up?`<div class="num">${e(up.room_name)}</div><div class="mute">${fdt(up.start_time)} · ${e(up.studio_name)}</div><button class="btn sm white" style="margin-top:10px" data-a="bk-open" data-id="${up.reservation_id}">Xem chi tiết</button>`:`<div class="num">Chưa có lịch</div><button class="btn sm white" style="margin-top:10px" data-a="tab" data-id="explore">Tìm phòng ngay</button>`}</div>
+  <div class="card stat"><div class="lbl">CHI TIÊU THÁNG NÀY</div><div class="num">${money(cur.spent)}</div><div class="mute">${ov.total_bookings} đơn đặt tất cả</div></div>
+  <div class="card stat"><div class="lbl">CHỜ NHÀ CUNG CẤP DUYỆT</div><div class="num">${st.PENDING||0}</div><div class="mute">${(st.CONFIRMED||0)} lịch đã được duyệt</div></div>
+  <div class="card stat"><div class="lbl">CHƯA ĐÁNH GIÁ</div><div class="num">${ov.to_review}</div><div class="mute">${st.COMPLETED||0} buổi đã hoàn thành</div></div></div>
+ <div class="g2">
+  <div class="card"><div class="row sp-b"><h2>📈 CHI TIÊU 6 THÁNG GẦN NHẤT</h2><span class="mute">Đơn vị: nghìn đồng</span></div>
+   <div class="chart">${sp.map((m,i)=>`<div><b>${Math.round(m.spent/1000).toLocaleString('vi-VN')}</b><i class="${i==5?'now':''}" style="height:${Math.max(3,m.spent/mx*150)}px"></i></div>`).join('')}</div>
+   <div class="xl">${sp.map(m=>`<span>T${+m.month.slice(5)}</span>`).join('')}</div></div>
+  <div class="card"><h2>🤖 AI GỢI Ý CHO BẠN</h2>
+   ${rec.error?`<div class="mute">${e(rec.error)}</div>`:`<div class="mute" style="margin:-8px 0 6px">${rec.personalized?'Dựa trên lịch sử đặt phòng và đánh giá của bạn':'Gợi ý chung (đặt phòng để được cá nhân hóa)'}</div>
+   ${rec.items.length?rec.items.map((r,i)=>`<button class="li" style="width:100%;text-align:left" data-a="open" data-id="${r.room_id}"><b style="width:18px">${i+1}.</b><span class="grow"><b>${e(r.room_name)}</b><span class="mute">${e(r.studio_name)} · ${money(r.price_per_hour)}/giờ</span></span><span class="chip">${Math.round(r.score*100)}đ</span></button>`).join(''):'<div class="mute">Chưa có dữ liệu để gợi ý.</div>'}`}</div></div>
+ <div class="g2">
+  <div class="card"><div class="row sp-b"><h2>LỊCH ĐẶT GẦN ĐÂY</h2><button class="link" data-a="tab" data-id="bookings">Xem tất cả</button></div>
+   ${bk.length?bk.map(b=>`<button class="li" style="width:100%;text-align:left" data-a="bk-open" data-id="${b.reservation_id}"><span class="grow"><b>${e(b.room_name)}</b><span class="mute">${fdt(b.start_time)} · ${money(b.total_amount)}</span></span>${chip(b.status)}</button>`).join(''):'<div class="empty">Bạn chưa đặt phòng nào.</div>'}</div>
+  <div class="card"><div class="row sp-b"><h2>WORKSHOP SẮP DIỄN RA</h2><button class="link" data-a="tab" data-id="community">Tất cả</button></div>
+   ${ws.length?ws.map(w=>`<div class="li"><span class="grow"><b>${e(w.title)}</b><span class="mute">${fdt(w.start_time)} · ${e(w.expert_name||'')}</span></span><span class="chip ok">còn ${w.remaining_slots} chỗ</span></div>`).join(''):'<div class="empty">Chưa có workshop sắp tới.</div>'}</div></div>`;
+}
+
+/* ---------------------------------------------------------------- Khám phá */
+async function loadExplore(){
+ if(!S.cities.length)api('/api/customer/cities').then(c=>{S.cities=c;if(S.tab=='explore'&&!S.room)render()}).catch(()=>{});
+ const f=S.f;
+ S.rooms=await api('/api/customer/rooms'+qs({q:f.q,room_type:f.type,city:f.city,max_price:f.max,capacity:f.cap,sort:f.sort,limit:60}));
+}
+function explore(){
+ const f=S.f;
+ return `<div class="row wrap" style="margin-bottom:12px;gap:0">${[['','Tất cả'],['STUDIO','Phòng chụp'],['DARKROOM','Phòng tối']].map(t=>`<button class="pill ${f.type==t[0]?'on':''}" data-a="ftype" data-id="${t[0]}">${t[1]}</button>`).join('')}</div>
+ <div class="card" style="padding:14px;margin-bottom:16px"><div class="frow">
+  <div><label class="f" style="margin-top:0">Thành phố</label><select class="in" data-i="city"><option value="">Tất cả</option>${S.cities.map(c=>`<option ${f.city==c?'selected':''}>${e(c)}</option>`).join('')}</select></div>
+  <div><label class="f" style="margin-top:0">Giá tối đa / giờ</label><input class="in" type="number" min="0" step="10000" placeholder="vd 300000" data-i="max" value="${e(f.max)}"></div>
+  <div><label class="f" style="margin-top:0">Số người tối thiểu</label><input class="in" type="number" min="1" data-i="cap" value="${e(f.cap)}"></div>
+  <div><label class="f" style="margin-top:0">Sắp xếp</label><select class="in" data-i="sort">${[['rating','Đánh giá cao'],['price_asc','Giá tăng dần'],['price_desc','Giá giảm dần'],['capacity','Sức chứa lớn'],['newest','Mới nhất']].map(s=>`<option value="${s[0]}" ${f.sort==s[0]?'selected':''}>${s[1]}</option>`).join('')}</select></div></div></div>
+ ${S.cmp.size?`<div class="row" style="margin-bottom:12px"><button class="btn sm" data-a="compare" ${S.cmp.size<2?'disabled':''}>So sánh ${S.cmp.size} phòng</button><button class="link" data-a="cmp-clear">Bỏ chọn</button><span class="mute">Chọn 2–3 phòng để so sánh</span></div>`:''}
+ ${S.rooms.length?`<div class="g3">${S.rooms.map(roomCard).join('')}</div>`:empty('Không tìm thấy phòng phù hợp. Thử bỏ bớt bộ lọc hoặc đổi từ khóa.')}`;
+}
+async function compare(){
+ const ids=[...S.cmp];const rooms=await Promise.all(ids.map(id=>api('/api/customer/rooms/'+id)));
+ const rows=[['Loại phòng',r=>TYPE[r.room_type]],['Cơ sở',r=>r.studio_name],['Thành phố',r=>r.city],['Giá / giờ',r=>money(r.price_per_hour)],['Sức chứa',r=>r.capacity+' người'],['Diện tích',r=>r.area_sqm?r.area_sqm+' m²':'—'],
+  ['Phong cách',r=>r.art_style||'—'],['Ánh sáng',r=>r.lighting||'—'],['Giờ mở cửa',r=>r.open_time+' – '+r.close_time],['Đánh giá',r=>stars(r.avg_rating)],['Thiết bị cho thuê',r=>r.equipment.length+' món'],['Gói dịch vụ',r=>r.packages.length+' gói']];
+ sheet(`<h2>So sánh phòng</h2><div class="tbl-wrap"><table class="tbl"><tr><th></th>${rooms.map(r=>`<th>${e(r.room_name)}</th>`).join('')}</tr>${rows.map(x=>`<tr><td class="mute">${x[0]}</td>${rooms.map(r=>`<td>${e(x[1](r))}</td>`).join('')}</tr>`).join('')}
+  <tr><td></td>${rooms.map(r=>`<td><button class="btn sm" data-a="open" data-id="${r.room_id}">Xem & đặt</button></td>`).join('')}</tr></table></div>`,true);
+}
+
+/* ---------------------------------------------------------------- Chi tiết phòng + đặt lịch */
+async function openRoom(id){
+ closeSheet();S.err='';
+ const r=await api('/api/customer/rooms/'+id);
+ const d=new Date();d.setDate(d.getDate()+1);
+ S.room=r;S.book={date:d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'),start:null,dur:2,eq:{},pkg:null,promo:'',note:'',busy:[],quote:null,quoteErr:'',pay:'VNPAY',sug:null};
+ await loadBusy();render();scrollTo(0,0);
+}
+const openH=r=>parseInt(r.open_time),closeH=r=>Math.ceil(parseInt(r.close_time)+(parseInt((r.close_time||'0:0').split(':')[1])>0?1:0)-1);
+async function loadBusy(){
+ const b=S.book;b.start=null;b.quote=null;
+ try{b.busy=await api(`/api/customer/rooms/${S.room.room_id}/busy`+qs({date:b.date}))}catch(x){b.busy=[]}
+}
+function slotBad(h){
+ const b=S.book,r=S.room,close=parseInt(r.close_time)+(parseInt(r.close_time.split(':')[1])>0?1:0);
+ if(h+b.dur>close)return true;
+ const now=new Date();if(b.date==todayStr()&&h<=now.getHours())return true;
+ for(let k=0;k<b.dur;k++){const s=new Date(`${b.date}T${String(h+k).padStart(2,'0')}:00:00`),en=new Date(s.getTime()+36e5);
+  if(b.busy.some(x=>new Date(x.start_time)<en&&new Date(x.end_time)>s))return true}
+ return false;
+}
+function extrasTotal(){
+ const b=S.book,r=S.room;let t=0;
+ for(const id in b.eq){const q=b.eq[id],it=r.equipment.find(x=>x.equipment_id==id);if(it)t+=it.rental_price*q}
+ if(b.pkg!=null){const p=r.packages.find(x=>x.package_id==b.pkg);if(p)t+=p.price}
+ return t;
+}
+function detail(){
+ const r=S.room,b=S.book,end=b.start!=null?b.start+b.dur:0,hrs=[];
+ for(let h=openH(r);h<=closeH(r);h++)hrs.push(h);
+ const q=b.quote,roomAmt=q?q.final_amount:(b.start!=null?r.price_per_hour*b.dur:0),total=b.start!=null?roomAmt+extrasTotal():0;
+ return `<button class="link" data-a="back" style="margin-bottom:18px">← Quay lại danh sách</button>${err(S.err)}
+ <div class="dl"><div>
+  <div class="card" style="padding:14px">${cover(r,240)}
+   <div style="padding:14px 8px 6px"><div class="row sp-b wrap"><h2 style="font-size:24px;margin:0">${e(r.room_name)}</h2><span class="price" style="font-size:20px">${money(r.price_per_hour)}/giờ</span></div>
+   <div class="mute" style="margin-top:4px">${e(r.studio_name)} · ${e(r.address)}, ${e(r.city)} · ${stars(r.avg_rating)} (${r.review_count} đánh giá)</div>
+   <div class="spec"><div><span class="mute">Diện tích</span><b>${r.area_sqm?r.area_sqm+' m²':'—'}</b></div><div><span class="mute">Sức chứa</span><b>${r.capacity} người</b></div><div><span class="mute">Ánh sáng</span><b>${e(r.lighting||'—')}</b></div><div><span class="mute">Giờ mở cửa</span><b>${r.open_time} – ${r.close_time}</b></div></div>
+   ${r.art_style?`<p><b>Phong cách:</b> ${e(r.art_style)}</p>`:''}${r.amenities?`<p><b>Tiện ích:</b> ${e(r.amenities)}</p>`:''}${r.description?`<p style="margin-top:8px;line-height:1.5">${e(r.description)}</p>`:''}
+   ${r.latitude?`<p style="margin-top:8px"><a class="link" target="_blank" rel="noopener" href="https://www.google.com/maps?q=${r.latitude},${r.longitude}">📍 Xem trên Google Maps</a></p>`:''}</div></div>
+  <div class="g3" style="grid-template-columns:1fr 1fr;margin-top:20px;align-items:start">
+   <div class="card"><div class="row sp-b"><h2>THIẾT BỊ THUÊ KÈM</h2><button class="link" data-a="suggest">🤖 Gợi ý</button></div>
+    ${b.sug?`<div class="warn" style="font-weight:500">${b.sug.equipment.length?'AI gợi ý: '+b.sug.equipment.map(x=>`<b>${e(x.name)}</b> (${e(x.reason)})`).join('; '):'Chưa có gợi ý thiết bị.'}${b.sug.packages.length?'<br>Gói: '+b.sug.packages.map(x=>`<b>${e(x.name)}</b> (${e(x.reason)})`).join('; '):''}</div>`:''}
+    ${r.equipment.length?r.equipment.map(x=>{const on=b.eq[x.equipment_id];return `<div class="opt ${on?'on':''}"><button data-a="eq" data-id="${x.equipment_id}" style="font-size:18px">${on?'✅':'⬜'}</button><span class="grow"><b>${e(x.name)}</b><span class="mute">${money(x.rental_price)}${x.equipment_type=='CONSUMABLE'?' / lượt dùng':' / thiết bị'}</span></span>${on?`<span class="step"><button data-a="eqq" data-id="${x.equipment_id}" data-d="-1">−</button><b>${on}</b><button data-a="eqq" data-id="${x.equipment_id}" data-d="1">+</button></span>`:''}</div>`}).join(''):'<div class="mute">Studio chưa có thiết bị cho thuê.</div>'}</div>
+   <div class="card"><h2>GÓI DỊCH VỤ</h2>${r.packages.length?r.packages.map(p=>`<button class="opt ${b.pkg==p.package_id?'on':''}" data-a="pkg" data-id="${p.package_id}"><span>${b.pkg==p.package_id?'🔘':'⚪'}</span><span class="grow"><b>${e(p.name)}</b><span class="mute">${e(p.description||'')}${p.instructor_name?' · HD: '+e(p.instructor_name):''}</span></span><span class="price">${money(p.price)}</span></button>`).join(''):'<div class="mute">Chưa có gói phù hợp loại phòng này.</div>'}</div></div>
+  <div class="card" style="margin-top:20px"><h2>ĐÁNH GIÁ CỦA KHÁCH</h2>${r.reviews.length?r.reviews.map(v=>`<div class="post"><b>${e(v.customer_name)}</b> <span class="mute">· ${'⭐'.repeat(v.rating)} · ${fd(v.created_at)}</span>${v.comment?`<p>${e(v.comment)}</p>`:''}</div>`).join(''):'<div class="mute">Chưa có đánh giá.</div>'}</div>
+ </div>
+  <div class="card panel"><h2>ĐẶT LỊCH</h2>
+   <label class="f" style="margin-top:0">Chọn ngày</label><input class="in" type="date" min="${todayStr()}" value="${b.date}" data-i="bdate">
+   <div class="row sp-b" style="margin:14px 0 8px"><span class="mute">Giờ bắt đầu (gạch ngang: đã có người đặt)</span><div class="step"><button data-a="dur" data-d="-1">−</button><b>${b.dur} giờ</b><button data-a="dur" data-d="1">+</button></div></div>
+   <div class="slots">${hrs.map(h=>{const bad=slotBad(h),on=b.start==h,rg=b.start!=null&&h>b.start&&h<end;return `<button class="slot ${on?'on':rg?'rng':''}" ${bad&&!on?'disabled':''} data-a="start" data-id="${h}">${String(h).padStart(2,'0')}:00</button>`}).join('')}</div>
+   <label class="f">Mã khuyến mãi</label><div class="row"><input class="in" data-i="promo" placeholder="vd WELCOME10" value="${e(b.promo)}" style="text-transform:uppercase"><button class="btn sm ghost" data-a="requote">Áp dụng</button></div>
+   <label class="f">Ghi chú cho nhà cung cấp</label><textarea class="in" data-i="note" style="min-height:56px">${e(b.note)}</textarea>
+   ${b.quoteErr?`<div class="warn" style="margin-top:10px">${e(b.quoteErr)}</div>`:''}
+   ${q?`<div style="margin-top:12px">${[['Tiền phòng',q.base_amount],['Điều chỉnh giá giờ cao/thấp điểm',q.price_rule_adjustment],['Giảm giá',-q.discount_amount]].filter(x=>x[1]).map(x=>`<div class="kv"><span class="mute">${x[0]}</span><b>${x[1]>0&&x[0]!='Tiền phòng'?'+':''}${money(x[1])}</b></div>`).join('')}${q.promo_message?`<div class="mute">${e(q.promo_message)}</div>`:''}</div>`:''}
+   ${extrasTotal()?`<div class="kv"><span class="mute">Thiết bị + gói</span><b>${money(extrasTotal())}</b></div>`:''}
+   <div class="total"><div><div class="mute">${b.start!=null?String(b.start).padStart(2,'0')+':00 – '+String(end).padStart(2,'0')+':00':'Chưa chọn giờ'}</div><span class="mute">Tạm tính</span></div><span class="price">${total?money(total):'—'}</span></div>
+   <button class="btn w" data-a="book" ${b.start==null?'disabled':''}>Gửi yêu cầu đặt lịch</button>
+   <div class="mute" style="margin-top:8px">Đơn ở trạng thái "Chờ duyệt" cho đến khi nhà cung cấp xác nhận. Thanh toán trong mục Lịch đặt.</div></div>
+ </div>`;
+}
+async function requote(){
+ const b=S.book;b.quote=null;b.quoteErr='';
+ if(b.start==null)return;
+ try{b.quote=await api('/api/pricing/quote'+qs({room_id:S.room.room_id,start_time:iso(b.date,b.start),end_time:iso(b.date,b.start+b.dur),promo_code:b.promo.trim()}))}
+ catch(x){b.quoteErr=x.status==503?'':x.message}
+}
+async function doBook(btn){
+ const b=S.book,r=S.room;S.err='';
+ const res=await run(async()=>{
+  const bk=await api('/api/bookings',{method:'POST',body:{room_id:r.room_id,start_time:iso(b.date,b.start),end_time:iso(b.date,b.start+b.dur),customer_note:b.note||null,promo_code:b.promo.trim()||null}});
+  const fails=[];
+  for(const id in b.eq){try{await api(`/api/customer/bookings/${bk.reservation_id}/equipment`,{method:'POST',body:{equipment_id:+id,quantity:b.eq[id]}})}catch(x){fails.push(x.message)}}
+  if(b.pkg!=null){try{await api(`/api/customer/bookings/${bk.reservation_id}/packages`,{method:'POST',body:{package_id:b.pkg}})}catch(x){fails.push(x.message)}}
+  return {bk,fails};
+ },btn);
+ if(!res||res===true)return;
+ S.room=null;S.tab='bookings';S.bkTab='up';
+ toast(res.fails.length?'Đã tạo đơn nhưng có mục không thêm được: '+res.fails.join('; '):'Đã gửi yêu cầu. Chờ nhà cung cấp duyệt',!!res.fails.length);
+ await go('bookings');
+ openBooking(res.bk.reservation_id);
+}
+
+/* ---------------------------------------------------------------- Lịch đặt */
+async function loadBookings(){S.bk=await api('/api/customer/bookings?limit=100')}
+const isUp=b=>['PENDING','CONFIRMED','IN_USE'].includes(b.status);
+function bookings(){
+ const L=S.bk.filter(b=>S.bkTab=='up'?isUp(b):!isUp(b));
+ return `<div class="tabs"><button class="${S.bkTab=='up'?'on':''}" data-a="bktab" data-id="up">Sắp tới / đang diễn ra (${S.bk.filter(isUp).length})</button><button class="${S.bkTab=='done'?'on':''}" data-a="bktab" data-id="done">Đã xong / đã hủy</button></div>
+ <div class="card">${L.length?`<div class="tbl-wrap"><table class="tbl"><tr><th>Phòng</th><th>Ngày & giờ</th><th>Tổng tiền</th><th>Còn nợ</th><th>Trạng thái</th><th></th></tr>
+ ${L.map(b=>`<tr><td><b>${e(b.room_name)}</b><br><span class="mute">${e(b.studio_name)}</span></td><td>${fd(b.start_time)}<br><span class="mute">${ft(b.start_time)} – ${ft(b.end_time)}</span></td><td class="price">${money(b.total_amount)}</td><td>${b.balance_due>0&&b.status!='CANCELLED'?`<b style="color:var(--orange)">${money(b.balance_due)}</b>`:'—'}</td><td>${chip(b.status)}</td>
+ <td style="text-align:right"><button class="link" data-a="bk-open" data-id="${b.reservation_id}">Chi tiết</button> ${b.status=='COMPLETED'&&!b.has_review?`<button class="btn sm" data-a="rate" data-id="${b.reservation_id}">Đánh giá</button>`:''}</td></tr>`).join('')}</table></div>`:'<div class="empty">Không có đơn nào ở mục này.</div>'}</div>`;
+}
+async function openBooking(id){
+ let b;try{b=await api('/api/customer/bookings/'+id)}catch(x){return toast(x.message,true)}
+ let room=null;if(['PENDING','CONFIRMED'].includes(b.status)){try{room=await api('/api/customer/rooms/'+b.room_id)}catch(x){room=null}}
+ const live=['PENDING','CONFIRMED'].includes(b.status);
+ const html=`<div class="row sp-b wrap"><h2 style="margin:0">${e(b.room_name)}</h2>${chip(b.status)}</div><div class="mute">${e(b.studio_name)} · ${fdt(b.start_time)} – ${ft(b.end_time)} · mã đơn #${b.reservation_id}</div>
+ ${b.qr_code?`<div style="text-align:center;margin:14px 0"><div id="qrbox" style="display:inline-block;background:#fff;padding:10px;border-radius:14px"></div><div style="font-family:monospace;font-weight:800;font-size:16px;margin-top:8px">${e(b.qr_code)}</div><div class="mute">Đưa mã này cho nhà cung cấp khi check-in</div></div>`:(live?'<div class="warn" style="margin-top:12px">Mã QR check-in sẽ có sau khi nhà cung cấp xác nhận đơn.</div>':'')}
+ <div style="margin-top:10px">${[['Tổng tiền',money(b.total_amount)],['Đã thanh toán',money(b.paid_amount)],['Còn nợ',money(b.balance_due)]].map(x=>`<div class="kv"><span class="mute">${x[0]}</span><b>${x[1]}</b></div>`).join('')}
+ ${b.promotion?`<div class="kv"><span class="mute">Mã ${e(b.promotion.code)}</span><b>−${money(b.promotion.discount_amount)}</b></div>`:''}
+ ${b.equipment.map(x=>`<div class="kv"><span>${e(x.name)} × ${x.quantity}</span><b>${money(x.unit_price*x.quantity)}</b></div>`).join('')}${b.packages.map(x=>`<div class="kv"><span>Gói: ${e(x.name)}</span><b>${money(x.price)}</b></div>`).join('')}</div>
+ ${b.payments.length?`<h2 style="margin-top:16px">Thanh toán</h2>${b.payments.map(p=>`<div class="kv"><span>${fdt(p.paid_at)} · ${e(PAY[p.payment_method]||p.payment_method)}</span><span><b>${money(p.amount)}</b> ${chip(p.status)}</span></div>`).join('')}`:''}
+ ${b.disputes.length?`<h2 style="margin-top:16px">Khiếu nại</h2>${b.disputes.map(d=>`<div class="kv"><span>${e(d.reason)}${d.resolution?`<br><span class="mute">Phản hồi: ${e(d.resolution)}</span>`:''}</span>${chip(d.status)}</div>`).join('')}`:''}
+ ${['PENDING','CONFIRMED','IN_USE'].includes(b.status)&&b.balance_due>0?`<h2 style="margin-top:16px">Thanh toán</h2><div class="frow"><input class="in" id="payAmt" type="number" min="1000" step="1000" value="${b.balance_due}"><select class="in" id="payMethod">${Object.entries(PAY).map(p=>`<option value="${p[0]}">${p[1]}</option>`).join('')}</select></div>
+  <div class="mute" style="margin:6px 0">Đây là môi trường học tập: thanh toán được ghi nhận trực tiếp, không qua cổng ngân hàng thật.</div><button class="btn w" data-a="pay" data-id="${b.reservation_id}">Thanh toán</button>`:''}
+ ${live&&room?`<h2 style="margin-top:16px">Thêm vào đơn</h2><div class="frow"><select class="in" id="addEq"><option value="">+ Thuê thêm thiết bị…</option>${room.equipment.map(x=>`<option value="${x.equipment_id}">${e(x.name)} — ${money(x.rental_price)}</option>`).join('')}</select><select class="in" id="addPk"><option value="">+ Chọn gói dịch vụ…</option>${room.packages.filter(p=>!b.packages.some(y=>y.package_id==p.package_id)).map(p=>`<option value="${p.package_id}">${e(p.name)} — ${money(p.price)}</option>`).join('')}</select></div>
+  <button class="btn sm ghost" style="margin-top:8px" data-a="addx" data-id="${b.reservation_id}">Thêm vào đơn</button>`:''}
+ <div class="row wrap" style="margin-top:18px">${b.status=='COMPLETED'&&!b.has_review?`<button class="btn sm" data-a="rate" data-id="${b.reservation_id}">⭐ Đánh giá</button>`:''}${live?`<button class="btn sm danger" data-a="cancel" data-id="${b.reservation_id}">Hủy đơn</button>`:''}${b.status!='CANCELLED'?`<button class="btn sm ghost" data-a="dispute" data-id="${b.reservation_id}">Gửi khiếu nại</button>`:''}<button class="btn sm ghost right" data-a="close">Đóng</button></div>`;
+ sheet(html);
+ const box=$('#qrbox');if(box&&b.qr_code){if(typeof QRCode!='undefined')new QRCode(box,{text:b.qr_code,width:150,height:150});else box.textContent='(không tải được thư viện QR — dùng mã bên dưới)'}
+}
+function rateSheet(id,n){sheet(`<h2>Đánh giá buổi chụp</h2><div class="stars row" style="margin:8px 0">${[1,2,3,4,5].map(i=>`<button class="${n>=i?'on':''}" data-a="star" data-id="${id}" data-n="${i}">⭐</button>`).join('')}</div><textarea class="in" id="rvText" placeholder="Nhận xét (không bắt buộc)"></textarea><input type="hidden" id="rvN" value="${n}"><button class="btn w" style="margin-top:12px" data-a="sendrate" data-id="${id}">Gửi đánh giá</button>`)}
+
+/* ---------------------------------------------------------------- Cộng đồng */
+async function loadCommunity(){
+ const [posts,ws,my]=await Promise.all([api('/api/community/posts'+qs({post_type:S.postType,limit:30})),api('/api/workshops?limit=30'),api('/api/workshops/me/registrations').catch(()=>[])]);
+ S.posts=posts;S.ws=ws;S.myWs=new Set(my.map(w=>w.workshop_id));
+}
+function community(){
+ const canStaff=['EXPERT','PROVIDER','ADMIN'].includes(S.user.role);
+ const types=canStaff?['DISCUSSION','EQUIPMENT_REVIEW','ARTICLE','TUTORIAL']:['DISCUSSION','EQUIPMENT_REVIEW'];
+ const head=`<div class="tabs">${[['post','Bài viết'],['ws','Workshop'],['kb','🔎 Hỏi kho kiến thức']].map(t=>`<button class="${S.com==t[0]?'on':''}" data-a="com" data-id="${t[0]}">${t[1]}</button>`).join('')}</div>`;
+ if(S.com=='kb')return head+`<div class="card"><div class="row"><input class="in" id="kbq" placeholder="vd: cách tráng phim đen trắng tại nhà cần gì?" value="${e(S.kb?S.kb.query:'')}"><button class="btn" data-a="kb">Tìm</button></div><div class="mute" style="margin:6px 0 10px">Tìm theo ý nghĩa gần đúng (có từ đồng nghĩa) trong bài viết và workshop.</div>
+  ${S.kb?(S.kb.results.length?S.kb.results.map(r=>`<div class="post"><span class="chip">${e(POST_TYPE[r.post_type]||r.post_type)}</span> <b>${e(r.title)}</b><p class="mute">${e(r.snippet)}</p><span class="who2">${e(r.author_name)} · độ liên quan ${r.score}</span></div>`).join(''):'<div class="empty">Không tìm thấy nội dung liên quan.</div>'):''}</div>`;
+ if(S.com=='ws')return head+(S.ws.length?`<div class="g3">${S.ws.map(w=>{const reg=S.myWs.has(w.workshop_id);return `<div class="card"><b style="font-size:15.5px">${e(w.title)}</b><div class="mute" style="margin:6px 0 4px">${fdt(w.start_time)} – ${ft(w.end_time)}</div><div class="mute">Chuyên gia: ${e(w.expert_name||'—')}</div><p class="mute" style="margin:8px 0">${e((w.description||'').slice(0,140))}</p><div class="row sp-b"><span class="chip ${w.remaining_slots?'ok':'pend'}">${w.remaining_slots?`còn ${w.remaining_slots}/${w.capacity} chỗ`:'hết chỗ'}</span>${reg?`<button class="btn sm ghost" data-a="wsun" data-id="${w.workshop_id}">Hủy đăng ký</button>`:`<button class="btn sm" data-a="wsreg" data-id="${w.workshop_id}" ${w.remaining_slots?'':'disabled'}>Đăng ký</button>`}</div></div>`}).join('')}</div>`:empty('Chưa có workshop nào.'));
+ return head+`<div class="g2" style="grid-template-columns:1fr 340px;align-items:start"><div class="card"><div class="row wrap" style="margin-bottom:10px;gap:0"><button class="pill ${S.postType==''?'on':''}" data-a="ptype" data-id="">Tất cả</button>${Object.keys(POST_TYPE).filter(k=>k!='WORKSHOP').map(k=>`<button class="pill ${S.postType==k?'on':''}" data-a="ptype" data-id="${k}">${POST_TYPE[k]}</button>`).join('')}</div>
+  ${S.posts.length?S.posts.map(p=>`<div class="post"><div class="row wrap"><span class="chip">${e(POST_TYPE[p.post_type]||p.post_type)}</span><button style="font-weight:800;text-align:left" data-a="post" data-id="${p.post_id}">${e(p.title)}</button></div><p>${e(p.content.slice(0,220))}${p.content.length>220?'…':''}</p><span class="who2">${e(p.author_name)} · ${fdt(p.created_at)} · 💬 ${p.comment_count}</span></div>`).join(''):'<div class="empty">Chưa có bài viết nào.</div>'}</div>
+  <div class="card"><h2>ĐĂNG BÀI</h2><label class="f" style="margin-top:0">Loại bài</label><select class="in" id="npType">${types.map(t=>`<option value="${t}">${POST_TYPE[t]}</option>`).join('')}</select><label class="f">Tiêu đề</label><input class="in" id="npTitle" maxlength="200"><label class="f">Nội dung</label><textarea class="in" id="npBody" style="min-height:120px"></textarea><button class="btn w" style="margin-top:12px" data-a="newpost">Đăng</button></div></div>`;
+}
+async function openPost(id){
+ let p;try{p=await api('/api/community/posts/'+id)}catch(x){return toast(x.message,true)}
+ const mine=p.author_id==S.user.user_id||S.user.role=='ADMIN';
+ sheet(`<span class="chip">${e(POST_TYPE[p.post_type]||p.post_type)}</span><h2 style="margin-top:8px">${e(p.title)}</h2><div class="who2">${e(p.author_name)} · ${fdt(p.created_at)}</div><p style="white-space:pre-wrap;margin:12px 0;line-height:1.55">${e(p.content)}</p>
+ <h2>Bình luận (${p.comments.length})</h2>${p.comments.map(c=>`<div class="post"><b>${e(c.user_name)}</b> <span class="who2">${fdt(c.created_at)}</span><p>${e(c.content)}</p></div>`).join('')||'<div class="mute">Chưa có bình luận.</div>'}
+ <div class="row" style="margin-top:10px"><input class="in" id="cmtText" maxlength="2000" placeholder="Viết bình luận…"><button class="btn" data-a="comment" data-id="${p.post_id}">Gửi</button></div>
+ <div class="row" style="margin-top:12px">${mine?`<button class="btn sm danger" data-a="delpost" data-id="${p.post_id}">Xóa bài</button>`:''}<button class="btn sm ghost right" data-a="close">Đóng</button></div>`,true);
+}
+
+/* ---------------------------------------------------------------- Hồ sơ & bộ sưu tập */
+async function loadProfile(){S.cols=await api('/api/collections').catch(x=>{S.err=x.message;return[]});if(S.col){const c=S.cols.find(x=>x.collection_id==S.col);if(c)S.photos=await api(`/api/collections/${S.col}/photos`);else S.col=null}}
+function profile(){
+ const u=S.user,total=S.cols.reduce((a,c)=>a+c.photo_count,0);
+ return `${err(S.err)}<div style="display:grid;grid-template-columns:340px 1fr;gap:20px;align-items:start" class="pf">
+  <div class="card"><div style="text-align:center"><div class="avatar" style="width:84px;height:84px;font-size:28px;margin:0 auto 12px">${e(App.initials(u.full_name))}</div><b style="font-size:19px">${e(u.full_name)}</b><div style="margin:6px 0 10px"><span class="chip">${e(App.ROLE[u.role]||u.role)}</span></div></div>
+   <label class="f">Họ tên</label><input class="in" id="pfName" value="${e(u.full_name)}"><label class="f">Email</label><input class="in" id="pfEmail" value="${e(u.email)}"><label class="f">Số điện thoại</label><input class="in" id="pfPhone" value="${e(u.phone||'')}">
+   <button class="btn w" style="margin-top:12px" data-a="saveprofile">Lưu hồ sơ</button>
+   <h2 style="margin-top:20px">Đổi mật khẩu</h2><input class="in" type="password" id="pwOld" placeholder="Mật khẩu hiện tại"><input class="in" type="password" id="pwNew" placeholder="Mật khẩu mới (≥ 8 ký tự)" style="margin-top:8px"><button class="btn ghost w" style="margin-top:10px" data-a="changepw">Đổi mật khẩu</button></div>
+  <div><div class="card"><div class="row sp-b wrap"><h2>BỘ SƯU TẬP ẢNH (${S.cols.length} bộ · ${total} ảnh)</h2><button class="link" data-a="newcol">+ Bộ sưu tập mới</button></div>
+   ${S.cols.length?`<div class="row wrap" style="gap:8px;margin-bottom:14px">${S.cols.map(c=>`<button class="pill ${S.col==c.collection_id?'on':''}" style="margin:0" data-a="col" data-id="${c.collection_id}">${e(c.name)} (${c.photo_count})</button>`).join('')}</div>`:'<div class="empty">Chưa có bộ sưu tập. Tạo bộ đầu tiên để lưu ảnh phim của bạn.</div>'}
+   ${S.col?collection():''}</div>
+  <div class="card" style="margin-top:20px"><h2>CÔNG CỤ AI</h2><div class="opt" style="cursor:default"><span>🖼️</span><span class="grow"><b>Phục hồi / tăng chất lượng ảnh</b><span class="mute">Mở một bộ sưu tập, bấm "Phục hồi" trên ảnh: cân bằng tương phản, khử bụi, làm nét, phóng ảnh scan, đảo âm bản. Ảnh gốc luôn được giữ lại.</span></span></div>
+   <button class="opt" data-a="ai"><span>💬</span><span class="grow"><b>Hỏi trợ lý nhiếp ảnh</b><span class="mute">Tìm phòng bằng câu hỏi tự nhiên, hỏi kỹ thuật chụp / tráng phim</span></span></button></div></div></div>`;
+}
+function collection(){
+ const c=S.cols.find(x=>x.collection_id==S.col);if(!c)return '';
+ return `<div class="row sp-b wrap" style="margin-bottom:10px"><div><b>${e(c.name)}</b><div class="mute">${e(c.description||'')}</div></div><div class="row"><label class="btn sm" style="cursor:pointer">⬆ Tải ảnh lên<input type="file" id="upl" accept="image/jpeg,image/png,image/webp" multiple hidden></label><button class="btn sm danger" data-a="delcol" data-id="${c.collection_id}">Xóa bộ</button></div></div>
+ ${S.photos.length?`<div class="pgrid">${S.photos.map(p=>`<div class="thumb"><img src="${App.apiBase()}${e(p.url)}" alt="${e(p.caption||'')}" data-a="view" data-id="${p.photo_id}" loading="lazy"><span class="tg">${p.kind=='RESTORED'?'Đã phục hồi':'Gốc'}</span><div class="tools">${p.kind=='ORIGINAL'?`<button data-a="restore" data-id="${p.photo_id}">✨ Phục hồi</button>`:''}<button data-a="delphoto" data-id="${p.photo_id}">🗑</button></div></div>`).join('')}</div>`:'<div class="empty">Bộ sưu tập trống. Hãy tải ảnh lên (JPEG/PNG/WEBP, tối đa 6 MB).</div>'}`;
+}
+
+/* ---------------------------------------------------------------- Trợ lý AI */
+function renderAI(){
+ $('#ai').innerHTML=(S.aiOpen?`<div class="aibox"><div class="row sp-b" style="margin-bottom:10px"><b>🤖 Trợ lý AI</b><button class="link" data-a="ai">Đóng</button></div><div id="chat" style="max-height:300px;overflow:auto">${S.chat.map(m=>`<div class="msg ${m[0]}">${m[1]}</div>`).join('')}</div>
+  <div class="row" style="margin-top:8px"><input class="in" id="askq" placeholder="Hỏi trợ lý…" maxlength="300"><button class="btn sm" data-a="ask">Gửi</button></div></div>`:'')+`<button class="aibtn" data-a="ai">🤖 Trợ lý AI</button>`;
+ const c=$('#chat');if(c)c.scrollTop=c.scrollHeight;
+}
+async function askAI(){
+ const inp=$('#askq'),q=inp&&inp.value.trim();if(!q||q.length<2)return;
+ S.chat.push(['me',e(q)]);inp.value='';renderAI();
+ try{
+  const r=await api('/api/ai/ask'+qs({q,limit:4}));
+  let html='';
+  if(r.understood.length){const L={room_type:'loại phòng',max_price:'giá tối đa',capacity:'số người',city:'thành phố'};html+=`Mình hiểu: ${r.understood.map(k=>`${L[k]} <b>${e(r.criteria[k])}</b>`).join(', ')}.<br>`;
+   html+=r.results.length?r.results.map(x=>`<button class="link" style="display:block;margin:6px 0;text-align:left" data-a="open" data-id="${x.room_id}">${e(x.room_name)} · ${e(x.studio_name)} · ${money(x.price_per_hour)}/giờ ${x.avg_rating?'⭐'+Number(x.avg_rating).toFixed(1):''}</button>`).join(''):'Chưa có phòng nào khớp điều kiện này.'}
+  if(r.knowledge&&r.knowledge.length)html+=(html?'<br>':'')+'Bài viết có thể giúp bạn:'+r.knowledge.map(k=>`<div style="margin-top:6px"><b>${e(k.title)}</b><br><span class="mute">${e(k.snippet)}</span></div>`).join('');
+  if(!html)html='Mình chưa tìm thấy gì phù hợp. Thử hỏi về loại phòng, giá, thành phố hoặc kỹ thuật tráng phim nhé.';
+  S.chat.push(['ai',html]);
+ }catch(x){S.chat.push(['ai','⚠ '+e(x.message)])}
+ renderAI();
+}
+
+/* ---------------------------------------------------------------- điều khiển chung */
+const LOADERS={home:loadHome,explore:loadExplore,bookings:loadBookings,community:loadCommunity,profile:loadProfile};
+const VIEWS={home,explore,bookings,community,profile};
+function render(){
+ $('#side').innerHTML=NAV.map(n=>`<button class="${S.tab==n[0]&&!S.room?'on':''}" data-a="tab" data-id="${n[0]}"><span>${n[1]}</span><span>${n[2]}</span></button>`).join('');
+ $('#title').textContent=S.room?S.room.room_name:TITLES[S.tab];
+ let html;
+ try{html=S.room?detail():(VIEWS[S.tab]?VIEWS[S.tab]():'')}catch(x){html=`<div class="err">Lỗi hiển thị: ${e(x.message)}</div>`}
+ const keep=document.activeElement&&document.activeElement.id,pos=document.activeElement&&document.activeElement.selectionStart;
+ $('#view').innerHTML=html;renderAI();
+ if(keep){const el=document.getElementById(keep);if(el){el.focus();try{el.setSelectionRange(pos,pos)}catch(x){}}}
+}
+async function go(tab){
+ S.tab=tab;S.room=null;S.err='';history.replaceState(null,'','#'+tab);
+ $('#view').innerHTML='<div class="empty">Đang tải…</div>';
+ try{await LOADERS[tab]()}catch(x){S.err=x.message;if(tab=='home')S.home=null}
+ if(tab=='home'&&!S.home){$('#view').innerHTML=err(S.err);return}
+ render();
+}
+const reload=async()=>{try{await LOADERS[S.tab]()}catch(x){S.err=x.message}render()};
+
+document.addEventListener('click',async ev=>{
+ const b=ev.target.closest('[data-a]');if(!b)return;const a=b.dataset.a,id=b.dataset.id;
+ if(b.tagName=='INPUT'&&b.type=='checkbox'&&a!='cmp')return;
+ switch(a){
+  case 'tab':closeSheet();return go(id);
+  case 'theme':App.toggleTheme();return;
+  case 'logout':return App.logout();
+  case 'close':return closeSheet();
+  case 'ftype':S.f.type=id;await loadExplore();return render();
+  case 'open':return run(()=>openRoom(+id));
+  case 'back':S.room=null;return render();
+  case 'cmp':ev.stopPropagation();if(b.checked){if(S.cmp.size>=3){b.checked=false;return toast('Chỉ so sánh tối đa 3 phòng')}S.cmp.add(+id)}else S.cmp.delete(+id);return render();
+  case 'cmp-clear':S.cmp.clear();return render();
+  case 'compare':return run(compare);
+  case 'eq':{const B=S.book;if(B.eq[id])delete B.eq[id];else B.eq[id]=1;return render()}
+  case 'eqq':{const B=S.book;B.eq[id]=Math.max(1,Math.min(20,(B.eq[id]||1)+ +b.dataset.d));return render()}
+  case 'pkg':S.book.pkg=S.book.pkg==id?null:+id;return render();
+  case 'dur':{const B=S.book;B.dur=Math.max(1,Math.min(8,B.dur+ +b.dataset.d));B.start=null;B.quote=null;return render()}
+  case 'start':S.book.start=+id;await requote();return render();
+  case 'requote':await requote();return render();
+  case 'suggest':return run(async()=>{S.book.sug=await api('/api/ai/suggest-room-extras'+qs({room_id:S.room.room_id}));render()});
+  case 'book':return doBook(b);
+  case 'bktab':S.bkTab=id;return render();
+  case 'bk-open':return openBooking(+id);
+  case 'pay':{const amt=+$('#payAmt').value,m=$('#payMethod').value;const r=await run(()=>api(`/api/customer/bookings/${id}/payments`,{method:'POST',body:{amount:amt,payment_method:m}}),b,'Đã ghi nhận thanh toán');if(r){await loadBookings();render();openBooking(+id)}return}
+  case 'addx':{const eq=$('#addEq').value,pk=$('#addPk').value;if(!eq&&!pk)return toast('Chọn thiết bị hoặc gói cần thêm');
+   const r=await run(async()=>{if(eq)await api(`/api/customer/bookings/${id}/equipment`,{method:'POST',body:{equipment_id:+eq,quantity:1}});if(pk)await api(`/api/customer/bookings/${id}/packages`,{method:'POST',body:{package_id:+pk}})},b,'Đã cập nhật đơn');if(r){await loadBookings();render();openBooking(+id)}return}
+  case 'cancel':if(!confirm('Hủy đơn đặt phòng này?'))return;{const r=await run(()=>api(`/api/customer/bookings/${id}/cancel`,{method:'POST'}),b,'Đã hủy đơn');if(r){closeSheet();await loadBookings();render()}return}
+  case 'dispute':sheet(`<h2>Gửi khiếu nại</h2><div class="mute">Mô tả vấn đề (thiết bị hỏng, sai giờ, tính tiền sai…). Nhà cung cấp và quản trị viên sẽ xử lý.</div><textarea class="in" id="dpText" style="margin-top:10px"></textarea><button class="btn w" style="margin-top:12px" data-a="senddispute" data-id="${id}">Gửi khiếu nại</button>`);return;
+  case 'senddispute':{const t=$('#dpText').value.trim();if(t.length<5)return toast('Hãy mô tả chi tiết hơn (≥ 5 ký tự)',true);const r=await run(()=>api(`/api/customer/bookings/${id}/disputes`,{method:'POST',body:{reason:t}}),b,'Đã gửi khiếu nại');if(r)openBooking(+id);return}
+  case 'rate':return rateSheet(id,0);
+  case 'star':return rateSheet(id,+b.dataset.n);
+  case 'sendrate':{const n=+$('#rvN').value;if(!n)return toast('Chọn số sao trước',true);const r=await run(()=>api(`/api/customer/bookings/${id}/review`,{method:'POST',body:{rating:n,comment:$('#rvText').value}}),b,'Cảm ơn bạn đã đánh giá');if(r){closeSheet();await loadBookings();render()}return}
+  case 'com':S.com=id;return render();
+  case 'ptype':S.postType=id;await loadCommunity();return render();
+  case 'post':return openPost(+id);
+  case 'newpost':{const t=$('#npTitle').value.trim(),c=$('#npBody').value.trim();if(t.length<3||!c)return toast('Nhập tiêu đề (≥ 3 ký tự) và nội dung',true);const r=await run(()=>api('/api/community/posts',{method:'POST',body:{post_type:$('#npType').value,title:t,content:c}}),b,'Đã đăng bài');if(r)reload();return}
+  case 'comment':{const t=$('#cmtText').value.trim();if(!t)return;const r=await run(()=>api(`/api/community/posts/${id}/comments`,{method:'POST',body:{content:t}}),b);if(r){openPost(+id);loadCommunity().then(render)}return}
+  case 'delpost':if(!confirm('Xóa bài viết này?'))return;{const r=await run(()=>api('/api/community/posts/'+id,{method:'DELETE'}),b,'Đã xóa');if(r){closeSheet();reload()}return}
+  case 'wsreg':{const r=await run(()=>api(`/api/workshops/${id}/register`,{method:'POST'}),b,'Đã đăng ký workshop');if(r)reload();return}
+  case 'wsun':{const r=await run(()=>api(`/api/workshops/${id}/register`,{method:'DELETE'}),b,'Đã hủy đăng ký');if(r)reload();return}
+  case 'kb':{const q=$('#kbq').value.trim();if(q.length<2)return;const r=await run(()=>api('/api/community/search'+qs({q})),b);if(r){S.kb=r;render()}return}
+  case 'saveprofile':{const r=await run(()=>api('/api/users/me',{method:'PATCH',body:{full_name:$('#pfName').value.trim(),email:$('#pfEmail').value.trim(),phone:$('#pfPhone').value.trim()||null}}),b,'Đã lưu hồ sơ');if(r&&r!==true){S.user=Object.assign(S.user,r);App.store.set('user',JSON.stringify(S.user));fillUser();render()}return}
+  case 'changepw':{const r=await run(()=>api('/api/users/change-password',{method:'POST',body:{current_password:$('#pwOld').value,new_password:$('#pwNew').value}}),b,'Đã đổi mật khẩu');if(r){$('#pwOld').value='';$('#pwNew').value=''}return}
+  case 'newcol':sheet(`<h2>Bộ sưu tập mới</h2><label class="f" style="margin-top:0">Tên</label><input class="in" id="colName" maxlength="100"><label class="f">Mô tả</label><input class="in" id="colDesc" maxlength="500"><button class="btn w" style="margin-top:12px" data-a="savecol">Tạo</button>`);return;
+  case 'savecol':{const n=$('#colName').value.trim();if(!n)return toast('Nhập tên bộ sưu tập',true);const r=await run(()=>api('/api/collections',{method:'POST',body:{name:n,description:$('#colDesc').value.trim()||null}}),b,'Đã tạo');if(r&&r!==true){closeSheet();S.col=r.collection_id;await loadProfile();render()}return}
+  case 'col':S.col=+id;S.photos=await api(`/api/collections/${id}/photos`).catch(()=>[]);return render();
+  case 'delcol':if(!confirm('Xóa bộ sưu tập và toàn bộ ảnh trong đó?'))return;{const r=await run(()=>api('/api/collections/'+id,{method:'DELETE'}),b,'Đã xóa');if(r){S.col=null;await loadProfile();render()}return}
+  case 'delphoto':if(!confirm('Xóa ảnh này?'))return;{const r=await run(()=>api('/api/collections/photos/'+id,{method:'DELETE'}),b,'Đã xóa ảnh');if(r){await loadProfile();render()}return}
+  case 'restore':sheet(`<h2>Phục hồi ảnh</h2>${[['restore','🖼️ Phục hồi ảnh cũ','Cân bằng tương phản, khử bụi / xước nhỏ, làm nét'],['enhance','🔍 Tăng chất lượng ảnh scan','Phóng 2 lần (ảnh nhỏ), tăng tương phản, làm nét'],['negative','🎞️ Đảo âm bản','Chuyển ảnh scan âm bản thành dương bản']].map(m=>`<button class="opt" data-a="dorestore" data-id="${id}" data-m="${m[0]}"><span class="grow"><b>${m[1]}</b><span class="mute">${m[2]}</span></span></button>`).join('')}<div class="mute">Ảnh gốc được giữ nguyên; kết quả lưu thành ảnh mới trong cùng bộ sưu tập.</div>`);return;
+  case 'dorestore':{b.disabled=true;const r=await run(()=>api(`/api/collections/photos/${id}/restore`,{method:'POST',body:{mode:b.dataset.m}}),null,'Đã tạo ảnh mới');closeSheet();if(r){await loadProfile();render()}return}
+  case 'view':{const p=S.photos.find(x=>x.photo_id==id);const orig=p.kind=='RESTORED'?null:null;sheet(`<img src="${App.apiBase()}${e(p.url)}" style="width:100%;border-radius:12px" alt=""><div class="mute" style="margin-top:8px">${e(p.caption||'')} · ${(p.size_bytes/1024).toFixed(0)} KB</div>`,true);return}
+  case 'ai':S.aiOpen=!S.aiOpen;return renderAI();
+  case 'ask':return askAI();
+ }
+});
+document.addEventListener('change',async ev=>{
+ const t=ev.target;
+ if(t.id=='upl'&&t.files.length){
+  for(const f of t.files){if(f.size>6*1024*1024){toast(f.name+': ảnh quá 6 MB',true);continue}
+   await run(async()=>api(`/api/collections/${S.col}/photos`,{method:'POST',body:{data:await App.fileToBase64(f),caption:f.name.replace(/\.[^.]+$/,'')}}),null,'Đã tải '+f.name)}
+  await loadProfile();render();return}
+ const i=t.dataset&&t.dataset.i;if(!i)return;
+ if(i=='bdate'){S.book.date=t.value;await loadBusy();return render()}
+ if(['city','sort','max','cap'].includes(i)){S.f[i]=t.value;await loadExplore();render()}
+});
+document.addEventListener('input',ev=>{const t=ev.target,i=t.dataset&&t.dataset.i;if(i=='promo'){S.book.promo=t.value.toUpperCase();S.book.quote=null}else if(i=='note')S.book.note=t.value});
+document.addEventListener('keydown',ev=>{if(ev.key=='Enter'){const t=ev.target;if(t.id=='askq')askAI();else if(t.id=='kbq')document.querySelector('[data-a=kb]').click();else if(t.id=='cmtText')document.querySelector('[data-a=comment]').click()}});
+$('#gq').addEventListener('input',App.debounce(async ev=>{S.f.q=ev.target.value.trim();S.tab='explore';S.room=null;try{await loadExplore()}catch(x){S.err=x.message}render()},350));
+
+function fillUser(){const u=S.user;$('#av').textContent=App.initials(u.full_name);$('#uname').textContent=u.full_name;$('#urole').textContent=(App.ROLE[u.role]||u.role).toUpperCase()}
+(async function init(){
+ const u=await App.requireRole(['CUSTOMER','PROVIDER','EXPERT','ADMIN'],'khách hàng');if(!u)return;
+ S.user=u;fillUser();
+ const h=location.hash.slice(1);go(TITLES[h]?h:'home');
+})();
+</script>
+</body>
+</html>
