@@ -13,7 +13,11 @@ from fastapi.staticfiles import StaticFiles  # noqa: E402
 from admin.router import router as admin_router  # noqa: E402
 from ai.router import router as ai_router  # noqa: E402
 from booking.router import router as booking_router  # noqa: E402
+from customer.router import router as customer_router  # noqa: E402
 from community.router import router as community_router  # noqa: E402
+from integrations.router import router as integrations_router  # noqa: E402
+from photos.router import router as photos_router  # noqa: E402
+from photos.service import UPLOAD_DIR  # noqa: E402
 from pricing.router import router as pricing_router  # noqa: E402
 from core.config import settings  # noqa: E402
 from core.exceptions import register_exception_handlers  # noqa: E402
@@ -55,6 +59,9 @@ def create_app() -> FastAPI:
     app.include_router(community_router)
     app.include_router(ai_router)
     app.include_router(pricing_router)
+    app.include_router(customer_router)
+    app.include_router(photos_router)
+    app.include_router(integrations_router)
 
     @app.get("/")
     def root():
@@ -63,6 +70,10 @@ def create_app() -> FastAPI:
     @app.get("/health", tags=["Health"])
     def health():
         return {"status": "ok", "version": settings.app_version}
+
+    # Ảnh khách tải lên / ảnh đã phục hồi (đường dẫn khó đoán: <user_id>/<uuid>.jpg)
+    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
     # Phục vụ giao diện tại /web (chỉ khi thư mục frontend tồn tại, vd. không có trong Docker)
     if FRONTEND_DIR.is_dir():

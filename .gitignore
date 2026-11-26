@@ -33,3 +33,13 @@ uploads/*
 .DS_Store
 .vscode/
 .idea/
+
+# Dev-only / sinh ra khi chạy thử
+database/11_dev_passwords.sql
+database/12_dev_passwords_by_prefix.sql
+__pycache__/
+*.pyc
+.pytest_cache/
+.dart_tool/
+mobile/build/
+mobile/.flutter-plugins*
