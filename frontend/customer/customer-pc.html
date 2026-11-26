@@ -136,8 +136,8 @@ function detail(){
    <div style="padding:14px 8px 6px"><div class="row sp-b wrap"><h2 style="font-size:24px;margin:0">${e(r.room_name)}</h2><span class="price" style="font-size:20px">${money(r.price_per_hour)}/giờ</span></div>
    <div class="mute" style="margin-top:4px">${e(r.studio_name)} · ${e(r.address)}, ${e(r.city)} · ${stars(r.avg_rating)} (${r.review_count} đánh giá)</div>
    <div class="spec"><div><span class="mute">Diện tích</span><b>${r.area_sqm?r.area_sqm+' m²':'—'}</b></div><div><span class="mute">Sức chứa</span><b>${r.capacity} người</b></div><div><span class="mute">Ánh sáng</span><b>${e(r.lighting||'—')}</b></div><div><span class="mute">Giờ mở cửa</span><b>${r.open_time} – ${r.close_time}</b></div></div>
-   ${r.art_style?`<p><b>Phong cách:</b> ${e(r.art_style)}</p>`:''}${r.amenities?`<p><b>Tiện ích:</b> ${e(r.amenities)}</p>`:''}${r.description?`<p style="margin-top:8px;line-height:1.5">${e(r.description)}</p>`:''}
-   ${r.latitude?`<p style="margin-top:8px"><a class="link" target="_blank" rel="noopener" href="https://www.google.com/maps?q=${r.latitude},${r.longitude}">📍 Xem trên Google Maps</a></p>`:''}</div></div>
+   ${r.art_style?`<p><b>Phong cách:</b> ${e(r.art_style)}</p>`:''}${r.ventilation?`<p><b>Thông gió:</b> ${e(r.ventilation)}</p>`:''}${r.acoustics?`<p><b>Âm học:</b> ${e(r.acoustics)}</p>`:''}${r.usage_policy?`<p><b>Chính sách sử dụng:</b> ${e(r.usage_policy)}</p>`:''}${r.amenities?`<p><b>Tiện ích:</b> ${e(r.amenities)}</p>`:''}${r.description?`<p style="margin-top:8px;line-height:1.5">${e(r.description)}</p>`:''}
+   ${r.latitude?`<iframe title="Bản đồ" loading="lazy" style="width:100%;height:200px;border:0;border-radius:10px;margin-top:8px" src="https://maps.google.com/maps?q=${r.latitude},${r.longitude}&z=15&output=embed"></iframe><p style="margin-top:8px"><a class="link" target="_blank" rel="noopener" href="https://www.google.com/maps?q=${r.latitude},${r.longitude}">📍 Xem trên Google Maps</a></p>`:''}</div></div>
   <div class="g3" style="grid-template-columns:1fr 1fr;margin-top:20px;align-items:start">
    <div class="card"><div class="row sp-b"><h2>THIẾT BỊ THUÊ KÈM</h2><button class="link" data-a="suggest">🤖 Gợi ý</button></div>
     ${b.sug?`<div class="warn" style="font-weight:500">${b.sug.equipment.length?'AI gợi ý: '+b.sug.equipment.map(x=>`<b>${e(x.name)}</b> (${e(x.reason)})`).join('; '):'Chưa có gợi ý thiết bị.'}${b.sug.packages.length?'<br>Gói: '+b.sug.packages.map(x=>`<b>${e(x.name)}</b> (${e(x.reason)})`).join('; '):''}</div>`:''}
@@ -203,7 +203,8 @@ async function openBooking(id){
  ${b.payments.length?`<h2 style="margin-top:16px">Thanh toán</h2>${b.payments.map(p=>`<div class="kv"><span>${fdt(p.paid_at)} · ${e(PAY[p.payment_method]||p.payment_method)}</span><span><b>${money(p.amount)}</b> ${chip(p.status)}</span></div>`).join('')}`:''}
  ${b.disputes.length?`<h2 style="margin-top:16px">Khiếu nại</h2>${b.disputes.map(d=>`<div class="kv"><span>${e(d.reason)}${d.resolution?`<br><span class="mute">Phản hồi: ${e(d.resolution)}</span>`:''}</span>${chip(d.status)}</div>`).join('')}`:''}
  ${['PENDING','CONFIRMED','IN_USE'].includes(b.status)&&b.balance_due>0?`<h2 style="margin-top:16px">Thanh toán</h2><div class="frow"><input class="in" id="payAmt" type="number" min="1000" step="1000" value="${b.balance_due}"><select class="in" id="payMethod">${Object.entries(PAY).map(p=>`<option value="${p[0]}">${p[1]}</option>`).join('')}</select></div>
-  <div class="mute" style="margin:6px 0">Đây là môi trường học tập: thanh toán được ghi nhận trực tiếp, không qua cổng ngân hàng thật.</div><button class="btn w" data-a="pay" data-id="${b.reservation_id}">Thanh toán</button>`:''}
+  <div class="mute" style="margin:6px 0">Đây là môi trường học tập: thanh toán được ghi nhận trực tiếp, không qua cổng ngân hàng thật.</div><button class="btn w" data-a="pay" data-id="${b.reservation_id}">Thanh toán (ghi nhận trực tiếp)</button>
+  <button class="btn w" style="margin-top:8px;background:#005baa" data-a="vnpay" data-id="${b.reservation_id}">Thanh toán qua VNPay (sandbox)</button>`:''}
  ${live&&room?`<h2 style="margin-top:16px">Thêm vào đơn</h2><div class="frow"><select class="in" id="addEq"><option value="">+ Thuê thêm thiết bị…</option>${room.equipment.map(x=>`<option value="${x.equipment_id}">${e(x.name)} — ${money(x.rental_price)}</option>`).join('')}</select><select class="in" id="addPk"><option value="">+ Chọn gói dịch vụ…</option>${room.packages.filter(p=>!b.packages.some(y=>y.package_id==p.package_id)).map(p=>`<option value="${p.package_id}">${e(p.name)} — ${money(p.price)}</option>`).join('')}</select></div>
   <button class="btn sm ghost" style="margin-top:8px" data-a="addx" data-id="${b.reservation_id}">Thêm vào đơn</button>`:''}
  <div class="row wrap" style="margin-top:18px">${b.status=='COMPLETED'&&!b.has_review?`<button class="btn sm" data-a="rate" data-id="${b.reservation_id}">⭐ Đánh giá</button>`:''}${live?`<button class="btn sm danger" data-a="cancel" data-id="${b.reservation_id}">Hủy đơn</button>`:''}${b.status!='CANCELLED'?`<button class="btn sm ghost" data-a="dispute" data-id="${b.reservation_id}">Gửi khiếu nại</button>`:''}<button class="btn sm ghost right" data-a="close">Đóng</button></div>`;
@@ -254,7 +255,7 @@ function profile(){
 }
 function collection(){
  const c=S.cols.find(x=>x.collection_id==S.col);if(!c)return '';
- return `<div class="row sp-b wrap" style="margin-bottom:10px"><div><b>${e(c.name)}</b><div class="mute">${e(c.description||'')}</div></div><div class="row"><label class="btn sm" style="cursor:pointer">⬆ Tải ảnh lên<input type="file" id="upl" accept="image/jpeg,image/png,image/webp" multiple hidden></label><button class="btn sm danger" data-a="delcol" data-id="${c.collection_id}">Xóa bộ</button></div></div>
+ return `<div class="row sp-b wrap" style="margin-bottom:10px"><div><b>${e(c.name)}</b><div class="mute">${e(c.description||'')}</div></div><div class="row"><label class="btn sm" style="cursor:pointer">⬆ Tải ảnh lên<input type="file" id="upl" accept="image/jpeg,image/png,image/webp" multiple hidden></label><button class="btn sm" data-a="share" data-id="${c.collection_id}">${c.share_token?'🔗 Liên kết chia sẻ':'🔗 Chia sẻ'}</button>${c.share_token?`<button class="btn sm" data-a="unshare" data-id="${c.collection_id}">Thu hồi</button>`:''}<button class="btn sm danger" data-a="delcol" data-id="${c.collection_id}">Xóa bộ</button></div></div>
  ${S.photos.length?`<div class="pgrid">${S.photos.map(p=>`<div class="thumb"><img src="${App.apiBase()}${e(p.url)}" alt="${e(p.caption||'')}" data-a="view" data-id="${p.photo_id}" loading="lazy"><span class="tg">${p.kind=='RESTORED'?'Đã phục hồi':'Gốc'}</span><div class="tools">${p.kind=='ORIGINAL'?`<button data-a="restore" data-id="${p.photo_id}">✨ Phục hồi</button>`:''}<button data-a="delphoto" data-id="${p.photo_id}">🗑</button></div></div>`).join('')}</div>`:'<div class="empty">Bộ sưu tập trống. Hãy tải ảnh lên (JPEG/PNG/WEBP, tối đa 6 MB).</div>'}`;
 }
 
@@ -324,6 +325,7 @@ document.addEventListener('click',async ev=>{
   case 'book':return doBook(b);
   case 'bktab':S.bkTab=id;return render();
   case 'bk-open':return openBooking(+id);
+  case 'vnpay':{const r=await run(()=>api('/api/payments/vnpay/create',{method:'POST',body:{reservation_id:+id}}),b,'Đang chuyển sang VNPay…');if(r&&r.payment_url)location.href=r.payment_url;return}
   case 'pay':{const amt=+$('#payAmt').value,m=$('#payMethod').value;const r=await run(()=>api(`/api/customer/bookings/${id}/payments`,{method:'POST',body:{amount:amt,payment_method:m}}),b,'Đã ghi nhận thanh toán');if(r){await loadBookings();render();openBooking(+id)}return}
   case 'addx':{const eq=$('#addEq').value,pk=$('#addPk').value;if(!eq&&!pk)return toast('Chọn thiết bị hoặc gói cần thêm');
    const r=await run(async()=>{if(eq)await api(`/api/customer/bookings/${id}/equipment`,{method:'POST',body:{equipment_id:+eq,quantity:1}});if(pk)await api(`/api/customer/bookings/${id}/packages`,{method:'POST',body:{package_id:+pk}})},b,'Đã cập nhật đơn');if(r){await loadBookings();render();openBooking(+id)}return}
@@ -347,6 +349,8 @@ document.addEventListener('click',async ev=>{
   case 'newcol':sheet(`<h2>Bộ sưu tập mới</h2><label class="f" style="margin-top:0">Tên</label><input class="in" id="colName" maxlength="100"><label class="f">Mô tả</label><input class="in" id="colDesc" maxlength="500"><button class="btn w" style="margin-top:12px" data-a="savecol">Tạo</button>`);return;
   case 'savecol':{const n=$('#colName').value.trim();if(!n)return toast('Nhập tên bộ sưu tập',true);const r=await run(()=>api('/api/collections',{method:'POST',body:{name:n,description:$('#colDesc').value.trim()||null}}),b,'Đã tạo');if(r&&r!==true){closeSheet();S.col=r.collection_id;await loadProfile();render()}return}
   case 'col':S.col=+id;S.photos=await api(`/api/collections/${id}/photos`).catch(()=>[]);return render();
+  case 'share':{const r=await run(()=>api(`/api/collections/${id}/share`,{method:'POST'}),b);if(r){const url=location.origin+location.pathname.replace(/customer-pc\.html.*$/,'shared.html')+'?t='+r.share_token;try{await navigator.clipboard.writeText(url);toast('Đã sao chép liên kết chia sẻ')}catch(_){prompt('Liên kết chia sẻ (chỉ xem):',url)}await loadProfile();render()}return}
+  case 'unshare':{const r=await run(()=>api(`/api/collections/${id}/share`,{method:'DELETE'}),b,'Đã thu hồi liên kết');if(r){await loadProfile();render()}return}
   case 'delcol':if(!confirm('Xóa bộ sưu tập và toàn bộ ảnh trong đó?'))return;{const r=await run(()=>api('/api/collections/'+id,{method:'DELETE'}),b,'Đã xóa');if(r){S.col=null;await loadProfile();render()}return}
   case 'delphoto':if(!confirm('Xóa ảnh này?'))return;{const r=await run(()=>api('/api/collections/photos/'+id,{method:'DELETE'}),b,'Đã xóa ảnh');if(r){await loadProfile();render()}return}
   case 'restore':sheet(`<h2>Phục hồi ảnh</h2>${[['restore','🖼️ Phục hồi ảnh cũ','Cân bằng tương phản, khử bụi / xước nhỏ, làm nét'],['enhance','🔍 Tăng chất lượng ảnh scan','Phóng 2 lần (ảnh nhỏ), tăng tương phản, làm nét'],['negative','🎞️ Đảo âm bản','Chuyển ảnh scan âm bản thành dương bản']].map(m=>`<button class="opt" data-a="dorestore" data-id="${id}" data-m="${m[0]}"><span class="grow"><b>${m[1]}</b><span class="mute">${m[2]}</span></span></button>`).join('')}<div class="mute">Ảnh gốc được giữ nguyên; kết quả lưu thành ảnh mới trong cùng bộ sưu tập.</div>`);return;
@@ -374,6 +378,7 @@ function fillUser(){const u=S.user;$('#av').textContent=App.initials(u.full_name
 (async function init(){
  const u=await App.requireRole(['CUSTOMER','PROVIDER','EXPERT','ADMIN'],'khách hàng');if(!u)return;
  S.user=u;fillUser();
+ if(/[?&]pay=ok/.test(location.search))toast('Thanh toán VNPay thành công');else if(/[?&]pay=fail/.test(location.search))toast('Thanh toán VNPay chưa hoàn tất',true);
  const h=location.hash.slice(1);go(TITLES[h]?h:'home');
 })();
 </script>

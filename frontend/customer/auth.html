@@ -48,6 +48,7 @@
         </div>
         <button type="submit" class="btn-submit">Đăng nhập</button>
         <div id="loginMsg" class="message"></div>
+        <div id="googleBox" style="margin-top:14px;display:flex;justify-content:center"></div>
       </form>
 
       <!-- Form Đăng ký: khớp UserRegister(username, email, password, full_name, phone, role) -->
@@ -117,6 +118,35 @@
       return 'customer-pc.html';
     }
 
+    // Đăng nhập Google (OAuth 2.0): chỉ hiện nút khi server đã cấu hình GOOGLE_CLIENT_ID
+    function saveSession(data) {
+      localStorage.setItem('access_token', data.access_token);
+      localStorage.setItem('token', data.access_token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      // Các trang nhà cung cấp dùng khóa phiên riêng, nên chép sang để đăng nhập một lần dùng được cả hai
+      if (data.user && String(data.user.role).toUpperCase() === 'PROVIDER') {
+        localStorage.setItem('provider_token', data.access_token);
+        localStorage.setItem('provider_user', JSON.stringify(data.user));
+      }
+    }
+    (async function initGoogle() {
+      try {
+        const cfg = await (await fetch(API_BASE.replace('/api/users', '/api/auth/google/config'))).json();
+        if (!cfg.enabled) return;
+        await new Promise((ok, no) => { const s = document.createElement('script'); s.src = 'https://accounts.google.com/gsi/client'; s.onload = ok; s.onerror = no; document.head.appendChild(s); });
+        google.accounts.id.initialize({ client_id: cfg.client_id, callback: async (resp) => {
+          const msg = document.getElementById('loginMsg');
+          try {
+            const res = await fetch(API_BASE.replace('/api/users', '/api/auth/google'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id_token: resp.credential }) });
+            const data = await res.json();
+            if (!res.ok) throw new Error(extractErrorMessage(data, 'Đăng nhập Google thất bại'));
+            saveSession(data); window.location.href = homeFor(data.user);
+          } catch (err) { msg.textContent = err.message; msg.className = 'message error'; }
+        } });
+        google.accounts.id.renderButton(document.getElementById('googleBox'), { theme: 'outline', size: 'large', text: 'signin_with' });
+      } catch (_) { /* không có mạng hoặc server cũ: bỏ qua, vẫn đăng nhập thường */ }
+    })();
+
     document.getElementById('loginForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const msg = document.getElementById('loginMsg');
@@ -135,13 +165,7 @@
         const data = await res.json();
         if (!res.ok) throw new Error(extractErrorMessage(data, 'Đăng nhập thất bại'));
 
-        if (data.access_token) {
-          localStorage.setItem('access_token', data.access_token);
-          localStorage.setItem('token', data.access_token);
-        }
-        if (data.user) {
-          localStorage.setItem('user', JSON.stringify(data.user));
-        }
+        saveSession(data);
 
         msg.textContent = 'Đăng nhập thành công! Đang chuyển hướng...';
         msg.classList.add('success');
