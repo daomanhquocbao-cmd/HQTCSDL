@@ -38,6 +38,7 @@ def list_rooms(studio_id: Optional[int] = None, room_type: Optional[str] = None,
         params = []
         if not include_inactive:
             sql += " AND status = 'AVAILABLE'"
+            sql += " AND studio_id IN (SELECT studio_id FROM dbo.Studios WHERE status = 'APPROVED')"   # ẩn studio chưa duyệt
         if studio_id is not None:
             sql += " AND studio_id = ?"
             params.append(studio_id)
@@ -61,6 +62,7 @@ def list_available_rooms(start_time: datetime, end_time: datetime,
         sql = f"""
             SELECT {COLUMNS} FROM dbo.Rooms r
             WHERE r.status = 'AVAILABLE'
+              AND r.studio_id IN (SELECT studio_id FROM dbo.Studios WHERE status = 'APPROVED')
               AND NOT EXISTS (
                   SELECT 1 FROM dbo.Reservations res
                   WHERE res.room_id = r.room_id

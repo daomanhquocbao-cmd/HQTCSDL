@@ -1,6 +1,8 @@
 """Studio và đánh giá (bảng Studios, Reviews)."""
 from typing import List, Optional
 
+from fastapi import HTTPException
+
 from database import get_db_connection
 
 
@@ -34,10 +36,10 @@ def list_studios(limit: int = 20, offset: int = 0, keyword: Optional[str] = None
     conn = get_db_connection()
     try:
         cur = conn.cursor()
-        sql = STUDIO_SELECT
+        sql = STUDIO_SELECT + " WHERE s.status = 'APPROVED'"      # công khai: chỉ studio đã được admin duyệt
         params = []
         if keyword:
-            sql += " WHERE s.name LIKE ? OR s.address LIKE ?"
+            sql += " AND (s.name LIKE ? OR s.address LIKE ?)"
             like = f"%{keyword}%"
             params += [like, like]
         sql += STUDIO_GROUP + " ORDER BY s.studio_id OFFSET ? ROWS FETCH NEXT ? ROWS ONLY"
@@ -61,17 +63,17 @@ def get_studio(studio_id: int) -> dict:
         conn.close()
 
 
-def create_studio(provider_id: int, name: str, address: str, description, phone) -> dict:
+def create_studio(provider_id: int, name: str, address: str, description, phone, city: str = "Chưa cập nhật") -> dict:
     conn = get_db_connection()
     try:
         cur = conn.cursor()
         cur.execute(
             """
-            INSERT INTO dbo.Studios (provider_id, name, address, description, phone)
+            INSERT INTO dbo.Studios (provider_id, name, address, city, description, phone)
             OUTPUT INSERTED.studio_id
-            VALUES (?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?)
             """,
-            provider_id, name, address, description, phone,
+            provider_id, name, address, city, description, phone,
         )
         new_id = int(cur.fetchone()[0])
         conn.commit()
@@ -106,17 +108,33 @@ def list_reviews(studio_id: int, limit: int = 20, offset: int = 0) -> List[dict]
 
 
 def add_review(studio_id: int, customer_id: int, rating: int, comment) -> dict:
+    """Đánh giá studio: gắn vào đơn COMPLETED gần nhất của khách tại studio này mà chưa được đánh giá.
+    (Bảng Reviews bắt buộc có reservation_id; trigger trg_Reviews_Validate kiểm tra lại.)"""
     get_studio(studio_id)
     conn = get_db_connection()
     try:
         cur = conn.cursor()
         cur.execute(
             """
-            INSERT INTO dbo.Reviews (studio_id, customer_id, rating, comment)
-            OUTPUT INSERTED.review_id, INSERTED.created_at
-            VALUES (?, ?, ?, ?)
+            SELECT TOP 1 r.reservation_id FROM dbo.Reservations r
+            JOIN dbo.Rooms rm ON rm.room_id = r.room_id
+            WHERE rm.studio_id = ? AND r.customer_id = ? AND r.status = 'COMPLETED'
+              AND NOT EXISTS (SELECT 1 FROM dbo.Reviews rv WHERE rv.reservation_id = r.reservation_id)
+            ORDER BY r.end_time DESC
             """,
-            studio_id, customer_id, rating, comment,
+            studio_id, customer_id,
+        )
+        res = cur.fetchone()
+        if res is None:
+            raise HTTPException(status_code=409,
+                                detail="Bạn cần có một đơn đã hoàn thành tại studio này (chưa đánh giá) mới đánh giá được.")
+        cur.execute(
+            """
+            INSERT INTO dbo.Reviews (reservation_id, studio_id, customer_id, rating, comment)
+            OUTPUT INSERTED.review_id, INSERTED.created_at
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            res.reservation_id, studio_id, customer_id, rating, comment,
         )
         row = cur.fetchone()
         conn.commit()

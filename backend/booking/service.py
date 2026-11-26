@@ -5,6 +5,7 @@ from typing import List, Optional
 
 import pyodbc
 
+from core.platform_settings import get_setting
 from database import get_db_connection
 from booking.schemas import BookingCreate
 
@@ -84,7 +85,18 @@ def _fetch(cursor, booking_id: int):
     return cursor.fetchone()
 
 
+def _check_platform_rules(data: BookingCreate) -> None:
+    """Cấu hình do admin đặt (SystemSettings): chế độ bảo trì và số giờ tối đa mỗi đơn."""
+    if get_setting("platform.maintenance_mode"):
+        raise BookingError("Hệ thống đang bảo trì, tạm thời chưa nhận đơn đặt mới. Vui lòng quay lại sau.")
+    max_hours = get_setting("booking.max_hours_per_booking")
+    hours = (data.end_time - data.start_time).total_seconds() / 3600
+    if max_hours and hours > max_hours:
+        raise BookingError(f"Mỗi đơn đặt tối đa {max_hours} giờ (bạn chọn {hours:g} giờ).")
+
+
 def create_booking(user_id: int, data: BookingCreate) -> dict:
+    _check_platform_rules(data)
     conn = get_db_connection()
     try:
         cur = conn.cursor()

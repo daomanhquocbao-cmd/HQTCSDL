@@ -33,7 +33,7 @@ def get_studio(studio_id: int):
 
 @router.post("", response_model=StudioOut, status_code=status.HTTP_201_CREATED)
 def create_studio(data: StudioCreate, user: dict = Depends(require_roles("ADMIN", "PROVIDER"))):
-    return service.create_studio(user["user_id"], data.name, data.address, data.description, data.phone)
+    return service.create_studio(user["user_id"], data.name, data.address, data.description, data.phone, data.city)
 
 
 @router.get("/{studio_id}/reviews", response_model=List[ReviewOut])
