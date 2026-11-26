@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Film Hub - Quản trị</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛡️</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/css/app.css">
+</head>
+<body>
+<div class="shell">
+ <aside><div class="brand"><div class="logo">🛡️</div><div><b>Film Hub</b><span class="mute">Quản trị hệ thống</span></div></div><nav class="side" id="side"></nav></aside>
+ <main>
+  <header class="top"><h1 id="title"></h1><span class="grow"></span><button class="ic" data-a="theme" aria-label="Đổi giao diện">🌓</button>
+   <div class="row"><div class="avatar" id="av">?</div><div class="who"><b id="uname">…</b><span>QUẢN TRỊ VIÊN</span></div><button class="link" data-a="logout">Thoát</button></div></header>
+  <div class="content" id="view"><div class="empty">Đang tải…</div></div>
+ </main>
+</div>
+<script src="../assets/js/app-common.js"></script>
+<script>
+const {api,qs,esc:e,money,fd,fdt,chip,toast,sheet,closeSheet,run,POST_TYPE,PAY,ROLE}=App;
+const $=s=>document.querySelector(s);
+const NAV=[['overview','📊','Tổng quan'],['providers','🏢','Nhà cung cấp'],['studios','📸','Cơ sở'],['users','👥','Người dùng'],['payments','💳','Giao dịch'],['disputes','⚠️','Khiếu nại'],['content','📝','Nội dung'],['settings','⚙️','Cấu hình']];
+const S={tab:'overview',me:null,d:{},f:{prov:'',stu:'',role:'',ustatus:'',q:'',pstatus:'',dis:''},err:''};
+const err=m=>m?`<div class="err">${e(m)}</div>`:'';
+const SETTING_LABEL={'ai.recommendations.enabled':'Gợi ý phòng cá nhân hóa','ai.assistant.enabled':'Trợ lý AI & phục hồi ảnh','ai.knowledge_search.enabled':'Tìm kiếm kho kiến thức','ai.pricing_suggestions.enabled':'Gợi ý giá cho nhà cung cấp','pricing.high_occupancy_pct':'Ngưỡng lấp đầy để gợi ý TĂNG giá (%)','pricing.low_occupancy_pct':'Ngưỡng lấp đầy để gợi ý GIẢM giá (%)','booking.max_hours_per_booking':'Số giờ tối đa mỗi đơn đặt','platform.maintenance_mode':'Chế độ bảo trì (chặn đặt phòng mới)'};
+const tabs=(cur,list,a)=>`<div class="tabs">${list.map(t=>`<button class="${cur==t[0]?'on':''}" data-a="${a}" data-id="${t[0]}">${t[1]}</button>`).join('')}</div>`;
+
+const LOAD={
+ async overview(){const [ov,rp]=await Promise.all([api('/api/admin/overview'),api('/api/admin/reports?months=6').catch(x=>({error:x.message}))]);S.d.ov=ov;S.d.rp=rp},
+ async providers(){S.d.prov=await api('/api/admin/providers'+qs({status:S.f.prov}))},
+ async studios(){S.d.stu=await api('/api/admin/studios'+qs({status:S.f.stu}))},
+ async users(){S.d.users=await api('/api/admin/users'+qs({role:S.f.role,status:S.f.ustatus,q:S.f.q,limit:100}))},
+ async payments(){S.d.pay=await api('/api/admin/payments'+qs({status:S.f.pstatus,q:S.f.q,limit:100}))},
+ async disputes(){S.d.dis=await api('/api/provider/disputes'+qs({status:S.f.dis,limit:100}))},
+ async content(){S.d.posts=await api('/api/community/posts?limit=60')},
+ async settings(){S.d.set=await api('/api/admin/settings')}
+};
+const VIEW={
+ overview(){
+  const o=S.d.ov,r=S.d.rp;
+  const k=(l,v,s,h)=>`<div class="card stat ${h?'hero':''}"><div class="lbl">${l}</div><div class="num">${v}</div><div class="mute">${s||'&nbsp;'}</div></div>`;
+  let rep='';
+  if(r.error)rep=`<div class="warn">${e(r.error)}</div>`;
+  else{const mx=Math.max(1,...r.revenue_by_month.map(m=>m.revenue));
+   rep=`<div class="g2"><div class="card"><div class="row sp-b"><h2>💰 DOANH THU 6 THÁNG (nghìn đồng)</h2><span class="chip ok">${money(r.total_revenue)}</span></div>
+    ${r.revenue_by_month.length?`<div class="chart">${r.revenue_by_month.map((m,i,a)=>`<div><b>${Math.round(m.revenue/1000).toLocaleString('vi-VN')}</b><i class="${i==a.length-1?'now':''}" style="height:${Math.max(3,m.revenue/mx*150)}px"></i></div>`).join('')}</div><div class="xl">${r.revenue_by_month.map(m=>`<span>${m.month.slice(5)}/${m.month.slice(2,4)}</span>`).join('')}</div>`:'<div class="empty">Chưa có giao dịch.</div>'}
+    <div class="mute" style="margin-top:10px">Đã hoàn tiền: ${money(r.total_refunded)}</div>
+    <div class="mute">Hoa hồng nền tảng (${r.commission_percent??10}%): <b>${money(r.commission_total||0)}</b> · Chi trả cho nhà cung cấp: <b>${money(r.provider_payout||0)}</b></div></div>
+   <div class="card"><h2>🏆 TOP CƠ SỞ THEO DOANH THU</h2>${r.top_studios.map((s,i)=>`<div class="li"><b style="width:18px">${i+1}.</b><span class="grow"><b>${e(s.studio_name)}</b><span class="mute">${s.bookings} đơn</span></span><b class="price">${money(s.revenue)}</b></div>`).join('')||'<div class="empty">Chưa có dữ liệu.</div>'}</div></div>
+   <div class="g3"><div class="card"><h2>ĐƠN THEO TRẠNG THÁI</h2>${Object.entries(r.bookings_by_status).map(([k,v])=>`<div class="kv"><span>${chip(k)}</span><b>${v}</b></div>`).join('')}</div>
+    <div class="card"><h2>NGƯỜI DÙNG</h2>${Object.entries(r.users_by_role).map(([k,v])=>`<div class="kv"><span>${e(ROLE[k]||k)}</span><b>${v}</b></div>`).join('')}</div>
+    <div class="card"><h2>PHƯƠNG THỨC THANH TOÁN</h2>${r.payment_methods.map(p=>`<div class="kv"><span>${e(PAY[p.payment_method]||p.payment_method)} (${p.n})</span><b>${money(p.amount)}</b></div>`).join('')||'<div class="mute">Chưa có.</div>'}</div></div>
+   <div class="g2"><div class="card"><h2>PHÒNG ĐƯỢC ĐẶT NHIỀU NHẤT</h2>${r.top_rooms.map((x,i)=>`<div class="li"><b style="width:18px">${i+1}.</b><span class="grow"><b>${e(x.room_name)}</b><span class="mute">${e(x.studio_name)}</span></span><span class="chip">${x.bookings} đơn</span></div>`).join('')||'<div class="empty">Chưa có.</div>'}</div>
+    <div class="card"><h2>NỘI DUNG & CHẤT LƯỢNG</h2><div class="kv"><span>Bài viết cộng đồng</span><b>${r.content.posts}</b></div><div class="kv"><span>Workshop</span><b>${r.content.workshops}</b></div><div class="kv"><span>Đánh giá</span><b>${r.content.reviews} (TB ${Number(r.content.avg_rating).toFixed(2)}★)</b></div>${Object.entries(r.disputes_by_status).map(([k,v])=>`<div class="kv"><span>Khiếu nại ${chip(k)}</span><b>${v}</b></div>`).join('')}</div></div>`}
+  return `<div class="g4">${k('NHÀ CUNG CẤP CHỜ DUYỆT',o.pending_providers,o.active_providers+' đang hoạt động',1)}${k('CƠ SỞ CHỜ DUYỆT',o.pending_studios,o.approved_studios+' đã duyệt')}${k('KHIẾU NẠI ĐANG MỞ',o.open_disputes,'OPEN + IN_REVIEW')}${k('KHÁCH / ĐƠN ĐẶT',o.customers,o.reservations+' đơn')}</div>${rep}`;
+ },
+ providers(){
+  const L=S.d.prov;
+  return tabs(S.f.prov,[['','Tất cả'],['PENDING','Chờ duyệt'],['ACTIVE','Hoạt động'],['SUSPENDED','Bị khóa']],'fprov')+`<div class="card tbl-wrap"><table class="tbl"><tr><th>Nhà cung cấp</th><th>Liên hệ</th><th>Cơ sở</th><th>Trạng thái</th><th></th></tr>
+  ${L.map(p=>`<tr><td><b>${e(p.full_name)}</b><br><span class="mute">@${e(p.username)}</span></td><td>${e(p.email)}<br><span class="mute">${e(p.phone||'')}</span></td><td>${p.studio_count}${p.pending_studio_count?` <span class="chip pend">${p.pending_studio_count} chờ</span>`:''}</td><td>${chip(p.status)}</td>
+  <td style="text-align:right">${p.status!='ACTIVE'?`<button class="btn sm" data-a="pst" data-id="${p.user_id}" data-s="ACTIVE">Duyệt / mở khóa</button>`:''} ${p.status!='SUSPENDED'?`<button class="btn sm danger" data-a="pst" data-id="${p.user_id}" data-s="SUSPENDED">Khóa</button>`:''}</td></tr>`).join('')||'<tr><td colspan="5" class="empty">Không có nhà cung cấp.</td></tr>'}</table></div>`;
+ },
+ studios(){
+  const L=S.d.stu;
+  return tabs(S.f.stu,[['','Tất cả'],['PENDING','Chờ duyệt'],['APPROVED','Đã duyệt'],['REJECTED','Từ chối'],['SUSPENDED','Tạm ngưng']],'fstu')+`<div class="card tbl-wrap"><table class="tbl"><tr><th>Cơ sở</th><th>Nhà cung cấp</th><th>Phòng</th><th>Trạng thái</th><th></th></tr>
+  ${L.map(s=>`<tr><td><b>${e(s.name)}</b><br><span class="mute">${e(s.address)}, ${e(s.city)}</span></td><td>${e(s.provider_name)} ${chip(s.provider_status)}</td><td>${s.room_count}</td><td>${chip(s.status)}</td>
+  <td style="text-align:right">${s.status!='APPROVED'?`<button class="btn sm" data-a="sst" data-id="${s.studio_id}" data-s="APPROVED">Duyệt</button>`:''} ${s.status=='PENDING'?`<button class="btn sm danger" data-a="sst" data-id="${s.studio_id}" data-s="REJECTED">Từ chối</button>`:''} ${s.status=='APPROVED'?`<button class="btn sm ghost" data-a="sst" data-id="${s.studio_id}" data-s="SUSPENDED">Tạm ngưng</button>`:''}</td></tr>`).join('')||'<tr><td colspan="5" class="empty">Không có cơ sở.</td></tr>'}</table></div>`;
+ },
+ users(){
+  const f=S.f;
+  return `<div class="card" style="padding:14px;margin-bottom:16px"><div class="frow"><input class="in" id="uq" placeholder="Tìm tên, tài khoản, email…" value="${e(f.q)}"><select class="in" data-i="role"><option value="">Mọi vai trò</option>${Object.keys(ROLE).map(r=>`<option value="${r}" ${f.role==r?'selected':''}>${ROLE[r]}</option>`).join('')}</select><select class="in" data-i="ustatus"><option value="">Mọi trạng thái</option>${['ACTIVE','PENDING','SUSPENDED'].map(r=>`<option ${f.ustatus==r?'selected':''}>${r}</option>`).join('')}</select><button class="btn" data-a="usearch">Tìm</button></div></div>
+  <div class="card tbl-wrap"><table class="tbl"><tr><th>Người dùng</th><th>Email</th><th>Vai trò</th><th>Trạng thái</th><th>Ngày tạo</th><th></th></tr>${S.d.users.map(u=>`<tr><td><b>${e(u.full_name)}</b><br><span class="mute">@${e(u.username)}</span></td><td>${e(u.email)}</td><td>${e(ROLE[u.role]||u.role)}</td><td>${chip(u.status)}</td><td>${fd(u.created_at)}</td>
+  <td style="text-align:right">${['CUSTOMER','EXPERT'].includes(u.role)?(u.status=='SUSPENDED'?`<button class="btn sm" data-a="ust" data-id="${u.user_id}" data-s="ACTIVE">Mở khóa</button>`:`<button class="btn sm danger" data-a="ust" data-id="${u.user_id}" data-s="SUSPENDED">Khóa</button>`):''}</td></tr>`).join('')||'<tr><td colspan="6" class="empty">Không có người dùng.</td></tr>'}</table></div>`;
+ },
+ payments(){
+  const P=S.d.pay,t=P.totals,g=k=>t[k]||{count:0,amount:0};
+  return `<div class="g4">${[['THÀNH CÔNG','SUCCESS'],['ĐÃ HOÀN TIỀN','REFUNDED'],['ĐANG CHỜ','PENDING'],['THẤT BẠI','FAILED']].map(x=>`<div class="card stat"><div class="lbl">${x[0]}</div><div class="num">${money(g(x[1]).amount)}</div><div class="mute">${g(x[1]).count} giao dịch</div></div>`).join('')}</div>
+  <div class="card" style="padding:14px;margin-bottom:16px"><div class="frow"><input class="in" id="uq" placeholder="Tìm khách, cơ sở, mã giao dịch…" value="${e(S.f.q)}"><select class="in" data-i="pstatus"><option value="">Mọi trạng thái</option>${['SUCCESS','PENDING','FAILED','REFUNDED'].map(r=>`<option ${S.f.pstatus==r?'selected':''}>${r}</option>`).join('')}</select><button class="btn" data-a="psearch">Tìm</button></div></div>
+  <div class="card tbl-wrap"><table class="tbl"><tr><th>#</th><th>Thời gian</th><th>Khách / Cơ sở</th><th>Phương thức</th><th>Số tiền</th><th>Trạng thái</th><th></th></tr>${P.items.map(p=>`<tr><td>${p.payment_id}</td><td>${fdt(p.paid_at||p.created_at)}</td><td><b>${e(p.customer_name)}</b><br><span class="mute">${e(p.studio_name)} · đơn #${p.reservation_id}</span></td><td>${e(PAY[p.payment_method]||p.payment_method)}<br><span class="mute">${e(p.transaction_code||'')}</span></td><td class="price">${money(p.amount)}</td><td>${chip(p.status)}</td>
+  <td style="text-align:right">${p.status=='SUCCESS'?`<button class="btn sm danger" data-a="refund" data-id="${p.payment_id}">Hoàn tiền</button>`:''}</td></tr>`).join('')||'<tr><td colspan="7" class="empty">Không có giao dịch.</td></tr>'}</table></div>`;
+ },
+ disputes(){
+  return tabs(S.f.dis,[['','Tất cả'],['OPEN','Mới'],['IN_REVIEW','Đang xử lý'],['RESOLVED','Đã giải quyết'],['REJECTED','Bác bỏ']],'fdis')+`<div class="card">${S.d.dis.map(d=>`<div class="post"><div class="row sp-b wrap"><b>#${d.dispute_id} · ${e(d.studio_name)} · ${e(d.room_name)}</b>${chip(d.status)}</div><p>${e(d.reason)}</p><div class="who2">Khách: ${e(d.raised_by_name)} · đơn #${d.reservation_id} · ${fdt(d.created_at)}</div>${d.resolution?`<p class="mute">Phản hồi: ${e(d.resolution)}</p>`:''}
+  ${['OPEN','IN_REVIEW'].includes(d.status)?`<button class="btn sm" style="margin-top:8px" data-a="dis" data-id="${d.dispute_id}">Xử lý</button>`:''}</div>`).join('')||'<div class="empty">Không có khiếu nại.</div>'}</div>`;
+ },
+ content(){
+  return `<div class="card"><h2>KIỂM DUYỆT BÀI VIẾT CỘNG ĐỒNG</h2>${S.d.posts.map(p=>`<div class="post"><div class="row wrap"><span class="chip">${e(POST_TYPE[p.post_type]||p.post_type)}</span><b>${e(p.title)}</b><button class="btn sm danger right" data-a="delpost" data-id="${p.post_id}">Xóa</button></div><p>${e(p.content.slice(0,200))}${p.content.length>200?'…':''}</p><div class="who2">${e(p.author_name)} (${e(ROLE[p.author_role]||p.author_role)}) · ${fdt(p.created_at)} · 💬 ${p.comment_count}</div></div>`).join('')||'<div class="empty">Chưa có bài viết.</div>'}</div>
+  <div class="mute" style="margin-top:12px">Loại bài (Bài viết / Hướng dẫn / Đánh giá thiết bị / Thảo luận) và loại phòng (Studio / Darkroom) là danh mục cố định của hệ thống; nội dung vi phạm được xóa tại đây.</div>`;
+ },
+ settings(){
+  return `<div class="card"><h2>CẤU HÌNH DỊCH VỤ AI & NỀN TẢNG</h2><div class="mute" style="margin:-6px 0 8px">Thay đổi có hiệu lực ngay với tất cả người dùng.</div>${S.d.set.map(s=>`<div class="li"><span class="grow"><b>${e(SETTING_LABEL[s.setting_key]||s.setting_key)}</b><span class="mute">${e(s.description||s.setting_key)}${s.updated_by_name?` · sửa bởi ${e(s.updated_by_name)} lúc ${fdt(s.updated_at)}`:''}</span></span>
+  ${s.value_type=='BOOL'?`<button data-a="tgl" data-id="${e(s.setting_key)}" data-v="${s.value?0:1}" aria-label="Bật/tắt"><span class="tgl ${s.value?'on':''}" style="display:block"></span></button>`:`<input class="in" style="width:110px" type="number" min="0" value="${e(s.value)}" data-key="${e(s.setting_key)}"><button class="btn sm" data-a="num" data-id="${e(s.setting_key)}">Lưu</button>`}</div>`).join('')||'<div class="empty">Chưa có cấu hình.</div>'}</div>`;
+ }
+};
+function render(){
+ $('#side').innerHTML=NAV.map(n=>`<button class="${S.tab==n[0]?'on':''}" data-a="tab" data-id="${n[0]}"><span>${n[1]}</span><span>${n[2]}</span></button>`).join('');
+ $('#title').textContent=NAV.find(n=>n[0]==S.tab)[2];
+ let h;try{h=VIEW[S.tab]()}catch(x){h=`<div class="err">Lỗi hiển thị: ${e(x.message)}</div>`}
+ $('#view').innerHTML=err(S.err)+h;
+}
+async function go(tab){S.tab=tab;S.err='';history.replaceState(null,'','#'+tab);$('#view').innerHTML='<div class="empty">Đang tải…</div>';try{await LOAD[tab]()}catch(x){S.err=x.message;S.d[tab]=S.d[tab]||null}if(S.err&&tab!='overview'&&!hasData(tab)){$('#view').innerHTML=err(S.err);$('#side').innerHTML=NAV.map(n=>`<button class="${S.tab==n[0]?'on':''}" data-a="tab" data-id="${n[0]}"><span>${n[1]}</span><span>${n[2]}</span></button>`).join('');return}render()}
+const KEYS={overview:'ov',providers:'prov',studios:'stu',users:'users',payments:'pay',disputes:'dis',content:'posts',settings:'set'};
+const hasData=t=>S.d[KEYS[t]]!=null;
+const reload=()=>go(S.tab);
+document.addEventListener('click',async ev=>{
+ const b=ev.target.closest('[data-a]');if(!b)return;const a=b.dataset.a,id=b.dataset.id;
+ switch(a){
+  case 'tab':return go(id);case 'theme':return App.toggleTheme();case 'logout':return App.logout();case 'close':return closeSheet();
+  case 'fprov':S.f.prov=id;return reload();case 'fstu':S.f.stu=id;return reload();case 'fdis':S.f.dis=id;return reload();
+  case 'pst':{if(b.dataset.s=='SUSPENDED'&&!confirm('Khóa nhà cung cấp này? Các cơ sở đã duyệt của họ sẽ bị tạm ngưng.'))return;if(await run(()=>api('/api/admin/providers/'+id,{method:'PATCH',body:{status:b.dataset.s}}),b,'Đã cập nhật'))reload();return}
+  case 'sst':{if(await run(()=>api('/api/admin/studios/'+id,{method:'PATCH',body:{status:b.dataset.s}}),b,'Đã cập nhật'))reload();return}
+  case 'ust':{if(b.dataset.s=='SUSPENDED'&&!confirm('Khóa tài khoản này?'))return;if(await run(()=>api('/api/admin/users/'+id,{method:'PATCH',body:{status:b.dataset.s}}),b,'Đã cập nhật'))reload();return}
+  case 'usearch':case 'psearch':S.f.q=$('#uq').value.trim();return reload();
+  case 'refund':{if(!confirm('Hoàn tiền giao dịch #'+id+'? Thao tác không thể hoàn tác.'))return;if(await run(()=>api(`/api/admin/payments/${id}/refund`,{method:'POST'}),b,'Đã hoàn tiền'))reload();return}
+  case 'dis':{const d=S.d.dis.find(x=>x.dispute_id==id);sheet(`<h2>Xử lý khiếu nại #${id}</h2><p class="mute">${e(d.reason)}</p><label class="f">Phản hồi / hướng giải quyết</label><textarea class="in" id="disRes">${e(d.resolution||'')}</textarea><div class="row" style="margin-top:12px"><button class="btn sm ghost" data-a="disset" data-id="${id}" data-s="IN_REVIEW">Đang xử lý</button><button class="btn sm" data-a="disset" data-id="${id}" data-s="RESOLVED">Đã giải quyết</button><button class="btn sm danger" data-a="disset" data-id="${id}" data-s="REJECTED">Bác bỏ</button></div>`);return}
+  case 'disset':{if(await run(()=>api('/api/provider/disputes/'+id,{method:'PATCH',body:{status:b.dataset.s,resolution:$('#disRes').value.trim()||null}}),b,'Đã cập nhật')){closeSheet();reload()}return}
+  case 'delpost':{if(!confirm('Xóa bài viết này (kèm bình luận)?'))return;if(await run(()=>api('/api/community/posts/'+id,{method:'DELETE'}),b,'Đã xóa'))reload();return}
+  case 'tgl':{if(await run(()=>api('/api/admin/settings/'+id,{method:'PUT',body:{value:b.dataset.v=='1'}}),b,'Đã lưu'))reload();return}
+  case 'num':{const v=document.querySelector(`[data-key="${id}"]`).value;if(await run(()=>api('/api/admin/settings/'+id,{method:'PUT',body:{value:Number(v)}}),b,'Đã lưu'))reload();return}
+ }
+});
+document.addEventListener('change',ev=>{const i=ev.target.dataset&&ev.target.dataset.i;if(!i)return;S.f[i]=ev.target.value;reload()});
+document.addEventListener('keydown',ev=>{if(ev.key=='Enter'&&ev.target.id=='uq')document.querySelector('[data-a=usearch],[data-a=psearch]').click()});
+(async()=>{
+ const u=await App.requireRole(['ADMIN'],'quản trị');if(!u)return;S.me=u;
+ $('#av').textContent=App.initials(u.full_name);$('#uname').textContent=u.full_name;
+ const h=location.hash.slice(1);go(NAV.some(n=>n[0]==h)?h:'overview');
+})();
+</script>
+</body>
+</html>
