@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Film Hub - Chuyên gia</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎓</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/css/app.css">
+</head>
+<body>
+<div class="shell">
+ <aside><div class="brand"><div class="logo">🎓</div><div><b>Film Hub</b><span class="mute">Chuyên gia</span></div></div><nav class="side" id="side"></nav></aside>
+ <main>
+  <header class="top"><h1 id="title"></h1><span class="grow"></span><button class="ic" data-a="theme" aria-label="Đổi giao diện">🌓</button>
+   <div class="row"><div class="avatar" id="av">?</div><div class="who"><b id="uname">…</b><span>CHUYÊN GIA</span></div><button class="link" data-a="logout">Thoát</button></div></header>
+  <div class="content" id="view"><div class="empty">Đang tải…</div></div>
+ </main>
+</div>
+<script src="../assets/js/app-common.js"></script>
+<script>
+const {api,qs,esc:e,money,fd,ft,fdt,toast,closeSheet,run,POST_TYPE}=App;
+const $=s=>document.querySelector(s);
+const NAV=[['ws','🎟️','Workshop'],['posts','📝','Bài viết'],['qa','💬','Hỏi đáp']];
+const TITLE={ws:'Workshop của tôi',posts:'Bài viết & đánh giá thiết bị',qa:'Thảo luận cộng đồng'};
+const S={tab:'ws',me:null,ws:[],posts:[],qa:[],err:''};
+const err=m=>m?`<div class="err">${e(m)}</div>`:'';
+const LOAD={
+ async ws(){S.ws=(await api('/api/workshops?limit=100')).filter(w=>w.expert_id==S.me.user_id)},
+ async posts(){S.posts=(await api('/api/community/posts?limit=100')).filter(p=>p.author_id==S.me.user_id)},
+ async qa(){S.qa=await api('/api/community/posts?post_type=DISCUSSION&limit=30')}
+};
+const VIEW={
+ ws(){
+  const now=new Date();
+  return `<div class="g2" style="grid-template-columns:1fr 360px;align-items:start"><div class="card"><h2>WORKSHOP ĐÃ TẠO (${S.ws.length})</h2>
+   ${S.ws.map(w=>{const past=new Date(w.end_time)<now,pct=Math.round(w.registered/w.capacity*100);return `<div class="post"><div class="row sp-b wrap"><b>${e(w.title)}</b><span class="chip ${past?'gray':'ok'}">${past?'Đã diễn ra':'Sắp diễn ra'}</span></div><div class="mute">${fdt(w.start_time)} – ${ft(w.end_time)}</div><p>${e(w.description||'')}</p><div class="bar"><i style="width:${pct}%"></i></div><div class="who2" style="margin-top:4px">${w.registered}/${w.capacity} người đăng ký (${pct}%)</div></div>`}).join('')||'<div class="empty">Bạn chưa tạo workshop nào.</div>'}</div>
+  <div class="card"><h2>TẠO WORKSHOP</h2><label class="f" style="margin-top:0">Tiêu đề</label><input class="in" id="wT" maxlength="200"><label class="f">Mô tả</label><textarea class="in" id="wD"></textarea>
+   <div class="frow"><div><label class="f">Số chỗ</label><input class="in" id="wC" type="number" min="1" max="500" value="15"></div></div>
+   <div class="frow"><div><label class="f">Bắt đầu</label><input class="in" id="wS" type="datetime-local"></div><div><label class="f">Kết thúc</label><input class="in" id="wE" type="datetime-local"></div></div>
+   <button class="btn w" style="margin-top:14px" data-a="mkws">Tạo workshop</button></div></div>`;
+ },
+ posts(){
+  return `<div class="g2" style="grid-template-columns:1fr 380px;align-items:start"><div class="card"><h2>BÀI CỦA TÔI (${S.posts.length})</h2>${S.posts.map(p=>`<div class="post"><div class="row wrap"><span class="chip">${e(POST_TYPE[p.post_type]||p.post_type)}</span><b>${e(p.title)}</b><button class="link right" data-a="delpost" data-id="${p.post_id}">Xóa</button></div><p>${e(p.content.slice(0,240))}${p.content.length>240?'…':''}</p><span class="who2">${fdt(p.created_at)} · 💬 ${p.comment_count}</span></div>`).join('')||'<div class="empty">Chưa có bài viết nào.</div>'}</div>
+  <div class="card"><h2>VIẾT BÀI MỚI</h2><label class="f" style="margin-top:0">Loại bài</label><select class="in" id="pT">${['ARTICLE','TUTORIAL','EQUIPMENT_REVIEW'].map(t=>`<option value="${t}">${POST_TYPE[t]}</option>`).join('')}</select><label class="f">Tiêu đề</label><input class="in" id="pH" maxlength="200"><label class="f">Nội dung</label><textarea class="in" id="pB" style="min-height:180px"></textarea><button class="btn w" style="margin-top:12px" data-a="mkpost">Đăng bài</button></div></div>`;
+ },
+ qa(){return `<div class="card"><h2>CÂU HỎI TỪ CỘNG ĐỒNG</h2>${S.qa.map(p=>`<div class="post"><b>${e(p.title)}</b><p>${e(p.content.slice(0,260))}</p><div class="who2">${e(p.author_name)} · ${fdt(p.created_at)} · 💬 ${p.comment_count}</div><div class="row" style="margin-top:8px"><input class="in" id="c${p.post_id}" maxlength="2000" placeholder="Trả lời với tư cách chuyên gia…"><button class="btn sm" data-a="reply" data-id="${p.post_id}">Gửi</button></div></div>`).join('')||'<div class="empty">Chưa có thảo luận.</div>'}</div>`}
+};
+function render(){
+ $('#side').innerHTML=NAV.map(n=>`<button class="${S.tab==n[0]?'on':''}" data-a="tab" data-id="${n[0]}"><span>${n[1]}</span><span>${n[2]}</span></button>`).join('');
+ $('#title').textContent=TITLE[S.tab];$('#view').innerHTML=err(S.err)+VIEW[S.tab]();
+}
+async function go(t){S.tab=t;S.err='';history.replaceState(null,'','#'+t);try{await LOAD[t]()}catch(x){S.err=x.message}render()}
+document.addEventListener('click',async ev=>{
+ const b=ev.target.closest('[data-a]');if(!b)return;const a=b.dataset.a,id=b.dataset.id;
+ switch(a){
+  case 'tab':return go(id);case 'theme':return App.toggleTheme();case 'logout':return App.logout();
+  case 'mkws':{const t=$('#wT').value.trim(),s=$('#wS').value,en=$('#wE').value;if(t.length<3||!s||!en)return toast('Nhập tiêu đề, thời gian bắt đầu và kết thúc',true);if(new Date(en)<=new Date(s))return toast('Giờ kết thúc phải sau giờ bắt đầu',true);
+   if(await run(()=>api('/api/workshops',{method:'POST',body:{title:t,description:$('#wD').value.trim()||null,capacity:+$('#wC').value,start_time:s+':00',end_time:en+':00'}}),b,'Đã tạo workshop'))go('ws');return}
+  case 'mkpost':{const t=$('#pH').value.trim(),c=$('#pB').value.trim();if(t.length<3||!c)return toast('Nhập tiêu đề (≥ 3 ký tự) và nội dung',true);
+   if(await run(()=>api('/api/community/posts',{method:'POST',body:{post_type:$('#pT').value,title:t,content:c}}),b,'Đã đăng bài'))go('posts');return}
+  case 'delpost':{if(!confirm('Xóa bài viết này?'))return;if(await run(()=>api('/api/community/posts/'+id,{method:'DELETE'}),b,'Đã xóa'))go('posts');return}
+  case 'reply':{const t=$('#c'+id).value.trim();if(!t)return;if(await run(()=>api(`/api/community/posts/${id}/comments`,{method:'POST',body:{content:t}}),b,'Đã gửi'))go('qa');return}
+ }
+});
+(async()=>{
+ const u=await App.requireRole(['EXPERT','ADMIN'],'chuyên gia');if(!u)return;S.me=u;
+ $('#av').textContent=App.initials(u.full_name);$('#uname').textContent=u.full_name;
+ const h=location.hash.slice(1);go(TITLE[h]?h:'ws');
+})();
+</script>
+</body>
+</html>
