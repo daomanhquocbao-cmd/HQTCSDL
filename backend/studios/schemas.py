@@ -9,6 +9,7 @@ class StudioCreate(BaseModel):
     address: str = Field(..., min_length=3, max_length=255)
     description: Optional[str] = Field(default=None, max_length=4000)
     phone: Optional[str] = Field(default=None, max_length=20)
+    city: str = Field(default="Chưa cập nhật", min_length=1, max_length=100)
 
 
 class StudioOut(BaseModel):

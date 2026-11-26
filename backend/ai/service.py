@@ -7,11 +7,18 @@ import re
 import unicodedata
 from typing import List, Optional
 
+from community.service import search_knowledge
+from core.platform_settings import get_setting, require_enabled
 from provider.analytics import _db_ext
-from provider.service import _rows
+from provider.service import _err, _rows
+
+# Gợi ý thiết bị mặc định theo loại phòng khi studio chưa có lịch sử thuê
+TYPICAL_CATEGORIES = {"STUDIO": ("CAMERA", "LENS", "LIGHTING", "TRIPOD"),
+                      "DARKROOM": ("ENLARGER", "CHEMICAL", "PAPER")}
 
 
 def recommend(customer_id: Optional[int], top: int) -> List[dict]:
+    require_enabled("ai.recommendations.enabled", "Gợi ý cá nhân hóa đang được quản trị viên tạm tắt")
     with _db_ext() as cur:
         cur.execute("EXEC dbo.sp_RecommendRooms @customer_id = ?, @top = ?", customer_id, top)
         return _rows(cur)
@@ -47,6 +54,7 @@ def parse_query(text: str, cities: List[str]) -> dict:
 
 
 def ask(text: str, limit: int) -> dict:
+    require_enabled("ai.assistant.enabled", "Trợ lý AI đang được quản trị viên tạm tắt")
     with _db_ext() as cur:
         cur.execute("SELECT DISTINCT city FROM dbo.Studios WHERE status = 'APPROVED'")
         cities = [r[0] for r in cur.fetchall()]
@@ -69,5 +77,56 @@ def ask(text: str, limit: int) -> dict:
             "WHERE " + " AND ".join(where) + " ORDER BY ISNULL(v.avg_rating, 0) DESC, rm.price_per_hour", *params)
         rooms = _rows(cur)
     understood = [k for k, v in crit.items() if v]
-    return {"query": text, "criteria": crit, "understood": understood, "results": rooms,
-            "note": "Tìm theo luật từ khóa, không phải mô hình ngôn ngữ."}
+    knowledge = []
+    if get_setting("ai.knowledge_search.enabled"):
+        try:
+            knowledge = search_knowledge(text, 3)       # trả lời kiến thức nhiếp ảnh từ bài viết cộng đồng
+        except Exception:
+            knowledge = []
+    return {"query": text, "criteria": crit, "understood": understood, "results": rooms if understood else [],
+            "knowledge": knowledge,
+            "note": "Trợ lý chạy theo luật từ khóa + tìm kiếm trong kho bài viết cộng đồng, không phải mô hình ngôn ngữ lớn."}
+
+
+def suggest_for_room(room_id: int, limit: int = 5) -> dict:
+    """Gợi ý thiết bị và gói dịch vụ nên thêm khi đặt một phòng (dựa trên các đơn trước của cùng loại phòng)."""
+    require_enabled("ai.recommendations.enabled", "Gợi ý cá nhân hóa đang được quản trị viên tạm tắt")
+    with _db_ext() as cur:
+        cur.execute("SELECT studio_id, room_type FROM dbo.Rooms WHERE room_id = ?", room_id)
+        room = cur.fetchone()
+        if room is None:
+            raise _err(404, "Không tìm thấy phòng")
+        cur.execute(
+            f"SELECT TOP ({int(limit)}) e.equipment_id, e.name, e.category, e.rental_price, "
+            "COUNT(DISTINCT re.reservation_id) AS times_rented FROM dbo.ReservationEquipments re "
+            "JOIN dbo.Reservations r ON r.reservation_id = re.reservation_id "
+            "JOIN dbo.Rooms rm ON rm.room_id = r.room_id JOIN dbo.Equipment e ON e.equipment_id = re.equipment_id "
+            "WHERE rm.studio_id = ? AND rm.room_type = ? AND r.status <> 'CANCELLED' "
+            "AND e.status IN ('GOOD', 'NEEDS_MAINTENANCE') GROUP BY e.equipment_id, e.name, e.category, e.rental_price "
+            "ORDER BY times_rented DESC, e.rental_price", room.studio_id, room.room_type)
+        equipment = _rows(cur)
+        for e in equipment:
+            e["reason"] = f"{e['times_rented']} khách đặt loại phòng này đã thuê kèm"
+        if not equipment:
+            cats = TYPICAL_CATEGORIES.get(room.room_type, ())
+            if cats:
+                marks = ",".join("?" * len(cats))
+                cur.execute(f"SELECT TOP ({int(limit)}) equipment_id, name, category, rental_price FROM dbo.Equipment "
+                            f"WHERE studio_id = ? AND category IN ({marks}) AND status = 'GOOD' "
+                            "ORDER BY category, rental_price", room.studio_id, *cats)
+                equipment = _rows(cur)
+                for e in equipment:
+                    e["times_rented"] = 0
+                    e["reason"] = "Thiết bị thường dùng cho loại phòng này (chưa đủ lịch sử thuê)"
+        cur.execute(
+            "SELECT TOP 3 sp.package_id, sp.name, sp.price, sp.duration_hours, COUNT(rp.reservation_id) AS times_chosen "
+            "FROM dbo.ServicePackages sp LEFT JOIN dbo.ReservationPackages rp ON rp.package_id = sp.package_id "
+            "WHERE sp.studio_id = ? AND sp.is_active = 1 AND (sp.room_type IS NULL OR sp.room_type = ?) "
+            "GROUP BY sp.package_id, sp.name, sp.price, sp.duration_hours "
+            "ORDER BY times_chosen DESC, sp.price", room.studio_id, room.room_type)
+        packages = _rows(cur)
+        for p in packages:
+            p["reason"] = (f"{p['times_chosen']} đơn đã chọn gói này" if p["times_chosen"]
+                           else "Gói phù hợp loại phòng này")
+    return {"room_id": room_id, "equipment": equipment, "packages": packages,
+            "note": "Gợi ý theo tần suất thuê của các đơn trước (không phải mô hình học máy)."}
