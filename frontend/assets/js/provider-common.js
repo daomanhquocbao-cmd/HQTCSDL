@@ -971,7 +971,7 @@
         { key: 'analytics', icon: '📈', label: 'Phân tích & AI', href: 'provider-pc-analytics.html' },
         { key: 'pricing', icon: '🏷️', label: 'Giá & Khuyến mãi', href: 'provider-pc-pricing.html' },
         { key: 'community', icon: '👥', label: 'Cộng đồng', href: 'provider-pc-community.html' },
-        { key: 'admin', icon: '🛡️', label: 'Quản trị (Admin)', href: 'provider-pc-admin.html', adminOnly: true },
+        { key: 'admin', icon: '🛡️', label: 'Quản trị (Admin)', href: '../admin/admin-pc.html', adminOnly: true },
         { key: 'profile', icon: '👤', label: 'Hồ sơ & Bảo mật', href: 'provider-pc-profile.html' }
     ];
 

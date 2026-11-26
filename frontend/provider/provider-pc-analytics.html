@@ -62,6 +62,12 @@
             </div>
 
             <div class="card">
+                <div class="card-head"><span class="card-title">🤖 Tối ưu phân bổ phòng &amp; thiết bị</span>
+                    <input type="date" class="input" id="schedDay" style="width:auto"></div>
+                <div id="sched" class="small muted">Chọn ngày để xem.</div>
+            </div>
+
+            <div class="card">
                 <div class="card-head"><span class="card-title">Bản đồ nhiệt: khung giờ đông / vắng</span></div>
                 <div class="table-wrap"><table class="heat" id="heat"></table></div>
                 <div class="legend"><span>Vắng</span><i style="background:#dbeafe"></i><i style="background:#93c5fd"></i><i style="background:#fcd34d"></i><i style="background:#fb923c"></i><i style="background:#f87171"></i><span>Rất đông</span></div>
@@ -162,7 +168,20 @@
         studios = await P.data.studios();
         $('fStudio').innerHTML = studios.map(s => `<option value="${s.studio_id}">${P.esc(s.name)}</option>`).join('') || '<option value="">Chưa có cơ sở</option>';
     } catch (err) { return fail(err); }
-    $('fStudio').onchange = $('fDays').onchange = load;
+    async function loadSched() {
+        const sid = $('fStudio').value || '', day = $('schedDay').value;
+        try {
+            const r = await P.api('/api/provider/ai/schedule-optimize?' + new URLSearchParams(Object.assign({}, sid && { studio_id: sid }, day && { day })));
+            const rooms = r.rooms.map(x => `<tr><td>${P.esc(x.room_name)}</td><td class="num">${x.bookings}</td><td>${x.usable_gaps.map(g => `${g.start}–${g.end}`).join(', ') || '—'}</td><td>${x.wasted_minutes ? `<span class="badge warn">${x.wasted_minutes} phút vụn</span>` : '—'}</td></tr>`).join('');
+            const conf = r.equipment_conflicts.map(c => `<li><span class="badge bad">Thiếu thiết bị</span> ${P.esc(c.name)} (có ${c.stock}): ${c.overloaded.map(o => `${o.start}–${o.end} cần ${o.demand}`).join(', ')}</li>`).join('');
+            const sug = r.room_move_suggestions.map(m => `<li>Đơn #${m.reservation_id} (${m.start}–${m.end}): chuyển ${P.esc(m.from_room)} → <b>${P.esc(m.suggest_room)}</b>. ${P.esc(m.reason)}</li>`).join('');
+            $('sched').innerHTML = `<div class="table-wrap"><table class="data"><thead><tr><th>Phòng</th><th class="num">Đơn</th><th>Khung còn trống</th><th>Khoảng vụn</th></tr></thead><tbody>${rooms}</tbody></table></div>
+              <ul style="margin:10px 0 0 18px;line-height:1.7">${conf}${sug}${!conf && !sug ? '<li>Không có xung đột thiết bị và chưa cần đổi phòng.</li>' : ''}</ul><div class="note">${P.esc(r.summary.note)}</div>`;
+        } catch (err) { $('sched').textContent = 'Không tải được: ' + (err.message || err); }
+    }
+    $('schedDay').value = new Date().toISOString().slice(0, 10); $('schedDay').onchange = loadSched;
+    $('fStudio').onchange = $('fDays').onchange = () => { load(); loadSched(); };
+    loadSched();
     load();
 })();
 </script>

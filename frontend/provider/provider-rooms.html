@@ -47,6 +47,9 @@
             <div class="field"><label for="rStatus">Trạng thái</label><select class="select" id="rStatus"><option value="AVAILABLE">Đang hoạt động</option><option value="MAINTENANCE">Bảo trì</option><option value="INACTIVE">Đã ẩn</option></select></div>
             <div class="field"><label for="rStyle">Phong cách</label><input class="input" id="rStyle" maxlength="100" placeholder="Vintage, tối giản..."></div>
             <div class="field"><label for="rLight">Ánh sáng</label><input class="input" id="rLight" maxlength="200" placeholder="Đèn đỏ an toàn, Godox..."></div>
+            <div class="field"><label for="rVent">Thông gió</label><input class="input" id="rVent" maxlength="200" placeholder="Quạt hút, cửa sổ..."></div>
+            <div class="field"><label for="rAcou">Âm học</label><input class="input" id="rAcou" maxlength="200" placeholder="Cách âm, tiếng vang..."></div>
+            <div class="field full"><label for="rPolicy">Chính sách sử dụng</label><textarea class="textarea" id="rPolicy" maxlength="1000" rows="2" placeholder="Nội quy, quy định hủy..."></textarea></div>
             <div class="field full"><label for="rAmen">Tiện ích đi kèm</label><input class="input" id="rAmen" maxlength="500" placeholder="Bồn rửa, kệ phơi, máy lạnh..."></div>
             <div class="field full"><label for="rDesc">Mô tả</label><textarea class="textarea" id="rDesc" maxlength="2000"></textarea></div>
         </div>
@@ -143,7 +146,7 @@
         $('rPrice').value = room ? room.price_per_hour : ''; $('rCap').value = room ? room.capacity : '';
         $('rDesc').value = room ? (room.description || '') : '';
         $('rArea').value = room && room.area_sqm != null ? room.area_sqm : '';
-        $('rStyle').value = room ? (room.art_style || '') : ''; $('rLight').value = room ? (room.lighting || '') : ''; $('rAmen').value = room ? (room.amenities || '') : '';
+        $('rStyle').value = room ? (room.art_style || '') : ''; $('rLight').value = room ? (room.lighting || '') : ''; $('rAmen').value = room ? (room.amenities || '') : ''; $('rVent').value = room ? (room.ventilation || '') : ''; $('rAcou').value = room ? (room.acoustics || '') : ''; $('rPolicy').value = room ? (room.usage_policy || '') : '';
         $('rStatus').value = room ? room.status : 'AVAILABLE';
         S.open('roomModal');
     }
@@ -166,7 +169,7 @@
             studio_id: Number($('rStudio').value), name: $('rName').value.trim(), room_type: $('rType').value,
             capacity: parseInt($('rCap').value, 10), price_per_hour: parseFloat($('rPrice').value),
             description: $('rDesc').value.trim() || null, area_sqm: $('rArea').value === '' ? null : parseFloat($('rArea').value),
-            art_style: $('rStyle').value.trim() || null, lighting: $('rLight').value.trim() || null, amenities: $('rAmen').value.trim() || null, status: $('rStatus').value
+            art_style: $('rStyle').value.trim() || null, lighting: $('rLight').value.trim() || null, amenities: $('rAmen').value.trim() || null, ventilation: $('rVent').value.trim() || null, acoustics: $('rAcou').value.trim() || null, usage_policy: $('rPolicy').value.trim() || null, status: $('rStatus').value
         };
         let bad = false;
         if (payload.name.length < 2) { setErr(f, 'name', 'Tên phòng tối thiểu 2 ký tự.', 'rName'); bad = true; }
