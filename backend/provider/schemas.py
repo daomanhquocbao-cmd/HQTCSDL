@@ -42,6 +42,9 @@ class RoomIn(BaseModel):
     area_sqm: Optional[float] = Field(default=None, ge=0)
     art_style: Optional[str] = Field(default=None, max_length=100)
     lighting: Optional[str] = Field(default=None, max_length=200)
+    ventilation: Optional[str] = Field(default=None, max_length=200)
+    acoustics: Optional[str] = Field(default=None, max_length=200)
+    usage_policy: Optional[str] = Field(default=None, max_length=1000)
     amenities: Optional[str] = Field(default=None, max_length=500)
     description: Optional[str] = None
     status: RoomStatus = "AVAILABLE"
@@ -55,6 +58,9 @@ class RoomPatch(BaseModel):
     area_sqm: Optional[float] = Field(default=None, ge=0)
     art_style: Optional[str] = Field(default=None, max_length=100)
     lighting: Optional[str] = Field(default=None, max_length=200)
+    ventilation: Optional[str] = Field(default=None, max_length=200)
+    acoustics: Optional[str] = Field(default=None, max_length=200)
+    usage_policy: Optional[str] = Field(default=None, max_length=1000)
     amenities: Optional[str] = Field(default=None, max_length=500)
     description: Optional[str] = None
     status: Optional[RoomStatus] = None

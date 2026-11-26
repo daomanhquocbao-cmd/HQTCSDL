@@ -13,6 +13,7 @@ from typing import Dict, List, Optional
 
 from fastapi import HTTPException
 
+from core.platform_settings import get_setting, require_enabled
 from provider.service import (_assert_studio, _db, _dump, _err, _new_id, _one, _rows, _scope,
                               _update)
 
@@ -285,8 +286,10 @@ BANDS = [("Sáng", 0, 12), ("Chiều", 12, 17), ("Tối", 17, 24)]
 
 
 def build_pricing_suggestions(cells: List[dict], studio_open: int, studio_close: int,
-                              rules: List[dict]) -> List[dict]:
-    """Gộp ô (thứ, giờ) thành khung giờ x loại ngày rồi gợi ý hệ số giá theo mức lấp đầy."""
+                              rules: List[dict], high: int = 75, low: int = 20) -> List[dict]:
+    """Gộp ô (thứ, giờ) thành khung giờ x loại ngày rồi gợi ý hệ số giá theo mức lấp đầy.
+    high / low là ngưỡng do admin cấu hình (SystemSettings); ngưỡng "cao" nhẹ = high - 15."""
+    mid = max(low + 1, high - 15)
     out = []
     for day_type, wds in (("WEEKDAY", range(0, 5)), ("WEEKEND", range(5, 7))):
         for label, b_start, b_end in BANDS:
@@ -300,11 +303,11 @@ def build_pricing_suggestions(cells: List[dict], studio_open: int, studio_close:
             if avail <= 0:
                 continue
             occ = _pct(booked, avail)
-            if occ >= 75:
+            if occ >= high:
                 mult, why = 1.15, "Lấp đầy rất cao, có thể tăng giá để tối ưu doanh thu."
-            elif occ >= 60:
+            elif occ >= mid:
                 mult, why = 1.08, "Lấp đầy cao, có thể tăng nhẹ giá."
-            elif occ <= 20:
+            elif occ <= low:
                 mult, why = 0.90, "Lấp đầy thấp, giảm giá để kích cầu."
             else:
                 continue
@@ -317,6 +320,8 @@ def build_pricing_suggestions(cells: List[dict], studio_open: int, studio_close:
 
 
 def pricing_suggestions(user: dict, studio_id: Optional[int], days: int) -> dict:
+    require_enabled("ai.pricing_suggestions.enabled", "Gợi ý giá đang được quản trị viên tạm tắt")
+    high, low = int(get_setting("pricing.high_occupancy_pct")), int(get_setting("pricing.low_occupancy_pct"))
     with _db_ext() as cur:
         sid = _pick_studio(cur, user, studio_id)
         cells = _hourly_rows(cur, user, sid, days)
@@ -329,9 +334,10 @@ def pricing_suggestions(user: dict, studio_id: Optional[int], days: int) -> dict
     enough = total_booked >= 5
     return {
         "studio_id": sid, "days": days,
-        "method": "So sánh mức lấp đầy theo khung giờ và loại ngày: >= 75% gợi ý tăng 15%, >= 60% tăng 8%, <= 20% giảm 10%.",
+        "method": (f"So sánh mức lấp đầy theo khung giờ và loại ngày: >= {high}% gợi ý tăng 15%, "
+                   f">= {max(low + 1, high - 15)}% tăng 8%, <= {low}% giảm 10% (ngưỡng do quản trị viên cấu hình)."),
         "insufficient_data": not enough,
-        "suggestions": build_pricing_suggestions(cells, _minutes(st.open_time), _minutes(st.close_time), rules) if enough else [],
+        "suggestions": build_pricing_suggestions(cells, _minutes(st.open_time), _minutes(st.close_time), rules, high, low) if enough else [],
     }
 
 

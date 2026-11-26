@@ -5,7 +5,9 @@ from fastapi import APIRouter, Depends, Query, Response, status
 
 from core.dependencies import require_provider
 from core.security import get_current_user
-from provider import analytics, schemas, service
+from datetime import date as _date
+
+from provider import analytics, scheduler, schemas, service
 
 router = APIRouter(prefix="/api/provider", tags=["Provider"])
 profile_router = APIRouter(prefix="/api/users", tags=["Users"])
@@ -191,6 +193,12 @@ def ai_forecast(studio_id: Optional[int] = Query(None, gt=0), horizon_days: int 
 @router.get("/ai/pricing-suggestions")
 def ai_pricing(studio_id: Optional[int] = Query(None, gt=0), days: int = Query(56, ge=14, le=365), user: dict = User):
     return analytics.pricing_suggestions(user, studio_id, days)
+
+
+@router.get("/ai/schedule-optimize")
+def ai_schedule(studio_id: Optional[int] = Query(None, gt=0), day: Optional[_date] = Query(None), user: dict = User):
+    """Tối ưu phân bổ phòng/thiết bị trong một ngày (mặc định hôm nay)."""
+    return scheduler.optimize_day(user, studio_id, day or _date.today())
 
 
 # --- chính sách giá

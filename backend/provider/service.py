@@ -226,10 +226,12 @@ def delete_studio(user: dict, studio_id: int) -> None:
 # -------------------------------------------------------------------- rooms
 ROOM_SELECT = """
 SELECT r.room_id, r.studio_id, s.name AS studio_name, s.city, s.address, r.name, r.room_type,
-       r.capacity, r.area_sqm, r.art_style, r.lighting, r.amenities, r.price_per_hour,
+       r.capacity, r.area_sqm, r.art_style, r.lighting, r.ventilation, r.acoustics, r.usage_policy,
+       r.amenities, r.price_per_hour,
        r.description, r.status, r.created_at
 FROM dbo.Rooms r JOIN dbo.Studios s ON s.studio_id = r.studio_id WHERE 1 = 1"""
-ROOM_NULLABLE = {"area_sqm", "art_style", "lighting", "amenities", "description"}
+ROOM_NULLABLE = {"area_sqm", "art_style", "lighting", "amenities", "description", "ventilation", "acoustics",
+                 "usage_policy"}
 
 
 def _room(cur, room_id: int) -> dict:
@@ -255,11 +257,11 @@ def create_room(user: dict, data) -> dict:
         _assert_studio(cur, user, data.studio_id)
         cur.execute(
             "INSERT INTO dbo.Rooms (studio_id, name, room_type, capacity, area_sqm, art_style, "
-            "lighting, amenities, price_per_hour, description, status) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "lighting, amenities, price_per_hour, description, status, ventilation, acoustics, usage_policy) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             data.studio_id, data.name, data.room_type, data.capacity, data.area_sqm, data.art_style,
             data.lighting, data.amenities, Decimal(str(data.price_per_hour)), data.description,
-            data.status)
+            data.status, data.ventilation, data.acoustics, data.usage_policy)
         return _room(cur, _new_id(cur))
 
 
