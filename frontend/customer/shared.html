@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bộ sưu tập được chia sẻ</title>
+<style>
+  body{margin:0;font-family:system-ui,Segoe UI,Roboto,sans-serif;background:#0d1626;color:#e8eef9}
+  main{max-width:960px;margin:0 auto;padding:24px 16px}
+  h1{margin:0 0 4px} .mute{color:#8da0bd}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-top:20px}
+  figure{margin:0;background:#15233a;border-radius:12px;overflow:hidden}
+  img{width:100%;height:200px;object-fit:cover;display:block;cursor:zoom-in}
+  figcaption{padding:8px 10px;font-size:13px}
+  .err{padding:24px;background:#3a1620;border-radius:12px}
+</style>
+</head>
+<body>
+<main>
+  <div class="mute">Film Photography · bộ sưu tập chia sẻ (chỉ xem)</div>
+  <div id="out">Đang tải…</div>
+</main>
+<script>
+  const base = location.pathname.startsWith('/web/') ? '' : (localStorage.getItem('provider_api_base') || 'http://127.0.0.1:8000');
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  (async () => {
+    const out = document.getElementById('out');
+    const t = new URLSearchParams(location.search).get('t');
+    try {
+      const res = await fetch(`${base}/api/collections/shared/${encodeURIComponent(t || '')}`);
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(d.detail || 'Không mở được liên kết');
+      out.innerHTML = `<h1>${esc(d.name)}</h1><div class="mute">Của ${esc(d.owner_name)}${d.description ? ' · ' + esc(d.description) : ''}</div>
+        <div class="grid">${d.photos.map(p => `<figure><a href="${base}${esc(p.url)}" target="_blank" rel="noopener"><img loading="lazy" src="${base}${esc(p.url)}" alt="${esc(p.caption || '')}"></a>${p.caption ? `<figcaption>${esc(p.caption)}</figcaption>` : ''}</figure>`).join('') || '<p class="mute">Bộ sưu tập chưa có ảnh.</p>'}</div>`;
+    } catch (e) { out.innerHTML = `<div class="err">${esc(e.message)}</div>`; }
+  })();
+</script>
+</body>
+</html>
