@@ -62,6 +62,51 @@ Base URL: `http://localhost:8000` · Swagger: `/docs`
 
 Chi tiết các endpoint của provider (phân tích, quy tắc giá, khuyến mãi): xem `PROVIDER_API.md`.
 
+## Khách hàng `/api/customer` (database/01-03, 07)
+| Method | Path | Mô tả | Quyền |
+|---|---|---|---|
+| GET | /api/customer/rooms | Tìm / lọc / sắp xếp phòng (`q, room_type, city, min_price, max_price, capacity, sort, start_time+end_time` để chỉ lấy phòng còn trống); chỉ phòng của studio đã duyệt | public |
+| GET | /api/customer/cities | Danh sách thành phố có studio | public |
+| GET | /api/customer/rooms/{id} | Chi tiết phòng + thiết bị cho thuê + gói dịch vụ + đánh giá | public |
+| GET | /api/customer/rooms/{id}/busy?date= | Khung giờ đã có người đặt trong ngày | public |
+| GET | /api/customer/overview | Số liệu trang chủ: đơn sắp tới, chi tiêu 6 tháng, đơn chưa đánh giá | 🔒 |
+| GET | /api/customer/bookings, /bookings/{id} | Đơn của tôi / chi tiết (thiết bị, gói, thanh toán, mã QR, khiếu nại) | 🔒 |
+| POST | /api/customer/bookings/{id}/equipment, /packages | Thuê thêm thiết bị / chọn gói (`sp_AddReservationEquipment`, `sp_AddReservationPackage`) | 🔒 |
+| POST | /api/customer/bookings/{id}/payments | Thanh toán (`sp_ProcessPayment`) | 🔒 |
+| POST | /api/customer/bookings/{id}/cancel | Hủy đơn (`sp_CancelReservation`) | 🔒 |
+| POST | /api/customer/bookings/{id}/review | Đánh giá sau buổi thuê (trigger `trg_Reviews_Validate`) | 🔒 |
+| POST | /api/customer/bookings/{id}/disputes | Gửi khiếu nại | 🔒 |
+
+## Bộ sưu tập ảnh `/api/collections` (database/08, cần `pip install Pillow`)
+| Method | Path | Mô tả | Quyền |
+|---|---|---|---|
+| GET/POST | /api/collections | Danh sách / tạo bộ sưu tập | 🔒 |
+| PATCH/DELETE | /api/collections/{id} | Đổi tên / xóa (kèm ảnh) | 🔒 chủ sở hữu |
+| GET/POST | /api/collections/{id}/photos | Xem ảnh / tải ảnh lên (JSON `{data: base64, caption}`, JPEG/PNG/WEBP ≤ 6 MB) | 🔒 |
+| DELETE | /api/collections/photos/{id} | Xóa ảnh | 🔒 |
+| POST/DELETE | /api/collections/{id}/share | Bật (sinh token) / tắt chia sẻ | 🔒 chủ sở hữu (file 13) |
+| GET | /api/collections/shared/{token} | Xem bộ sưu tập được chia sẻ, chỉ đọc | công khai |
+| POST | /api/collections/photos/{id}/restore | Phục hồi ảnh `{mode: restore | enhance | negative}`, kết quả là ảnh mới | 🔒 |
+Ảnh được phục vụ tại `/uploads/<user_id>/<tên file>`.
+
+## AI bổ sung
+| Method | Path | Mô tả | Quyền |
+|---|---|---|---|
+| GET | /api/ai/suggest-room-extras?room_id= | Thiết bị / gói nên thêm khi đặt phòng (theo lịch sử thuê) | public |
+| GET | /api/community/search?q= | Tìm kho kiến thức (bài viết + workshop) bằng đồng nghĩa + TF-IDF | public |
+`/api/ai/ask` trả thêm `knowledge` (bài viết liên quan) để trả lời câu hỏi kỹ thuật nhiếp ảnh.
+
+## Quản trị mở rộng (database/08)
+| Method | Path | Mô tả | Quyền |
+|---|---|---|---|
+| GET | /api/admin/users | Danh sách người dùng (lọc role, status, q) | 👑 |
+| PATCH | /api/admin/users/{id} | Khóa / mở khóa khách, chuyên gia | 👑 |
+| GET | /api/admin/payments | Sổ giao dịch toàn hệ thống + tổng theo trạng thái | 👑 |
+| POST | /api/admin/payments/{id}/refund | Hoàn tiền (`sp_RefundPayment`) | 👑 |
+| GET/PUT | /api/admin/settings, /settings/{key} | Cấu hình AI / giá / đặt phòng / bảo trì; có hiệu lực ngay | 👑 |
+| GET | /api/admin/reports?months= | Báo cáo: doanh thu theo tháng, top cơ sở, top phòng, đơn theo trạng thái, người dùng, phương thức thanh toán, khiếu nại | 👑 |
+Khiếu nại: admin dùng chung `GET/PATCH /api/provider/disputes` (admin thấy toàn bộ).
+
 ## Stats
 | Method | Path | Mô tả | Quyền |
 |---|---|---|---|
@@ -70,3 +115,13 @@ Chi tiết các endpoint của provider (phân tích, quy tắc giá, khuyến m
 ## Mã lỗi
 `400` sai trạng thái / dữ liệu · `401` token sai hoặc hết hạn · `403` thiếu token hoặc không đủ quyền ·
 `404` không tìm thấy · `409` trùng (username/email, khung giờ) · `422` dữ liệu không hợp lệ.
+
+## Tích hợp (v1.5)
+| Method | Path | Mô tả | Quyền |
+|---|---|---|---|
+| GET | /api/auth/google/config | Cho client biết có bật đăng nhập Google không | public |
+| POST | /api/auth/google | Đổi `id_token` của Google lấy JWT hệ thống (tự tạo tài khoản CUSTOMER lần đầu) | public |
+| POST | /api/payments/vnpay/create | Tạo link thanh toán VNPay cho phần còn nợ của đơn `{reservation_id}` | 🔒 khách |
+| GET | /api/payments/vnpay/return | VNPay chuyển trình duyệt về; ghi nhận thanh toán rồi chuyển về web | public (xác thực bằng chữ ký) |
+| GET | /api/payments/vnpay/ipn | VNPay gọi máy chủ-máy chủ; trả `RspCode` | public (xác thực bằng chữ ký) |
+| GET | /api/provider/ai/schedule-optimize?studio_id=&day= | Tối ưu phân bổ phòng/thiết bị trong ngày | 🏢 |
