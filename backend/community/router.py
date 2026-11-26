@@ -28,6 +28,12 @@ def posts(post_type: Optional[PostType] = Query(None), q: Optional[str] = Query(
     return service.list_posts(post_type, q, limit, offset)
 
 
+@router.get("/search")
+def search(q: str = Query(min_length=2, max_length=200), limit: int = Query(8, ge=1, le=30)):
+    """Tìm tri thức theo ý nghĩa gần đúng (đồng nghĩa + TF-IDF) trong bài viết và workshop."""
+    return {"query": q, "results": service.search_knowledge(q, limit)}
+
+
 @router.get("/posts/{post_id}")
 def post(post_id: int):
     return service.get_post(post_id)
